@@ -1,0 +1,12 @@
+{
+ "name": "build",
+ "states": ["queued", "building", "review", "landed", "parked"],
+ "done": "landed",
+ "transitions": [
+  {"from": "queued", "to": "building", "by": "lead or a delegated builder"},
+  {"from": "building", "to": "review", "by": "builder hands back a staged change"},
+  {"from": "review", "to": "building", "by": "reviewer refuses, naming the cause"},
+  {"from": "review", "to": "landed", "by": "dev/land.py: checks and suite pass on the reviewed tree; the item's state flip rides in that same landing, never its own"},
+  {"from": "building", "to": "parked", "by": "lead, with the reason"}
+ ]
+}
