@@ -20,7 +20,7 @@ class HoldMidTick(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             config = os.path.join(d, 'studio.json')
             with open(config, 'w') as f:
-                json.dump({'posting.hold': {'studio': {'state': 'on', 'reason': 'pause', 'actor': 'chris'}}}, f)
+                json.dump({'posting.hold': {'studio': {'state': 'on', 'reason': 'pause', 'actor': 'owner'}}}, f)
             asset = dict(id='a', platform='mastodon', state='scheduled', post_id='p', reschedule={'to': T.isoformat()})
             s = SimpleNamespace(key=lambda account: 'k', CONFIG=config, DEFAULTS=OFF, Lock=contextlib.nullcontext,
                                 load=dict, row=lambda led, aid: ({}, asset), now=lambda: T, parse=dt.datetime.fromisoformat,

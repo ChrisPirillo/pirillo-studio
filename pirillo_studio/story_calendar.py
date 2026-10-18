@@ -96,8 +96,7 @@ def story_holds(s, cfg, x):
         if when.date().isoformat() != x.get("day"):
             out.append("a vault, history or day post must stay on its own day")
     if x.get("vault") == "wild_image_prompt" or x.get("kind") == "wild_image_prompt":
-        prompt = x.get("generation_prompt")
-        if not prompt or prompt not in (x.get("text") or "") or x.get("includes_chris") is not True or not x.get("image"):
+        if not s.wild_image_post(x):
             out.append("wild image post needs the owner's image and the exact generation prompt")
     if x.get("weekend") and not s.wild_image_post(x):
         out.append("only a wild image + exact prompt post can use the weekend queue")
@@ -146,7 +145,7 @@ def story_weekend_overflow(s, led, cfg, rid, x, t):
     item = dict(source_id="overflow:" + key, headline=x["headline"],
                 text={p: row["text"] for p, row in rows.items() if row.get("state") == "planned" and not row.get("ok")},
                 image=x.get("image"), image_alt=x.get("image_alt"), kind=x.get("vault") or x.get("kind"),
-                generation_prompt=x.get("generation_prompt"), includes_chris=x.get("includes_chris"),
+                generation_prompt=x.get("generation_prompt"), **{s.OWNER_IN_IMAGE: x.get(s.OWNER_IN_IMAGE)},
                 review=x.get("review"))
     try:
         queued = s.weekend_enqueue(led, cfg, item, t, image_day=x.get("image_day") or x["day"])

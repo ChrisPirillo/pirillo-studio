@@ -25,7 +25,7 @@ NEEDS = {
         "image_gate_on", "key", "key_age_days", "KEY_SERVICE", "keychain", "lacks_cover_words", "late_still",
         "lead", "link_plan", "link_problem", "LIVE", "load_config", "LockStuck", "long_url", "MASTODON_SETTLE",
         "MASTODON_SOON", "MASTODON_WINDOW", "media_cleanup", "media_host_short", "method_for", "morning_card",
-        "MORNING_RUN", "NO_BROWSER", "on_fit_route", "only_installed", "open_asks", "outgoing_images",
+        "MORNING_RUN", "NO_BROWSER", "on_fit_route", "only_installed", "open_asks", "outgoing_images", "OWNER_IN_IMAGE",
         "plain_html", "plat_name", "prepare_video_fit", "public_url", "publishing_row", "publishing_started",
         "queue_place", "rb", "record_scheduled_images", "Refused", "release_path", "render", "rj", "round5",
         "route_row", "scheduled_image_job", "seconds", "send", "SendDeadline", "Sending", "stage", "still_alt",
