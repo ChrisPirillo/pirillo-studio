@@ -286,3 +286,9 @@ def main(argv, s):
                         f"  {e['why']}" for e in _history(s) if a.key in (None, e['key'])) or 'no settings changes yet')
     return 0
 
+
+def load_config(s):
+    if not os.path.exists(s.CONFIG):      # first run: his file starts as the defaults
+        os.makedirs(s.HOME, exist_ok=True)
+        s.wt(s.CONFIG, json.dumps(s.DEFAULTS, indent=1))
+    return merge(s.DEFAULTS, s.rj(s.CONFIG), s.rj(s.RULES) if os.path.exists(s.RULES) else None, s.Refused)

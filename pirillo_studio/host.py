@@ -36,7 +36,7 @@ NEEDS = {
         "TOPICS", "try_cover", "turn_decisions_live", "unok_said", "vault_alt", "vault_limit",
         "vault_link_problem", "vault_row_option", "vault_still", "vault_sweep", "vault_video_url", "video_fit_cap",
         "VIDEO_FIT_PENDING", "video_probe", "WAITS_FOR_YOUTUBE", "wake", "weekend_enqueue", "wild_image_post",
-        "x_engagement", "yt_access", "YT_API", "yt_api_route", "YT_POST_NOTE", "YT_REVOKED", "yt_signed_in",
+        "wt", "x_engagement", "yt_access", "YT_API", "yt_api_route", "YT_POST_NOTE", "YT_REVOKED", "yt_signed_in",
         "YT_SIGNIN"),
 }
 HOST_IMPORTS = ("wordcopy",)   # host modules the core still imports, without s; dev/check.py refuses any other
