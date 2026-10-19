@@ -5,10 +5,18 @@ BUFFER_API = "https://api.buffer.com"
 BUFFER_POST_FIELDS = "id status externalLink dueAt sentAt schedulingType channelId text"
 
 
+def buffer_account(s, cfg, platform):
+    """Select only the configured Keychain account; a missing mapped key never falls back."""
+    account = cfg.get("platforms", {}).get(platform, {}).get("buffer_key_account", "buffer")
+    if not isinstance(account, str) or not account.strip() or account != account.strip():
+        raise s.AdapterError(f"Invalid Buffer key account for {platform}", False)
+    return account
+
+
 def buffer_graphql(s, query, variables, token, timeout=60, mutation=False):
     """Never expose response/error text that could echo credentials. An uncertain create is a check, not a retry."""
     if not token:
-        raise s.AdapterError("no Keychain key: service content-pipeline, account buffer", False)
+        raise s.AdapterError("no Buffer credential available for this route", False)
     try:
         _, result = s._http("POST", BUFFER_API, token,
                           s.json.dumps(dict(query=query, variables=variables)).encode(),

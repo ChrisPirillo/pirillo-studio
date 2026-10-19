@@ -114,8 +114,9 @@ def send(s, aid, cfg):
         pending = s.row(s.load(), aid)[1]
         if pending and pending.get("method") == "buffer" and s.method_for(cfg, platform, pending["kind"]) != "buffer":
             return
-        account = pending["method"] if pending and pending.get("method") == "buffer" else platform
-    token = s.key(account) if account == "buffer" or platform in s.ADAPTERS else None     # the Keychain, before the send lock
+        via_buffer = pending and pending.get("method") == "buffer"
+        account = buffer_api.buffer_account(s, cfg, platform) if via_buffer else platform
+    token = s.key(account) if via_buffer or platform in s.ADAPTERS else None     # the Keychain, before the send lock
     slot = s.Sending(aid)
     try:
         with s.Lock():

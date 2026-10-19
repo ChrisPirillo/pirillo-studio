@@ -74,7 +74,7 @@ def count_mastodon(s, a, cfg):
 
 def count_buffer(s, a, cfg):
     """Experimental, daily refreshed Buffer data; absent metrics remain absent, not invented zeros."""
-    post = buffer_api.buffer_read_post(s, a.get("buffer_post_id") or a["post_id"], s.key("buffer"), metrics=True)
+    post = buffer_api.buffer_read_post(s, a.get("buffer_post_id") or a["post_id"], s.key(buffer_api.buffer_account(s, cfg, a["platform"])), metrics=True)
     values = {m["type"]: m.get("value") for m in (post.get("metrics") or []) if m.get("unit") == "count"}
     return dict({k: values.get("reactions" if k == "likes" else k) for k in COUNT_KEYS},
                 buffer_updated_at=post.get("metricsUpdatedAt"))

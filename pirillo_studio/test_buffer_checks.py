@@ -14,7 +14,7 @@ class BufferCheck(unittest.TestCase):
             stub = patch.object(buffer_api, name)
             stub.start()
             self.addCleanup(stub.stop)
-        self.asset = dict(id="fixture", method="buffer", post_id="p1", state="scheduled")
+        self.asset = dict(id="fixture", platform="instagram", method="buffer", post_id="p1", state="scheduled")
         self.ledger = {"asset": self.asset}
         self.studio = SimpleNamespace(
             Lock=contextlib.nullcontext, AdapterError=RuntimeError, load=lambda: self.ledger,
@@ -34,7 +34,7 @@ class BufferCheck(unittest.TestCase):
     def test_failed_read_changes_nothing(self):
         buffer_api.buffer_read_post.side_effect = RuntimeError("offline")
         buffer_checks.buffer_verify(self.studio, "fixture", {})
-        self.assertEqual(self.asset, dict(id="fixture", method="buffer", post_id="p1", state="scheduled"))
+        self.assertEqual(self.asset, dict(id="fixture", platform="instagram", method="buffer", post_id="p1", state="scheduled"))
         self.studio.save.assert_not_called()
 
     def test_sent_with_permalink_is_verified(self):

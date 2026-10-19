@@ -78,6 +78,20 @@ class Send(unittest.TestCase):
         self.assertEqual(self.row["state"], "scheduled")
         self.assertEqual(self.row["buffer_post_id"], "accepted")
 
+    def test_buffer_mapped_missing_key_never_uses_other_account(self):
+        self.row.update(id="v:short:instagram", platform="instagram", method="buffer")
+        self.studio.method_for = lambda cfg, platform, kind: "buffer"
+        self.studio.key = Mock(return_value=None)
+        cfg = {"max_attempts": 3, "retry_minutes": 5,
+               "platforms": {"instagram": {"buffer_key_account": "alternate"}}}
+        with patch.object(sends.buffer_api, "buffer_post") as post, \
+                patch.object(sends.facebook_posts, "facebook_page_row", return_value=False):
+            sends.send(self.studio, self.row["id"], cfg)
+        self.studio.key.assert_called_once_with("alternate")
+        post.assert_not_called()
+        self.assertNotEqual(self.row["state"], "scheduled")
+
+
 
 class LinkPlan(unittest.TestCase):
     """guard: approved words are never trimmed or skipped to fit the video link; the row goes without it in the post."""

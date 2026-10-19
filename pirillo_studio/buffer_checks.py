@@ -9,9 +9,9 @@ def buffer_verify(s, aid, cfg):
         a = s.publishing_row(s.load(), aid)
         if not a or a.get("method") != "buffer" or not a.get("post_id"):
             return
-        post_id = a["post_id"]
+        post_id, platform = a["post_id"], a["platform"]
     try:
-        post = buffer_api.buffer_read_post(s, post_id, s.key("buffer"))
+        post = buffer_api.buffer_read_post(s, post_id, s.key(buffer_api.buffer_account(s, cfg, platform)))
     except s.AdapterError:
         return                               # transient read failure leaves the row safe, never resends
     with s.Lock():

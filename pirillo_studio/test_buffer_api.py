@@ -42,6 +42,33 @@ class BufferCredentialGuard(unittest.TestCase):
         self.message = f"Denied {self.token} {self.credential}"
         self.studio = SimpleNamespace(_http=Mock(), AdapterError=RuntimeError, json=json, re=re)
 
+    def test_selected_credentials_reach_checks_and_metrics_without_fallback(self):
+        from pirillo_studio import buffer_checks, counts
+        cfg = {"platforms": {"instagram": {"buffer_key_account": "alternate"},
+                             "threads": {"buffer_key_account": "alternate"}}}
+        key = Mock(side_effect=lambda account: {"buffer": "original", "alternate": "separate"}.get(account))
+        self.studio.key = key
+        for platform in ("instagram", "threads", "tiktok", "youtube"):
+            asset = dict(platform=platform, method="buffer", post_id="p1", state="scheduled")
+            self.studio.Lock = nullcontext
+            self.studio.load = lambda: asset
+            self.studio.publishing_row = lambda led, aid: asset
+            self.studio.save = Mock()
+            expected = "separate" if platform in ("instagram", "threads") else "original"
+            with patch.object(buffer_api, "buffer_read_post", return_value={}) as read, \
+                    patch.object(buffer_api, "buffer_host_cleanup"):
+                buffer_checks.buffer_verify(self.studio, "fixture", cfg)
+                self.assertEqual(read.call_args.args[2], expected)
+                counts.count_buffer(self.studio, asset, cfg)
+                self.assertEqual(read.call_args.args[2], expected)
+            self.assertEqual(asset["state"], "scheduled")
+        key.reset_mock()
+        self.assertEqual(buffer_api.buffer_account(self.studio, cfg, "instagram"), "alternate")
+        for bad in (None, "", " ", 42):
+            with self.assertRaises(RuntimeError):
+                buffer_api.buffer_account(self.studio, {"platforms": {"instagram": {"buffer_key_account": bad}}}, "instagram")
+        key.assert_not_called()
+
     def assert_scrubbed(self, text):
         self.assertNotIn(self.token, text)
         self.assertNotIn(self.credential, text)
