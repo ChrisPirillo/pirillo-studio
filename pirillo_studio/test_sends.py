@@ -103,6 +103,22 @@ class LinkPlan(unittest.TestCase):
         self.studio = SimpleNamespace(long_url=lambda v: URL, has_long=lambda v: True)
         self.cfg = {"platforms": {"bluesky": {"link": "same"}}}
 
+    def test_article_never_links_its_video_or_adds_a_reply(self):
+        for policy in ("same", "reply"):
+            with self.subTest(policy=policy):
+                self.cfg["platforms"]["bluesky"]["link"] = policy
+                row = dict(platform="bluesky", kind="article", text="Read https://reference.example/topic")
+                self.assertEqual(sends.link_plan(self.studio, {}, row, self.cfg),
+                                 (row["text"], None, None, None))
+                for text in ("Watch {long_url}", "Watch " + URL,
+                             "Read https://video.example/**long**", "Read {long_**url**}"):
+                    row["text"] = text
+                    planned = sends.link_plan(self.studio, {}, row, self.cfg)
+                    self.assertEqual(planned[:3], (None, None, None), "article must not link its video")
+                    self.assertIn("article", planned[3])
+                row.update(kind="vault", text=URL)
+                self.assertEqual(sends.link_plan(self.studio, {}, row, self.cfg)[0], URL)
+
     def test_words_that_fill_the_post_keep_every_character(self):
         a = dict(platform="bluesky", kind="short", text="w" * 300)
         text, reply, link, note = sends.link_plan(self.studio, {}, a, self.cfg)

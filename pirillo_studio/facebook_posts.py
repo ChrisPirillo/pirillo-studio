@@ -103,28 +103,13 @@ def facebook(s, a, cfg, token):
     want = cfg["platforms"]["facebook"].get("page")
     if want and (k.get("page_handle") or "").lower() != want.lower():   # a key for another Page never posts
         raise s.AdapterError(f"the Facebook key is for {k.get('page_name')}, not {want}: sign in again (fbauth.py)", False)
-    # a file_url fetch stops at 1 GB (Graph API); kept for every route: re-encoded to fit, never trimmed
+    # Re-encode to the configured API limit, never trim the approved video.
     path = s.fit_video(s.os.path.join(s.content_dir(a["slug"]), a["file"]), s.API_VIDEO_BYTES["facebook"], a["slug"])
     size = s.os.path.getsize(path)
     secs = s._probe_secs(path) or 0
     reel = a["kind"] != "long" and 3 <= secs <= 90
     missed = []
     img, how = s.try_cover(a, "facebook", missed, 8e6)     # /{video-id}/thumbnails: the landscape cut's thumbnail 1, a Reel's frame
-
-    def status(vid):
-        _, st = s._form("GET", f"{s.FB_API}/{vid}", tok, {"fields": "status"})
-        video_status = st.get("status") or {}
-        if video_status.get("video_status") in ("error", "expired") or (video_status.get("uploading_phase") or {}).get("status") == "error":
-            raise s.AdapterError(f"Facebook couldn't take the video: {s.json.dumps(video_status)[:200]}", False)
-        return video_status, st.get("permalink_url")
-
-    def upload_done(vid):
-        for _ in range(120):                          # up to 20 minutes
-            video_status, _ = status(vid)
-            if (video_status.get("uploading_phase") or {}).get("status") == "complete" or video_status.get("video_status") == "ready":
-                return
-            s.time.sleep(10)
-        raise s.AdapterError("Facebook still taking the video after 20 minutes")
 
     def reel_upload():
         _, st = s._form("POST", f"{s.FB_API}/{pid}/video_reels", tok, {"upload_phase": "start"})
@@ -139,12 +124,7 @@ def facebook(s, a, cfg, token):
         return vid
 
     def video_upload():
-        try:
-            _, st = s._form("POST", f"{FB_VIDEO}/{pid}/videos", tok, {"upload_phase": "start", "file_size": size})
-        except s.AdapterError as e:
-            if e.retry:
-                raise
-            return video_by_url()                     # Meta refused to start one: nothing was made yet
+        _, st = s._form("POST", f"{FB_VIDEO}/{pid}/videos", tok, {"upload_phase": "start", "file_size": size})
         sid, vid = st["upload_session_id"], st["video_id"]
         facebook_checkpoint(s, a, cfg, vid, "uploading")
         lo, hi, stuck = int(st["start_offset"]), int(st["end_offset"]), 0
@@ -178,14 +158,6 @@ def facebook(s, a, cfg, token):
         if not r.get("success"):
             raise s.AdapterError(f"Facebook's upload answered {s.json.dumps(r)[:150]}")
         return vid
-
-    def video_by_url():                               # the old way, only if Meta refuses a resumable upload
-        with s.public_url(s.approval_check(a, path, cfg)) as url:
-            _, st = s._form("POST", f"{FB_VIDEO}/{pid}/videos", tok, {"file_url": url, "description": a["text"],
-                                                                   "title": a.get("title") or ""}, timeout=1800)
-            facebook_checkpoint(s, a, cfg, st["id"], "publish_requested")
-            upload_done(st["id"])                     # the tunnel stays up until Facebook has the file
-            return st["id"]
 
     try:
         if reel:

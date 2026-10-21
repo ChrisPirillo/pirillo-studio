@@ -100,26 +100,22 @@ class FacebookPostGuard(unittest.TestCase):
                 self.assertEqual((result["state"], result["post_id"]), ("check", "allocated"))
                 self.assertTrue(result["facebook_confirm"])
 
-    def test_failed_video_status_keeps_confirmation_without_publishing(self):
-        for status in ({"video_status": "error"}, {"video_status": "expired"},
-                       {"uploading_phase": {"status": "error"}}):
-            with self.subTest(status=status):
+    def test_refused_video_start_never_exposes_a_tunnel_url(self):
+        for retry in (False, True):
+            with self.subTest(retry=retry):
                 self.setUp()
-                def form(method, url, token, fields, **kwargs):
-                    self.calls.append((method, url, dict(fields)))
-                    if fields.get("upload_phase") == "start":
-                        raise Refused("synthetic resumable refusal")
-                    if "file_url" in fields:
-                        return 200, {"id": "allocated"}
-                    if method == "GET":
-                        return 200, {"status": status}
-                    raise AssertionError("must not publish a failed video")
-                self.studio._form = form
-                result = self.send("long")
-                self.assertEqual((result["state"], result["post_id"]), ("check", "allocated"))
-                self.assertTrue(result["facebook_confirm"])
-                self.assertNotIn("secret-fixture", json.dumps(self.job))
+                refusal = Refused("synthetic resumable refusal", retry)
+                self.studio._form = Mock(side_effect=refusal)
+                self.studio.public_url = Mock(side_effect=AssertionError("must not expose a tunnel URL"))
+                self.studio._http = Mock()
+                with self.assertRaises(Refused) as raised:
+                    self.send("long")
+                self.assertIs(raised.exception, refusal)
+                self.assertEqual(self.studio._form.call_count, 1)
+                self.studio.public_url.assert_not_called()
+                self.studio._http.assert_not_called()
                 self.studio.facebook_confirm.facebook_read.assert_not_called()
+                self.assertEqual(self.saved, [])
 
     def test_checkpoints_precede_transfer_and_finish(self):
         for kind in ("short", "long"):

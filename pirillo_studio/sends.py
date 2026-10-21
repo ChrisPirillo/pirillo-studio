@@ -71,10 +71,15 @@ def link_plan(s, v, a, cfg):
     import wordcopy
     text, url = a.get("text") or "", s.long_url(v)
     p = cfg["platforms"][a["platform"]]
-    if a.get("kind") == "article":             # LinkedIn, X and Facebook show markdown as symbols
+    article = a.get("kind") == "article"
+    if article:                              # LinkedIn, X and Facebook show markdown as symbols
         text = plain_post(text)
     if p.get("hashtags") is False:
         text = no_tags(text)
+    if article:
+        if "{long_url}" in text or (url and url in text):
+            return None, None, None, "The article links its own video; remove that link before sending"
+        return text, None, None, None
     needs_link = ("{long_url}" in text or (a.get("kind") != "long" and p.get("link") == "reply")
                   or (a.get("kind") == "short" and a["platform"] in ("youtube", "x"))
                   or (a.get("kind") in ("short", "vertical") and p.get("link") == "same" and a["platform"] in LINK_SAME))
@@ -141,7 +146,7 @@ def send(s, aid, cfg):
             a["block"] = (f"no {a['platform']} adapter yet (publisher builds it on first use)" if not fn else
                           f"no Keychain key: service {s.KEY_SERVICE}, account {account}" if not token else
                           "needs copy (packager)" if not copy else
-                          "waits for the long cut's YouTube URL" if text is None else None)
+                          (note or "waits for the long cut's YouTube URL") if text is None else None)
             if a["block"] or not slot.acquire():
                 s.save(led)
                 return
