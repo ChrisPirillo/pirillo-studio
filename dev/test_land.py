@@ -13,6 +13,8 @@ class Landing(unittest.TestCase):
         for n in FILES:
             os.makedirs(os.path.dirname(os.path.join(self.repo, n)), exist_ok=True)
             shutil.copy(os.path.join(ROOT, n), os.path.join(self.repo, n))
+        shutil.copytree(os.path.join(ROOT, "dev", "pirillo_pipes"), os.path.join(self.repo, "dev", "pirillo_pipes"),
+                        ignore=shutil.ignore_patterns("__pycache__"))
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.email", "t@t")
         self.git("config", "user.name", "t")
@@ -81,6 +83,15 @@ class Landing(unittest.TestCase):
             f.write("test_fail.py export-ignore filter=hide\n")
         self.git("config", "filter.hide.smudge", "sed s/self.fail..//")
         self.assertIn("dev tests failed", self.land(None).stderr)
+
+    def test_checks_cannot_rewrite_the_reviewed_export(self):
+        with open(os.path.join(self.repo, "dev/test_mutation.py"), "w") as f:
+            f.write("from pathlib import Path\nimport unittest\nclass Mutation(unittest.TestCase):\n"
+                    "    def test(self):\n        Path('repo.json').write_text('{}')\n")
+        r = self.land(None)
+        self.assertIn("Candidate export changed: repo.json", r.stderr)
+        self.assertNotEqual(subprocess.run(["git", "-C", self.repo, "rev-parse", "-q", "--verify", "HEAD"],
+                                          capture_output=True).returncode, 0)
 
     def test_commit_made_during_the_run_is_not_overwritten(self):
         with open(os.path.join(self.repo, "dev/test_race.py"), "w") as f:

@@ -131,6 +131,8 @@ class Landing(unittest.TestCase):
         for n in ("repo.json", "dev/check.py", "dev/land.py", "dev/port.py", "dev/queue.json", "dev/loops/build.json"):
             os.makedirs(os.path.dirname(os.path.join(self.repo, n)), exist_ok=True)
             shutil.copy(os.path.join(root, n), os.path.join(self.repo, n))
+        shutil.copytree(os.path.join(root, "dev", "pirillo_pipes"), os.path.join(self.repo, "dev", "pirillo_pipes"),
+                        ignore=shutil.ignore_patterns("__pycache__"))
         self.write(self.repo, "dev/old.json", "{}\n")
         self.write(self.host, "tools/studio.py", "import sys\nprint('export STUDIO_LAND_TOKEN=t')\n"
                    "sys.exit('land commit refused: fixture' if sys.argv[2] == 'commit' else 0)\n")

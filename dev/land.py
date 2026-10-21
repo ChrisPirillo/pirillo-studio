@@ -8,6 +8,7 @@ and a message matching it is refused. The commit is made as repo.json `identity`
 """
 import json, os, subprocess, sys, tempfile, time
 from check import patterns as private_patterns
+from pirillo_pipes import landing
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -25,12 +26,10 @@ def export(tree, dest):
         mode, _, sha = meta.split()
         if mode not in ("100644", "100755"):
             raise SystemExit(f"land refused: {path} is mode {mode}; only plain files land")
-        out = os.path.join(dest, path)
-        os.makedirs(os.path.dirname(out), exist_ok=True)
-        with open(out, "wb") as f:  # shortcut: one git call per file, use cat-file --batch past a few hundred files
-            f.write(subprocess.run(["git", "-C", ROOT, "cat-file", "blob", sha], check=True, capture_output=True).stdout)
-        if mode == "100755":
-            os.chmod(out, 0o755)
+    try:
+        landing.export(ROOT, tree, dest)
+    except ValueError as exc:
+        raise SystemExit(f"land refused: {exc}") from exc
 
 
 def suite(tree_dir, budget):
@@ -73,6 +72,10 @@ def main(argv):
         with open(os.path.join(tmp, "repo.json")) as f:
             repo = json.load(f)
         suite(tmp, repo["suite_seconds"])
+        try:
+            landing.check_export(ROOT, tree, tmp)
+        except ValueError as exc:
+            raise SystemExit(f"land refused: {exc}") from exc
     name, email = repo["identity"].rsplit(" <", 1)
     os.environ.update(GIT_AUTHOR_NAME=name, GIT_COMMITTER_NAME=name, GIT_AUTHOR_EMAIL=email.rstrip(">"),
                       GIT_COMMITTER_EMAIL=email.rstrip(">"))

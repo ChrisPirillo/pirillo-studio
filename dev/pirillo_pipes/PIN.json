@@ -1,0 +1,37 @@
+{
+  "files": {
+    "LICENSE": {
+      "sha256": "2cfd123237530f54392115431d13ccd6c115d24dabf145042b345859b69179d9",
+      "source": "LICENSE"
+    },
+    "NOTICE": {
+      "sha256": "554c057ca01261d4e6fa4109612ac33dd6767e7488fca10bb820e0610a46950e",
+      "source": "NOTICE"
+    },
+    "__init__.py": {
+      "sha256": "be0578ba80032cdcde61592120b8022f9f37eef838df7eba0bc63289b84a3eff",
+      "source": "src/pirillo_pipes/__init__.py"
+    },
+    "landing.py": {
+      "sha256": "781ea15581202caf6e083a7d686204b9632956b02703382a378888fb54edab56",
+      "source": "src/pirillo_pipes/landing.py"
+    },
+    "python_install.py": {
+      "sha256": "d1d6bd7c547e58b5b589672e09098b27db780e0aad201b4708dad5f985ab9c06",
+      "source": "src/pirillo_pipes/python_install.py"
+    },
+    "repository_checks.py": {
+      "sha256": "801a9831be973446603347bc8f8d798d3d69e44d77efa7ec34cab8e624290e5f",
+      "source": "src/pirillo_pipes/repository_checks.py"
+    },
+    "source_move.py": {
+      "sha256": "65039869b360942858a9b8ffb35d1acab321d1b2dea4a2a4d134117ca0f03930",
+      "source": "src/pirillo_pipes/source_move.py"
+    }
+  },
+  "revision_status": "Committed canonical source; exact vendored file hashes below.",
+  "schema_version": 1,
+  "source_base_revision": "066289799028233a5ce6ab35a1099cc8149a8a3d",
+  "source_repository": "https://github.com/ChrisPirillo/pirillo-pipes",
+  "source_revision": "ea66070c9d9cb512fffbc7a3d04668033163e418"
+}

@@ -30,6 +30,16 @@ class Refusals(unittest.TestCase):
     def test_clean_copy_passes(self):
         self.assertEqual(check.problems(self.root), [])
 
+    def test_changed_pipes_vendor_is_refused(self):
+        bundle = os.path.join(self.root, "dev", "pirillo_pipes")
+        shutil.copytree(os.path.join(ROOT, "dev", "pirillo_pipes"), bundle,
+                        ignore=shutil.ignore_patterns("__pycache__"))
+        self.assertEqual(check.problems(self.root), [])
+        with open(os.path.join(bundle, "landing.py"), "a") as stream:
+            stream.write("\n# unreviewed vendor edit\n")
+        with self.assertRaisesRegex(ValueError, "Pipes vendor hash mismatch: landing.py"):
+            check.problems(self.root)
+
     def test_undeclared_path_even_if_git_would_ignore_it(self):
         self.write("__pycache__/x.pyc")
         self.assertEqual(check.problems(self.root), ["__pycache__: not in repo.json layout"])
