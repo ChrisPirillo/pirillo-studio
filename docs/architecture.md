@@ -79,3 +79,31 @@ repo.
 
 Later, as a domain settles, its `s.<callback>` reads become proper arguments or move with their domain; that is
 ordinary refactoring inside the core, done when the code is next worked on, never a sweep.
+
+### Board ask writes (item 13, seam 3)
+
+`board/asks.py` owns option parsing, permission/state transitions and matching an answered question.
+`board/writes.py` owns filing an ask, recording the action carried out and idempotently delivering committed image
+rejection events to their append-only mirror. The ledger remains authoritative; its host lock serializes writes.
+The acted validator has one Core home; words without an option never prove that an option ran.
+
+Owner identity, decision adapters, team/question and image/title policy, path validation and image/digest effects
+remain explicit host callbacks. Existing Core readers are called directly. The host keeps command dispatch,
+locked save, stage echo, pending-run tracking and withdrawal effects. Free text is feedback, never permission.
+The host forwarders call this pair live. Cards, turn projection, the content contract and backlog outcomes remain open.
+
+```mermaid
+flowchart TD
+    A[Find open ask] --> B{Host handles this answer?}
+    B -->|yes| C[Return host result]
+    B -->|no| D[Match option and run image preflight]
+    D --> E{Decision gate}
+    E -->|refused| F[Raise refusal]
+    E -->|owner required| G[Reopen and log]
+    E -->|Hold| H[Return held answer]
+    E -->|allowed or disabled| I{Host holds image feedback?}
+    I -->|yes| H
+    I -->|no| J[Run host effects]
+    J --> K[Record answer unless decision owner already did]
+    K --> L[Incident and retry effects, log, return]
+```

@@ -112,3 +112,89 @@ def ask_echo(s, a):
     except (OSError, ValueError, SystemExit):
         return False
     return True
+
+
+ASK_ISSUE = re.compile(r"#(\d+)")
+
+
+def reasked_answer(s, led, slug, cfg, what, about, retry):
+    """The earlier ask he answered that this question would ask again (same --about or issue, or today's retry
+    task), newest answer first, with why in a few words, or (None, None)."""
+    def flat(text):
+        return " ".join(str(text or "").split()).rstrip(" .:").lower()
+    mine = set(ASK_ISSUE.findall(f"{what} {about or ''}"))
+    today = [id(a) for a in asks_answered_today(s, led, slug, cfg)]
+    answered = [a for a in led.get("asks") or [] if isinstance(a, dict) and a.get("state") == "answered" and a.get("slug") == slug]
+    for other in sorted(answered, key=lambda a: str((a.get("answer") or {}).get("at") or ""), reverse=True):
+        if (other.get("answer") or {}).get("choice") == s.RETRY_LABEL or (other.get("acted") or {}).get("again"):
+            continue                                # a deferral that stood its days asks again
+        if about and flat(about) == flat(other.get("about")):
+            return other, "the same question"
+        if retry and retry == other.get("retry_task") and id(other) in today:
+            return other, f"the {retry} ask"
+        again = mine & set(ASK_ISSUE.findall(f"{other.get('what')} {other.get('about') or ''}"))
+        if again:
+            return other, f"issue #{sorted(again, key=int)[0]}"
+    return None, None
+
+
+def ask_answer(s, led, aid, choice=None, words="", via="chat", cfg=None, post=None, shown=None):
+    """His answer on one open ask -> the ask. choice: an option's label, as the Board sends it. words: what he
+    typed or said; with no choice given, words that are an option's label or number are that choice, and
+    "<label>, <more>" is that choice with his words."""
+    ask = ask_find(s, led, aid)                           # an ask, not a ledger row: MOVES has no say in its state
+    handled = s.ask_answer_override(led, ask, choice, words, shown, cfg)
+    if handled is not None:
+        return handled
+    images = s.ask_images(ask)
+    raw_words = words or ""
+    opts, words, picked = ask.get("options") or [], raw_words if images else " ".join(raw_words.split()), None
+
+    def option(text):
+        t = text.strip().lower()
+        hit = next((o for o in opts if o["label"].lower() == t), None)
+        return hit or (opts[int(t) - 1] if t.isdigit() and 1 <= int(t) <= len(opts) else None)
+    if choice is not None:
+        picked = option(choice)
+        if not picked:
+            sys.exit(f"ask {aid}: {choice!r} is not one of its options ({', '.join(o['label'] for o in opts) or 'it has none'}); "
+                     "nothing was changed.")
+    elif words:
+        picked = option(words.rstrip('.!'))
+        if picked:
+            words = ""
+        else:
+            for o in sorted(opts, key=lambda o: -len(o["label"])):
+                m = re.match(re.escape(o["label"]) + r"\s*[:,;.—-]\s*(.+)", words, re.I | re.S)
+                if m:
+                    picked, words = o, m.group(1).strip()
+                    break
+    if not picked and not words: sys.exit(f"ask {aid}: no answer given; nothing was changed.")  # noqa: E701
+    if images:
+        s.ask_answer_preflight(led, ask, images, picked, choice, raw_words)
+    picked = picked or (option("Approve") if ask.get("answer_type") == "datetime-local" else None)   # a time alone is explicit approval for this answer type
+    if s.decision_enabled(cfg):
+        s.decision_prepare_ask(ask)
+        by, source = s.decision_core.current_actor()
+        if picked is None:
+            # Free text is feedback, not permission for an effect.
+            picked = next(o for o in ask["options"] if o["label"] == "Hold")
+        try:
+            s.decision_core.answer(ask, picked["label"], by=by, via=source, now=s.now())
+        except ValueError as e:
+            raise s.Refused(str(e)) from None
+        ask["answer"]["words"] = words or None
+        if not s.ask_owner_allowed(ask, picked["label"]):
+            ask["state"] = "open"
+            s.ask_answer_note(led, ask, via, by)
+            return ask
+        if picked["label"] == "Hold":
+            return ask
+    if images and s.ask_answer_hold(led, ask, picked, raw_words, via):
+        return ask
+    answered_at = s.ask_answer_effects(led, ask, picked, words, post, shown, raw_words, via, cfg, images)
+    if not s.decision_enabled(cfg) and not s.ask_answer_managed(ask):
+        ask.update(state="answered", answer=dict(choice=picked["label"] if picked else None, words=words or None,
+                                                 at=answered_at, via=via))
+    s.ask_answer_done(led, ask, picked, via)
+    return ask
