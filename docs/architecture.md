@@ -88,6 +88,7 @@ The baseline both gates need, and nothing else before them:
   acts next); one engine says what is next, runs it, records it and hands off. This replaces the host's next,
   dispatch, holds and per-recipe exceptions such as `recipe_absent`, which keep breaking because every check must
   remember every recipe.
+  The recipe data, engine answers and acceptance contracts are in [the spine spec](spine.md).
 - **The Board as one task model** (item 13): every task is one shape (what, why, where it came from, the thing to
   judge, one set of actions each undoable, "can't, here's why", and its loop from filed to done); a kind that needs
   its own layout is a spec change, never a new renderer.

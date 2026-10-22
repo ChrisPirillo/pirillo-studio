@@ -154,9 +154,13 @@
   "id": 37,
   "loop": "build",
   "layer": "product",
-  "state": "queued",
+  "state": "building",
   "title": "The spine: recipes as data and one engine that says what is next, runs it, checks it and hands off",
-  "done_when": "rebuilt to its spec (docs/architecture.md, Cutover): the plain and shorts-only recipes are data; one engine answers next, run, check and hand-off for both; no check names a recipe; the host's next, dispatch and holds call it behind one setting. The owner, 2026-10-22"
+  "done_when": "rebuilt to its spec (docs/architecture.md, Cutover): the plain and shorts-only recipes are data; one engine answers next, run, check and hand-off for both; no check names a recipe; the host's next, dispatch and holds call it behind one setting. The owner, 2026-10-22",
+  "seams": [
+   "1 the spine spec: recipes as data, the engine's four answers, the host's deciders mapped (docs/spine.md), for the owner to read: spec drafted",
+   "2 the engine and both recipes built new to it with their contract tests; 3 the host switched behind one setting; 4 the host's next, dispatch, holds and recipe_absent deleted"
+  ]
  },
  {
   "id": 13,
