@@ -2,7 +2,7 @@
 
 Pirillo Studio is the public core of a video studio: the code that plans, posts, checks and reports, with no owner's
 values in it. An owner runs it from their own working studio (the host), which holds their settings, data, accounts
-and mods. This page is the shape the core is ported into; `dev/queue.json` is the order.
+and mods. This page is the shape the core is rebuilt into and the cutover it works toward; `dev/queue.json` is the order.
 
 ## Layers
 
@@ -63,7 +63,58 @@ The replacement keeps the call shape and narrows what crosses it:
 - Forwarders are debt with an exit: each is deleted when its last host caller moves to the core, and new host code
   calls the core through `core()`, never a forwarder.
 
-## How a domain ports
+## Cutover: the core runs a video without the host's legacy code
+
+The owner, 2026-10-22: "We can't abandon legacy but a goal should be to get off it sooner rather than later ... the
+baseline that's required to be able to cut over and eliminate legacy and take our learnings and failings and correct
+them in each of the critical domains." Moving legacy code unchanged moved its problems with it: by 2026-10-22 the
+core held about 4,200 lines against roughly 400,000 in the host, and the Board still drew each kind of task its own
+way. So the core is now **rebuilt domain by domain to a spec**, and the queue is only what the cutover needs.
+
+**Cutover** is two gates, in order:
+
+1. **C1, the owner's studio runs on the core.** One `plain` video and one `shorts-only` video go from footage to
+   posted with no host legacy module on the path, and the owner works it from the new Board alone.
+2. **C2, testers (item 31, R3).** A fresh second studio installs from the artifact and makes one finished video.
+
+The baseline both gates need, and nothing else before them:
+
+- **The spine** (item 37): a recipe is data (stages, each with its inputs, its run, its check, its outputs and who
+  acts next); one engine says what is next, runs it, records it and hands off. This replaces the host's next,
+  dispatch, holds and per-recipe exceptions such as `recipe_absent`, which keep breaking because every check must
+  remember every recipe.
+- **The Board as one task model** (item 13): every task is one shape (what, why, where it came from, the thing to
+  judge, one set of actions each undoable, "can't, here's why", and its loop from filed to done); a kind that needs
+  its own layout is a spec change, never a new renderer.
+- **The video domains the two recipes use**, in path order: media in (item 6: probe, transcript, faces), cutting
+  (17), rendering with shorts (14), captions (18), QC as one check engine whose checks each recipe declares (15),
+  the release (39: titles, copy and the release file the posting clock reads), and posting, which is already here (its TikTok route still needs
+  the host's browser fit and is rebuilt without it).
+- **Settings and voice** (items 5 and 12) only as far as these need them.
+
+Everything else waits until C1: research, images, digest, growth, community, morning run, tips, vault, crew rules,
+the other recipes (animated explainer, claymation, review roundup) and the host's team machinery.
+
+## How a domain is rebuilt
+
+1. **Spec first**, in this file or beside the domain: its flowchart (fewest boxes reaching every end), its data in
+   and out, its expectation list, and the host's failings it ends, each with the issue that showed it. The owner
+   reads specs that change what he sees.
+2. **Build it new** to the spec. Legacy code is a reference, not a source: copy a function only where it is already
+   right, and say so in the review.
+3. **Contract tests**: the spec's inputs to its outputs, one test per end of the flowchart, plus one run on real
+   media named as a `Live check:`. A legacy test is not carried over; what it guarded is either a spec line or gone.
+4. **Switch and delete**: the host calls the core behind one setting, the owner sees both side by side where it
+   changes what he sees, then the legacy code, its tests and its settings are deleted in one landing.
+
+**Legacy freeze** (until C1): the host gets fixes that keep the owner's videos posting and the Board answering, and
+nothing new. A bug in a domain on the cutover list is fixed in its rebuild. An issue about the host's own machinery is frozen,
+not closed; each is read once at cutover and either becomes a spec line or goes with the legacy.
+
+`dev/port.py move` stays for the few places where the legacy code is right as written; its rules (exact source,
+`s.<name>` reads in `NEEDS`, host forwarders, one review per item) still hold when it is used.
+
+### dev/port.py move
 
 `dev/port.py move <host file> <names...> --to <core module>` moves the exact source of whole sections (functions,
 constants, classes) and mechanically rewrites only what crossing the boundary needs: each host global becomes
