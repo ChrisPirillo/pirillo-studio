@@ -4,6 +4,11 @@ Pirillo Studio is the public core of a video studio: the code that plans, posts,
 values in it. An owner runs it from their own working studio (the host), which holds their settings, data, accounts
 and mods. This page is the shape the core is rebuilt into and the cutover it works toward; `dev/queue.json` is the order.
 
+**What it is for** (the owner, 2026-10-22): a recipe is the kind of thing people share as a skill that makes a video.
+The studio makes recipes easy to run and manage, and wraps the rest of the value around them: editing, checks,
+scheduling, posting and measuring. "The less we have to rely on external costs, the better": a stage wraps a free or
+already-paid tool, and a new paid service comes in only when the owner asks.
+
 ## Layers
 
 Three layers, and every package and queue item is in one:
