@@ -142,6 +142,14 @@
   "done_when": "when the host has tools/package_core.py, dev/port.py land runs it on the new core commit in a host worktree at the patch's base and lands the host half with its fresh-install fixture bound to that commit, written beside the patch so the finish command reuses it (item 13 seam 3's host half was refused at host verify on 2026-10-21 because the fixture held a core without the module it imports, and only the landing's own commit can be bound; any host half that imports a new core module, moved or rebuilt, meets it); bind refuses when the host's package_core.py at the patch's base binds nothing to the new core (item 5 seam 2's host half, 2026-10-22: its 2353148a base predated the binder, which exited 0)"
  },
  {
+  "id": 41,
+  "loop": "build",
+  "layer": "dev-kit",
+  "state": "queued",
+  "title": "dev/land.py keeps a review across commits landed beside it",
+  "done_when": "a review file may name the base it was read on (`APPROVE <tree> <reviewer> <base>`), and dev/land.py accepts it on a later HEAD only when <base> is an ancestor of HEAD, `git diff --raw --full-index --no-renames` (paths, modes and blob ids, binary included) from the reviewed tree to the staged tree is identical to the same diff from <base> to HEAD, and no commit since <base> touches a path the reviewed patch changes; any other difference, an unknown object or a git error refuses, naming the tree to re-review. Three reviews went stale on unrelated core commits (item 40 on 2a18777, its guard and item 13 seam 4's spec on 389b7d8, 2026-10-22), each re-reviewed only to confirm that identity by hand"
+ },
+ {
   "id": 37,
   "loop": "build",
   "layer": "product",
