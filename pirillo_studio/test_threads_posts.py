@@ -93,5 +93,19 @@ class ThreadsPostGuard(unittest.TestCase):
         self.assertEqual(len(self.published()), 1)
 
 
+class ThreadsTopicProof(unittest.TestCase):
+    """guard: a Threads topic is recorded live only from a returned post tagged exactly with it, never from a search
+    hit on the words (2026-10-22: "Meta AI" matched 4 of his posts, none tagged it)."""
+
+    def probe(self, posts):
+        studio = SimpleNamespace(TH_API="https://threads.invalid", _form=lambda *a: (200, {"data": posts}))
+        return threads_posts.threads_topic_api(studio, "Meta AI", "token")
+
+    def test_only_an_exact_tag_proves_a_topic(self):
+        self.assertIsNone(self.probe([{"id": "1", "timestamp": "2026-10-01", "topic_tag": "AI Threads"}, {"id": "2"}]))
+        got = self.probe([{"id": "1", "timestamp": "2026-10-01", "topic_tag": "meta  ai"}, {"id": "2", "topic_tag": "Apple"}])
+        self.assertEqual(got[0], "1 recent posts tagged it, the newest 2026-10-01")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -38,18 +38,21 @@ def threads_text(s, a, cfg, token):
 
 
 def threads_topic_api(s, name, token):
-    """Ask the API whether a topic is live on Threads: keyword_search in TAG mode, recent posts. (evidence, how) when it
-    finds posts under it; None when it cannot say (the app lacks the keyword search permission) or finds none."""
+    """Ask the API whether a topic is live on Threads: keyword_search in TAG mode, recent posts. (evidence, how) when a
+    post it returns carries exactly this topic_tag; None when it cannot say or finds none. A search hit alone is no
+    proof: the app's standard access returns only the account's own posts, matched on their words (2026-10-22: "Meta AI"
+    returned 4 posts, none tagged Meta AI)."""
     try:
         _, r = s._form("GET", f"{s.TH_API}/keyword_search", token, {"q": name, "search_mode": "TAG", "search_type": "RECENT",
-                                                               "fields": "id,timestamp", "limit": "5"})
-        got = [x for x in (r or {}).get("data") or [] if isinstance(x, dict)]
+                                                               "fields": "id,timestamp,topic_tag", "limit": "25"})
+        got = [x for x in (r or {}).get("data") or [] if isinstance(x, dict)
+               and " ".join(str(x.get("topic_tag") or "").split()).casefold() == " ".join(name.split()).casefold()]
     except Exception:                                   # a probe: it never stops a post
         return None
     if not got:
         return None
     newest = max(str(x.get("timestamp") or "") for x in got)[:10]
-    return f"{len(got)} recent posts under it, the newest {newest or 'undated'}", "Threads API keyword_search, TAG mode"
+    return f"{len(got)} recent posts tagged it, the newest {newest or 'undated'}", "Threads API keyword_search, TAG mode"
 
 
 def threads_topic(s, a, cfg, token=None, t=None):
