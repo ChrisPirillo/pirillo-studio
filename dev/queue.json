@@ -166,7 +166,7 @@
   "id": 13,
   "loop": "build",
   "layer": "product",
-  "state": "building",
+  "state": "parked",
   "title": "The new Board: one task model, one API, one page, the old renderers deleted",
   "done_when": "Working #1680's done-when: Board.html is drawn only from GET /board.json and every action goes through POST /act on the Board helper; board_c's render/apply, board_v5a, board_unified and studio.py's b5_*, board_v5, board_v4 and board_fallback_alert are deleted with their settings keys; board_contract.py run --layout api is green; and it fixes once each working-repo issue in backlog_issues. The owner, 2026-10-21: the migration's next item",
   "backlog_issues": [
@@ -193,7 +193,7 @@
    "2 the rest of the ask reads (ask_by, ask_images, ask_find, ask_echo and their pure helper answered_note) move into board/asks.py; owner values HOME, MORNING_RUN, ASK_STUDIO and ANSWERED stay in the host through s, as do stage logging and the ask_title callback: landed with this queue change",
    "3 the ask writes: landed with this queue change; next: 4 the owner's cards, 5 the owner's turn, 6 board_data.py (as named before); 7 one model (board_c.model, board_data.model, board_unified.model merged, a coverage check); 8 one API (GET /board.json, POST /act); 9 one page (markup by the lead, board_contract layout api, behind studio.json board_api); 10 the old renderers deleted. Detail and expectation list: Working #1680",
    "4 the task model spec: one shape for every task (what, why, source, the thing to judge, one set of actions each undoable, can't-and-why, its loop from filed to done), every kind on today's Board mapped to it, Working #1680's expectation list as its tests; the owner reads it. The owner's cards, the owner's turn and board_data.py are rebuilt to it, not moved (the owner, 2026-10-22): spec drafted in docs/board.md, for the owner to read",
-   "5 the model built new with its coverage check; 6 one API (GET /board.json, POST /act); 7 one page (behind studio.json board_api, side by side with today's); 8 the old renderers deleted. Detail: Working #1680"
+   "5 the task shape, its loop and the coverage check (pirillo_studio/board/model.py), built new to docs/board.md sections 1 and 2: parked 2026-10-22 after three refused review rounds, each on a real gap the next round fixed: r1 wrong-typed fields raised instead of being reported and a protocol-relative href passed; r2 backslash and control-character hrefs passed as same-origin and untyped text fields passed; r3 untyped related keys and a free-text undo expiry passed (r3's 'related keys own their sources' is declined: section 1's own example relates an ask to a post that owns its own task, so aliases are the source readers' to collapse, seam 6). The candidate after r3 (tree bedc3a51 on 9b56266, model +108, contract tests +110, pirillo_studio 122 OK) waits unreviewed; unpark is one fresh review of it re-made on the then base. Then: 6 each source read into tasks, asks first, then posts, ideas and tasks, one seam per family, each with its undo writer and coverage run on a copy of the owner's ledger; 7 one API (GET /board.json, POST /act); 8 one page (behind studio.json board_api, side by side with today's); 9 the old renderers deleted. Detail: Working #1680"
   ],
   "issue": 1680
  },
