@@ -139,7 +139,7 @@
   "layer": "dev-kit",
   "state": "landed",
   "title": "dev/port.py land rebinds the host's packaged-core fixture to the core it lands",
-  "done_when": "when the host has tools/package_core.py, dev/port.py land runs it on the new core commit in a host worktree at the patch's base and lands the host half with its fresh-install fixture bound to that commit, written beside the patch so the finish command reuses it (item 13 seam 3's host half was refused at host verify on 2026-10-21 because the fixture held a core without the module it imports, and only the landing's own commit can be bound; any host half that imports a new core module, moved or rebuilt, meets it)"
+  "done_when": "when the host has tools/package_core.py, dev/port.py land runs it on the new core commit in a host worktree at the patch's base and lands the host half with its fresh-install fixture bound to that commit, written beside the patch so the finish command reuses it (item 13 seam 3's host half was refused at host verify on 2026-10-21 because the fixture held a core without the module it imports, and only the landing's own commit can be bound; any host half that imports a new core module, moved or rebuilt, meets it); bind refuses when the host's package_core.py at the patch's base binds nothing to the new core (item 5 seam 2's host half, 2026-10-22: its 2353148a base predated the binder, which exited 0)"
  },
  {
   "id": 37,

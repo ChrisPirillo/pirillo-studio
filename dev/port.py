@@ -57,7 +57,8 @@ def bind(host_root, base, patch, new):
     tools/package_core.py <core>), which exists only once this landing commits it; written beside the patch."""
     if not os.path.exists(os.path.join(host_root, "tools", "package_core.py")):
         return patch
-    out = f"{patch[:-6] if patch.endswith('.patch') else patch}-core-{run('git', '-C', new, 'rev-parse', 'HEAD')[:8]}.patch"
+    sha = run("git", "-C", new, "rev-parse", "HEAD")
+    out = f"{patch[:-6] if patch.endswith('.patch') else patch}-core-{sha[:8]}.patch"
     with tempfile.TemporaryDirectory() as tmp:
         h = os.path.join(tmp, "host")
         run("git", "-C", host_root, "worktree", "add", "-q", "--detach", h, base)
@@ -65,8 +66,12 @@ def bind(host_root, base, patch, new):
             run("git", "apply", patch, cwd=h)
             run(sys.executable, "package_core.py", new, cwd=os.path.join(h, "tools"))
             run("git", "add", "-A", cwd=h)
+            diff = run("git", "diff", "--cached", "--binary", base, cwd=h)
+            if sha not in diff:  # the base's package_core.py may predate the fixture it binds, and exit 0 having bound nothing
+                raise SystemExit(f"bind refused: tools/package_core.py at host {base[:9]} bound nothing to core {sha[:9]}; "
+                                 "re-make the host patch on a host commit whose package_core.py binds its fixture")
             with open(out, "w") as f:
-                f.write(run("git", "diff", "--cached", "--binary", base, cwd=h) + "\n")
+                f.write(diff + "\n")
         finally:
             run("git", "-C", host_root, "worktree", "remove", "--force", h)
     return out

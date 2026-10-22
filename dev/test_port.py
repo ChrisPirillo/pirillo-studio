@@ -199,6 +199,18 @@ class Landing(unittest.TestCase):
             self.assertIn(f"+{sha}", f.read())
         self.assertEqual(self.git(self.host, "status", "--porcelain"), "")
 
+    def test_a_base_whose_package_core_binds_nothing_is_refused(self):
+        """defect: item 5 seam 2's host half (Working 2026-10-22) was diffed from a host commit whose package_core.py had
+        no fixture binder; it exited 0, and bind sent the host half to verify with its fixture unbound."""
+        self.write(self.host, "tools/package_core.py", "")
+        self.git(self.host, "add", "-A")
+        self.git(self.host, "commit", "-qm", "no binder")
+        base = self.git(self.host, "rev-parse", "HEAD")
+        b = subprocess.run([sys.executable, "dev/port.py", "bind", self.host, base, self.hostp, self.repo], cwd=self.repo,
+                           capture_output=True, text=True)
+        self.assertIn("bind refused: tools/package_core.py at host", b.stderr)
+        self.assertEqual(self.git(self.host, "status", "--porcelain"), "")
+
     def test_refused_core_landing_changes_no_live_file(self):
         r = self.land("")  # dev/land.py refuses without a patterns file
         self.assertIn("PIRILLO_PRIVATE_PATTERNS must name", r.stderr)
