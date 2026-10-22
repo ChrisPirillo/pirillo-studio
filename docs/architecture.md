@@ -91,6 +91,7 @@ The baseline both gates need, and nothing else before them:
 - **The Board as one task model** (item 13): every task is one shape (what, why, where it came from, the thing to
   judge, one set of actions each undoable, "can't, here's why", and its loop from filed to done); a kind that needs
   its own layout is a spec change, never a new renderer.
+  The task shape, source mapping and acceptance contracts are in [the Board spec](board.md).
 - **The video domains the two recipes use**, in path order: media in (item 6: probe, transcript, faces), cutting
   (17), rendering with shorts (14), captions (18), QC as one check engine whose checks each recipe declares (15),
   the release (39: titles, copy and the release file the posting clock reads), and posting, which is already here (its TikTok route still needs
