@@ -79,3 +79,18 @@ class BoardBehindBusyLedger(unittest.TestCase):
         self.assertEqual(target.read_bytes(), b"the command's own Board")
         self.assertEqual(sorted(p.name for p in Path(temp.name).iterdir()), ["board.html"])
         studio.save.assert_not_called()
+
+
+class TickBoardLinkBase(unittest.TestCase):
+    """defect: 2026-10-21 the tick drafted the Board in DATA_DIR, so every link it published had one ../ too many."""
+
+    def test_the_draft_renders_in_the_boards_own_folder(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        (Path(temp.name) / "data").mkdir()
+        target = Path(temp.name) / "board.html"
+        studio = SimpleNamespace(ledger={}, Lock=contextlib.nullcontext, DATA_DIR=str(Path(temp.name) / "data"), BOARD=str(target))
+        studio.load = lambda: copy.deepcopy(studio.ledger)
+        studio.board = lambda cfg, led: Path(studio.BOARD).write_text(Path(studio.BOARD).parent.name * 1024)
+        housekeeping.tick_board(studio, {})
+        self.assertEqual(target.read_text()[:len(Path(temp.name).name)], Path(temp.name).name)

@@ -68,7 +68,8 @@ def tick_board(s, cfg):
     """
     import tempfile
     target = s.BOARD
-    fd, draft = tempfile.mkstemp(prefix="tick-board-", suffix=".html", dir=s.DATA_DIR)
+    # beside the Board, since its links are relative to its folder (2026-10-21: drafted in data/, every tick Board linked one ../ too deep)
+    fd, draft = tempfile.mkstemp(prefix=".tick-board-", suffix=".html", dir=os.path.dirname(target))
     os.close(fd)
     try:
         def build(led):
