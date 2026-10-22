@@ -145,9 +145,10 @@
   "id": 41,
   "loop": "build",
   "layer": "dev-kit",
-  "state": "queued",
+  "state": "parked",
   "title": "dev/land.py keeps a review across commits landed beside it",
-  "done_when": "a review file may name the base it was read on (`APPROVE <tree> <reviewer> <base>`), and dev/land.py accepts it on a later HEAD only when <base> is an ancestor of HEAD, `git diff --raw --full-index --no-renames` (paths, modes and blob ids, binary included) from the reviewed tree to the staged tree is identical to the same diff from <base> to HEAD, and no commit since <base> touches a path the reviewed patch changes; any other difference, an unknown object or a git error refuses, naming the tree to re-review. Three reviews went stale on unrelated core commits (item 40 on 2a18777, its guard and item 13 seam 4's spec on 389b7d8, 2026-10-22), each re-reviewed only to confirm that identity by hand"
+  "done_when": "a review file may name the base it was read on (`APPROVE <tree> <reviewer> <base>`), and dev/land.py accepts it on a later HEAD only when <base> is an ancestor of HEAD, `git diff --raw --full-index --no-renames` (paths, modes and blob ids, binary included) from the reviewed tree to the staged tree is identical to the same diff from <base> to HEAD, and no commit since <base> touches a path the reviewed patch changes; any other difference, an unknown object or a git error refuses, naming the tree to re-review. Three reviews went stale on unrelated core commits (item 40 on 2a18777, its guard and item 13 seam 4's spec on 389b7d8, 2026-10-22), each re-reviewed only to confirm that identity by hand",
+  "parked": "2026-10-22: three review rounds refused (Codex gpt-6-astra): r1 merges hid a touched path (git log -m added) and refusal tests were missing; r2 a stale candidate tree named in the brief and more refusal tests (its suggestion, unabbreviated raw ids, applied); r3 a stripped raw diff let a trailing-space path pass for the reviewed one (NUL-delimited, unstripped output). Each fix has its red/green test; the candidate after r3 is tree d182982c on c7d55e9 (dev 47 OK, check clean), unreviewed. Unpark: one fresh review of that candidate re-made on the then base"
  },
  {
   "id": 37,
