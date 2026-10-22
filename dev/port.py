@@ -2,13 +2,15 @@
 
 usage: python3 dev/port.py move <host file> <core module> <name> ...
        python3 dev/port.py land <host root> <who> <review> <core patch> <host patch> <host base> "<core message>" "<host message>"
+       python3 dev/port.py bind <host root> <host base> <host patch> <core checkout>   (land's step, and its finish command's)
 move: the named top-level functions, constants and classes leave <host file> for <core module> (pirillo_studio/x.py)
       as their exact source, except that each host global becomes s.<name> (added to pirillo_studio/host.py NEEDS),
       each moved function takes s first, and calls between them pass it. The host keeps one-line forwarders through
       core(). Anything it cannot resolve statically is refused, every case listed, and nothing is written.
 land: <core patch> (it must change dev/queue.json) staged index-only and landed through dev/land.py; then <host patch>
       landed in <host root> through `studio.py land begin <who>` and `land commit --patch --base <host base>` (the host
-      commit the patch was diffed from) with a Core-change line,
+      commit the patch was diffed from) with a Core-change line and, when the host has tools/package_core.py, its
+      packaged-core fixture rebound to the new core commit,
       its tests importing the new core from an export (PYTHONPATH); only then are the core's live files written, and
       both pushed. Nothing goes live before both commits exist, so the live host never runs a core whose NEEDS it
       lacks. Prints both commits and the callback count.
@@ -50,6 +52,26 @@ def changed(rev, paths):
         run("git", "ls-files", "--others", "--", *paths, env=env)
 
 
+def bind(host_root, base, patch, new):
+    """The host patch with the host's packaged-core fixture rebound to the core commit checked out at `new` (its
+    tools/package_core.py <core>), which exists only once this landing commits it; written beside the patch."""
+    if not os.path.exists(os.path.join(host_root, "tools", "package_core.py")):
+        return patch
+    out = f"{patch[:-6] if patch.endswith('.patch') else patch}-core-{run('git', '-C', new, 'rev-parse', 'HEAD')[:8]}.patch"
+    with tempfile.TemporaryDirectory() as tmp:
+        h = os.path.join(tmp, "host")
+        run("git", "-C", host_root, "worktree", "add", "-q", "--detach", h, base)
+        try:
+            run("git", "apply", patch, cwd=h)
+            run(sys.executable, "package_core.py", new, cwd=os.path.join(h, "tools"))
+            run("git", "add", "-A", cwd=h)
+            with open(out, "w") as f:
+                f.write(run("git", "diff", "--cached", "--binary", base, cwd=h) + "\n")
+        finally:
+            run("git", "-C", host_root, "worktree", "remove", "--force", h)
+    return out
+
+
 def land(host_root, who, review, core, patch, base, core_msg, host_msg):
     core, patch, q = os.path.abspath(core), os.path.abspath(patch), shlex.quote
     if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT).returncode:
@@ -88,17 +110,18 @@ def land(host_root, who, review, core, patch, base, core_msg, host_msg):
         env["PYTHONPATH"] = new  # ahead of the host's .pth, so its export tests import the new core, not the live one
         try:  # land commit --patch tests in an export and writes the host's live files only inside its commit
             run("git", "push", "-q", "origin", "main")  # up to date unless dev/land.py's own push failed
+            bound = bind(host_root, base, patch, new)
             env["STUDIO_LAND_TOKEN"] = re.search(r"STUDIO_LAND_TOKEN=(\S+)", run(*studio, "begin", who, cwd=host_root)).group(1)
-            print(run(*studio, "commit", msg, "--patch", patch, "--base", base, cwd=host_root, env=env))
-        except SystemExit as e:
-            cli = " ".join(map(q, studio))
+            print(run(*studio, "commit", msg, "--patch", bound, "--base", base, cwd=host_root, env=env))
+        except (SystemExit, OSError) as e:
+            cli, port = " ".join(map(q, studio)), " ".join(map(q, (sys.executable, os.path.abspath(__file__), "bind")))
             raise SystemExit(f"{e}\nThe core landed at {sha}; neither its live files nor the host half are live. Finish "
                              f"with this command (safe to run twice: it skips a host commit that already names the core "
                              f"and live files already written):\ngit -C {q(ROOT)} push origin main && cd {q(host_root)} && "
                              f"{{ git log -F --grep {q('Core-change: ' + sha)} --format=%h | grep -q . || {{ d=\"$(mktemp -d)/core\" "
-                             f"&& git -C {q(ROOT)} worktree add -q --detach \"$d\" {sha} && t=\"$({cli} begin {q(who)} | grep "
+                             f"&& git -C {q(ROOT)} worktree add -q --detach \"$d\" {sha} && p=\"$({port} {q(host_root)} {q(base)} {q(patch)} \"$d\")\" && t=\"$({cli} begin {q(who)} | grep "
                              f"'^export STUDIO_LAND_TOKEN=')\" && eval \"$t\" && PYTHONPATH=\"$d\" {cli} commit {q(msg)} "
-                             f"--patch {q(patch)} --base {q(base)}; r=$?; PYTHONPATH=\"$d\" {cli} end; e=$?; git -C {q(ROOT)} worktree remove --force \"$d\"; [ $r = 0 ] && [ $e = 0 ]; }}; }} "
+                             f"--patch \"$p\" --base {q(base)}; r=$?; PYTHONPATH=\"$d\" {cli} end; e=$?; git -C {q(ROOT)} worktree remove --force \"$d\"; [ $r = 0 ] && [ $e = 0 ]; }}; }} "
                              f"&& {{ {live}; }} && git push origin main")  # live before the push: a failed push never strands the host
         finally:
             subprocess.run(studio + ["end"], cwd=host_root, env=env, capture_output=True)
@@ -113,7 +136,9 @@ def land(host_root, who, review, core, patch, base, core_msg, host_msg):
 
 if __name__ == "__main__":
     a = sys.argv[1:]
-    if a[:1] == ["move"] and len(a) >= 4:
+    if a[:1] == ["bind"] and len(a) == 5:
+        print(bind(*a[1:]))
+    elif a[:1] == ["move"] and len(a) >= 4:
         move(a[1], a[2], a[3:])
     elif a[:1] == ["land"] and len(a) == 9:
         land(*a[1:])

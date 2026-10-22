@@ -171,10 +171,33 @@ class Landing(unittest.TestCase):
         return subprocess.run(["git", "-C", d, "-c", "user.email=t@t", "-c", "user.name=t", *a], check=True,
                               capture_output=True, text=True).stdout.strip()
 
-    def land(self, patterns, **env):
+    def land(self, patterns, base="base", **env):
         env = dict(os.environ, PIRILLO_PRIVATE_PATTERNS=patterns, **env)
         return subprocess.run([sys.executable, "dev/port.py", "land", self.host, "who", self.review, self.core,
-                               self.hostp, "base", "c", "h"], cwd=self.repo, capture_output=True, text=True, env=env)
+                               self.hostp, base, "c", "h"], cwd=self.repo, capture_output=True, text=True, env=env)
+
+    def test_the_host_half_carries_its_fixture_rebound_to_the_new_core(self):
+        """defect: item 13 seam 3's host half (Working 2026-10-21) was refused at host verify: its fresh-install fixture
+        still held a core without the module it imports, and only the landing's own core commit could be bound."""
+        self.write(self.host, "tools/package_core.py", "import subprocess, sys\nopen('fixture', 'w').write(subprocess.run("
+                   "['git', '-C', sys.argv[1], 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout)\n")
+        self.write(self.host, "tools/fixture", "old\n")
+        self.git(self.host, "add", "-A")
+        self.git(self.host, "commit", "-qm", "fixture")
+        base = self.git(self.host, "rev-parse", "HEAD")
+        r = self.land(self.patterns, base=base)
+        sha = self.git(self.repo, "rev-parse", "HEAD")
+        bound = self.hostp[:-6] + f"-core-{sha[:8]}.patch"
+        with open(bound) as f:
+            self.assertIn(f"+{sha}", f.read())
+        os.remove(bound)  # the finish command makes it again: its bind step, as it runs it
+        self.assertIn(f"bind {self.host} {base} {self.hostp} \"$d\"", r.stderr)
+        b = subprocess.run([sys.executable, "dev/port.py", "bind", self.host, base, self.hostp, self.repo], cwd=self.repo,
+                           capture_output=True, text=True)
+        self.assertEqual(b.stdout.strip(), bound)
+        with open(bound) as f:
+            self.assertIn(f"+{sha}", f.read())
+        self.assertEqual(self.git(self.host, "status", "--porcelain"), "")
 
     def test_refused_core_landing_changes_no_live_file(self):
         r = self.land("")  # dev/land.py refuses without a patterns file
