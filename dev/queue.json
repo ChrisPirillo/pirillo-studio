@@ -263,7 +263,7 @@
   "id": 39,
   "loop": "build",
   "layer": "product",
-  "state": "building",
+  "state": "parked", "parked": "2026-10-23, at seam 2: three Codex review rounds refused the release built new to docs/release.md, each on a real gap the next round fixed with a guard red without it: r1 required checks and fields silently dropped, the first owner edit unbound for QC, stage data outside the key, an unchanged key rerunning the scorer, a crash test that removed what it protected; r2 freshness counted to now() outside the key, title evidence thinner than title_research_problems, text lint on pre-edit words, a red runner that counted setup errors as red; r3 a list of valid transcript word ids held to titles.quote_words, which legacy passes. The candidate after r3 (tree e9f5840b on 2a01746: the r3 fix, any non-empty list of valid ids passes, red without it; pirillo_studio OK, check clean) is kept as core-r4.patch in the lead's Studio work folder _port 39-2 2026-10-23; unpark is one fresh review of it re-made on the then base",
   "title": "The release: titles, copy and the release file the posting clock reads, for the two cutover recipes",
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use",
   "seams": [
