@@ -1,0 +1,72 @@
+{
+  "edges": {
+    "note": "Splice measure: head lead and picture lead limit, tail window, sound above floor, floor percentile and digital silence boundary.",
+    "head_lead_s": [
+      0.03,
+      0.03333333333333333
+    ],
+    "tail_s": [
+      0.08,
+      0.2
+    ],
+    "quiet_margin_db": 14.0,
+    "quiet_percentile": 0.1,
+    "digital_silence_db": -90.0,
+    "tolerance_s": 0.01
+  },
+  "shots": {
+    "note": "Publish and shorts shortest picture in frames; take-ends expression minimum and held-face maximum. Shared by J-cut remaining picture and short pieces.",
+    "min_frames": 10,
+    "pop_min_s": 0.3,
+    "pop_max_s": 0.6
+  },
+  "jcuts": {
+    "note": "J-cut lead frame minimum, maximum seconds, body motion percentage and frames after onset; source-word extension tolerance.",
+    "min_frames": 2,
+    "max_lead_s": 1.0,
+    "motion_threshold": 8.0,
+    "motion_after_frames": 2,
+    "word_overlap_s": 0.03
+  },
+  "takes": {
+    "note": "Splice stumble detector window and longest repeated run; repeat detector phrase length and story window. Transcript owns filler classification.",
+    "stumble_window_s": 2.0,
+    "stumble_words": 3,
+    "repeat_words": 3,
+    "repeat_window_s": 60.0
+  },
+  "shorts": {
+    "note": "Shorts pause split, interior pad, outer head and tail pads, and duration band from the shorts checker. Standalone-opening pronouns and backward-reference categories.",
+    "gap_cut_s": 0.6,
+    "pad_s": 0.25,
+    "head_pad_s": 0.15,
+    "tail_pad_s": 0.3,
+    "min_s": 15.0,
+    "max_s": 90.0,
+    "backrefs": [
+      "it",
+      "its",
+      "this",
+      "that",
+      "these",
+      "those",
+      "they",
+      "them",
+      "he",
+      "she",
+      "him",
+      "her",
+      "his",
+      "their",
+      "another",
+      "also",
+      "secondly",
+      "thirdly",
+      "again"
+    ]
+  },
+  "patches": {
+    "note": "Voice-patch quiet join search starts ten milliseconds clear of the word edge.",
+    "join_clearance_s": 0.01
+  }
+}
