@@ -100,6 +100,7 @@ The baseline both gates need, and nothing else before them:
   The media and disk preflight's probes, API and acceptance contracts are in [the preflight spec](preflight.md).
   The cut plan, its checks and acceptance contracts are in [the cutting spec](cutting.md).
   The render steps, their measures and acceptance contracts are in [the rendering spec](rendering.md).
+  The cue records, their alignment and placement, and acceptance contracts are in [the captions spec](captions.md).
 - **Settings and voice** (items 5 and 12) only as far as these need them.
 
 Everything else waits until C1: research, images, digest, growth, community, morning run, tips, vault, crew rules,

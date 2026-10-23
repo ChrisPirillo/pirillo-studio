@@ -96,7 +96,8 @@ For `masters` and `short`, replace `Shorts/short.mp4` and `Shorts/short.srt` wit
 `Shorts/<id>.srt` per short, enumerated by the final manifest, never a literal wildcard output. `<output-id>` is
 `arc`, `draft`, `long`, `vertical` or `short-<id>`; `full: true` maps to `Vertical/main.mp4`, not another excerpt.
 The `short` voice artifact is an extraction for item 18, never a replacement of the supplied file's sound or a burn
-into that file. Arc/draft/master cues are burned after voice preparation; final sidecars come from the same cues.
+into that file. Tall master cues are burned after voice preparation; every sidecar, arc and draft included, comes
+from the same cues ([captions](captions.md)).
 Extend `arc-read`, `draft-read`, `delivered-media` and `short-media` reads to their matching render records/readings,
 voice and caption artifacts. The owner reviews this interface change with spine.md before either is built.
 
