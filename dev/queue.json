@@ -229,8 +229,9 @@
   "id": 18,
   "loop": "build",
   "layer": "product",
-  "state": "building",
+  "state": "parked",
   "title": "Port the captions domain",
+  "parked": "2026-10-23, at seam 2: three Codex review rounds refused the cues and their timing, each on a real gap the next round fixed with a guard red without it: r1 completed cues unchecked against max_chars, max_s and piece ends, element x and y unchecked, record-named paths hashed without safe(), split tokens read aloud before joining, style colours fixed in code, the voice path untested; r2 centisecond rounding let a cue pass up to 5 ms past a cut, and one held part gave a whole joined word the transcript time; r3 a held start with an earlier aligned end, or inward rounding of a word under a centisecond, made a reversed word interval that still captioned. The candidate after r3 (tree 4efcacef on 198cbf1: pirillo_studio 162 tests OK, dev OK, check clean; reversed or collapsed word intervals refuse as word_interval) is kept as core-r4.patch in the lead's Studio work folder _port 18-2 2026-10-23; unpark is one fresh review of it re-made on the then base. It reads records/render/<output>.json frame_map, duration_s and elements, which item 14 writes",
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
   "backlog_issues": [
    147
