@@ -258,9 +258,12 @@
   "id": 39,
   "loop": "build",
   "layer": "product",
-  "state": "queued",
+  "state": "building",
   "title": "The release: titles, copy and the release file the posting clock reads, for the two cutover recipes",
-  "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use"
+  "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use",
+  "seams": [
+   "1 the release spec: one release record built from the manifest, titles and copy, rows that are what is sent, the owner's edits and decision bound to the words, the host's release and copy checks mapped (docs/release.md), for the owner to read: spec drafted; 2 the release built new to it with its contract tests; 3 the host switched behind one setting; 4 the host's release code, tests and settings deleted"
+  ]
  },
  {
   "id": 5,

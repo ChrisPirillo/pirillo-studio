@@ -230,7 +230,7 @@ domain's record.
 | Checker agent files (plans, renders, copy) | Four steps; tool error is a finding; in-flight WOULD REFUSE is a note; owner stop does not fail; arc pass promotes | Seats in the catalog. Tool error: unavailable. In flight: warn. Owner stop: manual-pending. Promotion: spine. |
 | Checker seat rules: `gate-mode scoped-recheck`, `exact-retime` | Re-judge only what changed; exact move notes | Per-check keys do the first; the second is item 17's plan record. |
 | Renders seat: `gemini_watch.py`, end-screen zones | Trial watcher; end-screen layout | Out of C1 scope: on trial. End screen: item 39. |
-| Copy seat: five-check, `sent` | Studio-wide review; send record | Out of C1 scope: studio scope. Sending: item 39. |
+| Copy seat: five-check, `sent` | Studio-wide review; send record | Out of C1 scope: studio scope. Sending: posting (item 11). |
 | `qc.py run_splice*`, `_splice`, `qc.splice.*` | Splice checks, plan | cutting.md: item 15 reads this check's record, not a second run. Catalog entry `cut-plan`, owner cutting. |
 | `qc.py run_story`, `run_plan_check`, `run_midroll_floor`, `run_last_take`; `qc.story.*`, `qc.plan-check.flags`, `qc.cut.*`, `qc.take-ends.read`, `qc.heads.sound`, `qc.landing.tail` | Cut plan rows, plan | cutting.md section 4 (item 17); catalog entries read its record. |
 | `qc.shorts.*` plan rows; `qc.shorts.standalone`, `standalone_open.py` | Short plans and their openings | cutting.md (item 17 `shorts`); the manual copy row goes. |
@@ -250,7 +250,7 @@ domain's record.
 | `qc.py run_titles_*`, `run_thumbs_*`, `run_testcompare`; `qc.titles.*`, `qc.thumbs.*`, `qc.testcompare.saved`, `qc.brief.subject` | Titles and thumbnails, copy | Item 39 through the spine `titles` entry. |
 | `qc.py run_release_complete`, `run_own_urls`, `run_copy_review`, `run_literals`, `run_do_not_say`, `run_as_sent`, `run_chapters`; `qc.release.*`, `qc.chapters.times` | Release completeness and words | Item 39 through the spine `release` entry. |
 | `fit.py` and `fit.tiktok.*` | Platform fit of delivered shorts | Item 14 (a fit is a separate measured file); route rules item 39. |
-| `qc.posted.arrived` (`done --words-read`) | Posted words read back, post | Spine `posted`, reading item 39's receipts. |
+| `qc.posted.arrived` (`done --words-read`) | Posted words read back, post | Spine `posted`, reading posting's receipts (item 11). |
 | `qc.handoff.*`, `qc.board.*`, `qc.tabs.closed`, `qc.change.side-by-side`, `qc.studio.answer-acted`, `qc.next5.*`, `qc.pick.not-a-repeat`, `qc.plugin.one-version`, `qc.notes.his-note-kept`, `qc.direction.as-said` | Chief and studio rows | Out of C1 scope: team and Board machinery, not a video stage; owner words on a decision stay in the spine's decision record. |
 
 Tests: `test_qc_audio`, `test_qc_coldopen_pickup`, `test_qc_job_pick`, `test_qc_picture_changes`, `test_hear_*`,

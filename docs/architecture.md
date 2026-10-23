@@ -102,6 +102,7 @@ The baseline both gates need, and nothing else before them:
   The render steps, their measures and acceptance contracts are in [the rendering spec](rendering.md).
   The cue records, their alignment and placement, and acceptance contracts are in [the captions spec](captions.md).
   The check catalog, verdicts and acceptance contracts are in [the QC spec](qc.md).
+  The release record, the owner's word edits and decision, and acceptance contracts are in [the release spec](release.md).
 - **Settings and voice** (items 5 and 12) only as far as these need them.
 
 Everything else waits until C1: research, images, digest, growth, community, morning run, tips, vault, crew rules,
