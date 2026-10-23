@@ -183,9 +183,10 @@
   "id": 6,
   "loop": "build",
   "layer": "product",
-  "state": "building",
+  "state": "parked",
   "title": "Run complete media and disk preflight before expensive analysis or rendering",
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
+  "parked": "2026-10-22, at seam 2: three review rounds refused the preflight (pirillo_studio/preflight/, built new to docs/preflight.md by a one-shot Claude builder), each on a real gap the next round fixed: r1 (Codex gpt-6-astra) audio gaps unmeasured, non-finite numbers passed the disk and media checks, media known by a suffix list; r2 (Codex gpt-6-astra) non-finite packet values still passed, tool freshness keyed by the capability's words not its key, the judge href invented; r3 (Codex gpt-6-astra) a symlinked output folder sized against the wrong volume, a decode window a keyframe seek left unchecked, a timecode stream read as broken, a non-finite video packet duration passed. The candidate after r3 (tree bf962e81 on 1c1d613, each r3 fix red without it, pirillo_studio and dev suites OK) waits unreviewed as core-r4.patch in Studio work/_port 6-2 2026-10-22; unpark is one fresh review of it re-made on the then base.",
   "seams": [
    "1 the preflight spec: probes as data, one API, the host's checks mapped (docs/preflight.md), for the owner to read: spec drafted; 2 the preflight built new to it with its contract tests; 3 the host switched behind one setting; 4 the host's preflight code, tests and settings deleted"
   ]
