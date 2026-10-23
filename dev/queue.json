@@ -241,7 +241,7 @@
   "id": 15,
   "loop": "build",
   "layer": "product",
-  "state": "queued",
+  "state": "building",
   "title": "Port the QC domain",
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
   "backlog_issues": [
@@ -249,6 +249,9 @@
    1151,
    1139,
    1144
+  ],
+  "seams": [
+   "1 the QC spec: checks declared as data, verdicts keyed by their inputs, one API, the host's QC checks and gates mapped (docs/qc.md), for the owner to read: spec drafted; 2 QC built new to it with its contract tests; 3 the host switched behind one setting; 4 the host's QC code, tests and settings deleted"
   ]
  },
  {
