@@ -118,7 +118,7 @@ class BufferDeliveredVideo(unittest.TestCase):
                           bytes=self.path.stat().st_size, cover_text="EXACT COVER", thumbnail_offset_ms=0)
         self.studio = SimpleNamespace(
             os=os, json=json, re=re, hashlib=hashlib, urllib=urllib, dt=dt,
-            AdapterError=RuntimeError, fitted=Mock(return_value=None),
+            AdapterError=RuntimeError,
             content_dir=lambda slug: self.tmp.name,
             video_fit_cap=Mock(side_effect=lambda cfg, platform: 285000000 if platform == "instagram" else None),
             fit_video=Mock(side_effect=lambda path, cap, slug: path), seconds=Mock(return_value=20),
@@ -136,9 +136,9 @@ class BufferDeliveredVideo(unittest.TestCase):
                     image="never-fall-back.png", buffer=dict(self.media), title="Fixture title",
                     cover_text="EXACT COVER", text="Fixture copy", scheduled_for=self.when.isoformat(), seconds=20)
 
-    def test_non_tiktok_delivered_videos_schedule_exact_hosted_bytes(self):
-        # The five rejected shapes: one full vertical and two shorts on each native route.
-        for platform, kind, label in (("instagram", "vertical", "full"),
+    def test_delivered_videos_schedule_exact_hosted_bytes(self):
+        # The rejected shapes: one full vertical and shorts on each native route, TikTok's off the browser-era fit.
+        for platform, kind, label in (("instagram", "vertical", "full"), ("tiktok", "short", "first"),
                                       ("youtube", "short", "first"), ("instagram", "short", "first"),
                                       ("youtube", "short", "second"), ("instagram", "short", "second")):
             with self.subTest(platform=platform, kind=kind, clip=label):
@@ -150,7 +150,6 @@ class BufferDeliveredVideo(unittest.TestCase):
                 self.assertEqual(sent["assets"][0]["video"]["url"], self.media["url"])
                 self.assertEqual(sent["dueAt"], self.when.isoformat(timespec="seconds"))
                 self.assertNotIn("image", sent["assets"][0])
-                self.studio.fitted.assert_not_called()
                 self.assertEqual(self.studio.approval_opened.call_args.args[1], str(self.path))
 
     def test_missing_video_never_uses_attached_image(self):
@@ -168,31 +167,16 @@ class BufferDeliveredVideo(unittest.TestCase):
         self.assertEqual(fit, dict(path=str(derived), bytes=derived.stat().st_size, seconds=20, buffer=self.media))
         self.studio.fit_video.assert_called_once_with(str(self.path), 285000000, "fixture")
 
-    def test_tiktok_keeps_real_fit_and_legacy_host_receipt(self):
-        fit = dict(path=str(self.path), seconds=20, bytes=self.path.stat().st_size, buffer=self.media)
-        self.studio.fitted.return_value = fit
-        row = self.row("tiktok")
-        row.pop("buffer")
-        self.assertEqual(buffer_api.buffer_video(self.studio, row, {}), fit)
-        self.studio.fitted.assert_called_once_with("fixture", "tiktok", self.path.name)
-        self.studio.fit_video.assert_not_called()
-
     def test_tiktok_full_vertical_schedules_its_own_hosted_bytes(self):
         """guard: never route a TikTok full vertical to a by-hand post while Buffer takes it"""
         self.studio.video_fit_cap.side_effect = lambda cfg, platform: 285000000
         with patch.object(buffer_api, "buffer_channel", return_value="channel"):
             result = buffer_api.buffer_post(self.studio, self.row("tiktok", "vertical"), {}, "fixture-key")
         self.assertEqual(result["state"], "scheduled")
-        self.studio.fitted.assert_not_called()
         self.studio.fit_video.assert_called_once_with(str(self.path), 285000000, "fixture")
         for kind in ("long", "article"):
             with self.subTest(kind=kind), self.assertRaisesRegex(RuntimeError, "post type"):
                 buffer_api.buffer_post(self.studio, self.row("tiktok", kind), {}, "fixture-key")
-
-    def test_tiktok_still_requires_current_fit(self):
-        with self.assertRaisesRegex(RuntimeError, "current fitted video"):
-            buffer_api.buffer_post(self.studio, self.row("tiktok"), {}, "fixture-key")
-        self.studio._http.assert_not_called()
 
     def test_changed_hosted_bytes_refuse_before_create(self):
         self.path.write_bytes(b"changed after hosting")

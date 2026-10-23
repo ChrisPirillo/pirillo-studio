@@ -88,31 +88,24 @@ def buffer_route(s, a):
 
 
 def buffer_video(s, a, cfg):
-    """Resolve native API media; only the TikTok route needs its legacy browser fit."""
+    """Resolve native API media: the delivered file, fitted under its platform's API cap."""
     platform = a["platform"]
     buffer_route(s, a)
     if not a.get("file"):
         raise s.AdapterError("Buffer needs a current video", False)
-    legacy = platform == "tiktok" and a["kind"] == "short"      # a TikTok short keeps its browser-era fit record
-    fit = s.fitted(a["slug"], platform, a["file"]) if legacy else None
-    if legacy:
-        if not fit:
-            raise s.AdapterError("Buffer needs a current fitted video", False)
-        path, seconds = fit["path"], fit["seconds"]
-    else:
-        path = s.os.path.join(s.content_dir(a["slug"]), a["file"])
-        if not s.os.path.isfile(path):
-            raise s.AdapterError("Buffer needs a current delivered video", False)
-        cap = s.video_fit_cap(cfg, platform)
-        if cap:
-            path = s.fit_video(path, cap, a["slug"])
-        seconds = s.seconds(path)
+    path = s.os.path.join(s.content_dir(a["slug"]), a["file"])
+    if not s.os.path.isfile(path):
+        raise s.AdapterError("Buffer needs a current delivered video", False)
+    cap = s.video_fit_cap(cfg, platform)
+    if cap:
+        path = s.fit_video(path, cap, a["slug"])
+    seconds = s.seconds(path)
     if not s.os.path.isfile(path) or not seconds or not 0 < seconds < float("inf"):
         raise s.AdapterError("Buffer needs a current measurable video", False)
     size = s.os.path.getsize(path)
     if not size:
         raise s.AdapterError("Buffer needs a current nonempty video", False)
-    return dict(path=path, bytes=size, seconds=seconds, buffer=a.get("buffer") or (fit or {}).get("buffer") or {})
+    return dict(path=path, bytes=size, seconds=seconds, buffer=a.get("buffer") or {})
 
 
 def buffer_post(s, a, cfg, token):

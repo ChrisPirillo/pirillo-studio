@@ -24,7 +24,7 @@ NEEDS = {
         "DEFAULTS", "digest_adapter", "digest_allowed", "digest_chrome_note", "dispatch_repairs", "due",
         "duration_route", "effect_check", "effect_checkpoint", "effect_pending", "effect_recover",
         "effect_route_changes", "effect_send", "effect_source", "effects_enabled", "facebook_profile_story",
-        "FB_API", "FIT_STEP_MIN", "fit_video", "fitted", "freeze_posting_images", "frozen_image",
+        "FB_API", "FIT_STEP_MIN", "fit_video", "freeze_posting_images", "frozen_image",
         "GRANDFATHERED_IMAGES", "has_long", "headline_gate_problems", "holds_refresh", "IG_API",
         "image_approval_asks", "image_approval_block", "IMAGE_APPROVAL_REASON", "image_gate_on", "key",
         "key_age_days", "KEY_SERVICE", "keychain", "lacks_cover_words", "late_still", "lead", "link_plan",
