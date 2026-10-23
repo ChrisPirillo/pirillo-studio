@@ -244,7 +244,8 @@
   "id": 15,
   "loop": "build",
   "layer": "product",
-  "state": "building",
+  "state": "parked",
+  "parked": "2026-10-23, at seam 2c (the qc.md proposals for what 2b left open): three review rounds by fresh one-shot Claude agents refused, each on a real gap the next round fixed (r1: the shorts-only excuse shape at_s against the plan named at_src, masters shorts judged off the plan clock, one-word removed ranges never flaggable; r2: the splice naming no single output time; r3: a bounding kept word played twice by the cold open or absent from a vertical or short, and removed ranges holding no words). The candidate after r3 (tree 1a0a75ed on eb5386a plus 33f75f6) waits unreviewed as work/_port 15-2c 2026-10-23/core-r4.patch in the owner studio; unpark is one fresh review of it re-made on the then base.",
   "title": "Port the QC domain",
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
   "backlog_issues": [
