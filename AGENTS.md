@@ -4,7 +4,7 @@ The clean rebuild of the owner's working studio, ported one domain at a time; ea
 
 - Every path sits where `repo.json` `layout` says [dev/check.py:layout].
 - No file over `repo.json` `max_lines` [dev/check.py:sizes].
-- The whole suite runs under `repo.json` `suite_seconds` [dev/land.py:suite].
+- The whole suite runs under `repo.json` `suite_seconds` of CPU, never wall time [dev/land.py:suite].
 - Three layers (`docs/architecture.md`): the product, `pirillo_studio/`, never imports the dev kit, `dev/` [dev/check.py:product_imports]; the owner's team machine stays in their working repository, so every queue item's layer is `product` or `dev-kit` [dev/check.py:queue].
 - Work lives in `dev/queue.json`; each item's state is a state of its loop in `dev/loops/` [dev/check.py:queue]. No GitHub issues, labels or Actions.
 - Only `dev/land.py` lands. It tests the exact staged tree and needs a review naming that tree [dev/land.py:main].
