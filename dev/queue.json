@@ -254,7 +254,7 @@
    1144
   ],
   "seams": [
-   "1 the QC spec: checks declared as data, verdicts keyed by their inputs, one API, the host's QC checks and gates mapped (docs/qc.md), for the owner to read: spec drafted; 2a the catalog, verdict record and API built new to it with contract tests 1 to 13: built; 2b the heard and delivered evaluators (contracts 14 and 15): built; 2c qc.md settles what 2b found open, for the owner to read: delivered names a member by its own record's path (section 4's names row against release.md, which never renames), where a shorts-only heard flag is excused (no plan), masters heard on the vertical and short too, and shorts enumerated by the manifest; 3 the host switched behind one setting; 4 the host's QC code, tests and settings deleted"
+   "1 the QC spec: checks declared as data, verdicts keyed by their inputs, one API, the host's QC checks and gates mapped (docs/qc.md), for the owner to read: spec drafted; 2a the catalog, verdict record and API built new to it with contract tests 1 to 13: built; 2b the heard and delivered evaluators (contracts 14 and 15): built; 2c qc.md settles what 2b found open, for the owner to read: delivered names a member by its own record's path (section 4's names row against release.md, which never renames), where a shorts-only heard flag is excused (no plan), masters heard on the vertical and short too, shorts enumerated by the manifest, and removed tape heard again matched by more than text alone (a removed common word fails a correct delivery today, loudly); 3 the host switched behind one setting; 4 the host's QC code, tests and settings deleted"
   ]
  },
  {
