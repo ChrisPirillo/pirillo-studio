@@ -1,4 +1,4 @@
-"""Remaining QC machinery contracts; heard/delivered are seam 2b and the host switch is seam 3."""
+"""Remaining QC machinery contracts; heard/delivered are in test_heard.py and the host switch is seam 3."""
 import copy
 import json
 import multiprocessing

@@ -1,4 +1,4 @@
-"""QC contracts 1-13; 14 and 15 belong to seam 2b, 16 (test_switch_off_is_unchanged) to host seam 3."""
+"""QC contracts 1-13; 14 and 15 (seam 2b) are in test_heard.py, 16 (test_switch_off_is_unchanged) to host seam 3."""
 import copy
 import json
 import os

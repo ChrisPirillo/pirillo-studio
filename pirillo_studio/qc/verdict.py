@@ -3,7 +3,7 @@
 The host supplies folder, resolve_setting(name) and now(). A per-stage file lock
 serializes writers across processes. A Verdict retains that adapter
 for check(); disk records can be attached with Verdict(record, video). Evaluators
-receive only declared evidence. Heard and delivered are built in seam 2b.
+receive only declared evidence, a manifest's members included.
 """
 import copy
 import contextlib
@@ -40,7 +40,7 @@ def evaluator(entry):
 
 
 def _source(function):
-    """Include only this evaluator and the shared helpers it actually calls."""
+    """This evaluator and every core helper it calls, in any core module, so a changed helper restales its verdicts."""
     pending, seen, sources = [function], set(), []
     while pending:
         fn = pending.pop()
@@ -48,9 +48,17 @@ def _source(function):
             continue
         seen.add(fn)
         sources.append(inspect.getsource(fn))
-        pending.extend(value for name in fn.__code__.co_names
-                       if inspect.isfunction(value := fn.__globals__.get(name))
-                       and value.__module__ == evaluators.__name__)
+        names, codes = set(), [fn.__code__]
+        while codes:  # nested comprehensions and closures name helpers too
+            code = codes.pop()
+            names.update(code.co_names)
+            codes.extend(c for c in code.co_consts if inspect.iscode(c))
+        for name in names:
+            value = fn.__globals__.get(name)
+            if inspect.ismodule(value) and value.__name__.startswith('pirillo_studio.'):  # e.g. cut.words
+                pending.extend(f for n in names if inspect.isfunction(f := getattr(value, n, None)))
+            elif inspect.isfunction(value) and value.__module__.startswith('pirillo_studio.'):
+                pending.append(value)
     return '\n'.join(sorted(sources)).encode()
 
 
@@ -143,6 +151,19 @@ def _snapshot(video, entry, started):
                 except Exception as exc:
                     paths[path] = None
                     errors.append(f'{path}: {exc}')
+    # A manifest's members are reads too (spine.md): their bytes and link counts key the check; an unsafe or
+    # aliased member is a fact the evaluator names, not a read error.
+    members = {}
+    for record in list(reads.values()):
+        for member in record.get('members', []) if isinstance(record, dict) else []:
+            path = member.get('path') if isinstance(member, dict) else None
+            try:
+                safe(path, 'manifest member')
+                target = inside(video.folder, path)
+                links = target.stat().st_nlink if target.exists() else None
+                members[path] = {'sha256': filehash(target), 'links': links}
+            except Exception as exc:
+                members[str(path)] = {'error': str(exc)}
     setting, rule_mode = None, 'refuse'
     try:
         if entry.get('setting'):
@@ -164,8 +185,8 @@ def _snapshot(video, entry, started):
         errors.append(f"qc.rules {entry['rule']}: {exc}")
         rule_mode = None
     key = digest(canon({'version': entry['version'], 'read': hashes, 'paths': paths,
-                        'setting': setting, 'rule_mode': rule_mode, 'errors': errors}))
-    reads['__hashes__'], reads['__paths__'] = hashes, paths
+                        'members': members, 'setting': setting, 'rule_mode': rule_mode, 'errors': errors}))
+    reads['__hashes__'], reads['__paths__'], reads['__members__'] = hashes, paths, members
     return {'key': key, 'reads': reads, 'setting': setting, 'rule_mode': rule_mode, 'errors': errors}
 
 
