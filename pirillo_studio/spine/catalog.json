@@ -1,0 +1,23 @@
+{
+ "note": "docs/spine.md section 1: the roles a stage may run, the registered tools a command may name, and each check's evidence bindings (stage paths, or @inputs and @outputs), its independent checker and the review records that checker writes. A check never sees a recipe name.",
+ "roles": ["editor", "story-editor", "finisher", "packager", "writer", "owner", "clock", "checker-plans", "checker-renders", "checker-copy"],
+ "tools": [],
+ "checks": {
+  "media": {"reads": ["source.mp4", "records/probe.json", "records/words.json", "records/faces.json"], "checker": "checker-plans", "produces": []},
+  "cut-plan": {"reads": ["records/words.json", "records/cut_plan.json", "records/cut_plan2.json", "records/paper.md"], "checker": "checker-plans", "produces": []},
+  "paper-read": {"reads": ["records/paper.md", "records/cut_plan2.json", "records/story_review.json"], "checker": "checker-plans", "produces": []},
+  "overlay-plan": {"reads": ["records/cut_plan2.json", "records/callouts_plan.json", "records/overlay_plan.json", "records/shorts_spec.json", "records/bed.json"], "checker": "story-editor", "produces": []},
+  "arc-read": {"reads": ["Draft/arc.mp4", "records/arc_review.json"], "checker": "checker-plans", "produces": ["records/arc_review.json"]},
+  "locked-cut": {"reads": ["records/arc_decision.json", "records/cut_plan2.json", "records/story_map.json"], "checker": "checker-plans", "produces": []},
+  "draft-read": {"reads": ["Draft/draft.mp4", "records/draft_review.json"], "checker": "checker-renders", "produces": ["records/draft_review.json"]},
+  "delivered-media": {"reads": ["records/final_manifest.json", "records/cut_plan2.json", "records/shorts_spec.json", "records/vplan.json", "records/hear.json"], "checker": "checker-renders", "produces": []},
+  "short-media": {"reads": ["source.mp4", "records/final_manifest.json", "records/words.json", "records/publish.json"], "checker": "checker-renders", "produces": []},
+  "titles": {"reads": ["records/words.json", "records/publish.json", "records/final_manifest.json"], "checker": "checker-copy", "produces": []},
+  "captions-read": {"reads": ["records/words.json", "records/final_manifest.json", "records/copy.json", "records/copy_review.md"], "checker": "story-editor", "produces": ["records/copy_review.md"]},
+  "text-plan": {"reads": ["records/words.json", "records/text_plan.md"], "checker": "checker-copy", "produces": []},
+  "text-read": {"reads": ["records/words.json", "records/text_post.md", "records/text_review.md"], "checker": "story-editor", "produces": ["records/text_review.md"]},
+  "release": {"reads": ["@inputs", "@outputs"], "checker": "checker-copy", "produces": []},
+  "decision": {"reads": ["@inputs", "@outputs"], "checker": null, "produces": []},
+  "posted": {"reads": ["@inputs", "@outputs"], "checker": null, "produces": []}
+ }
+}

@@ -1,0 +1,34 @@
+{
+ "plain": {
+  "external": ["source.mp4", "records/job.json"],
+  "stages": [
+   {"id": "media", "inputs": ["source.mp4", "records/job.json"], "run": {"role": "editor"}, "check": ["media"], "outputs": ["records/words.json", "records/probe.json", "records/faces.json"], "next_actor": "editor"},
+   {"id": "plan", "inputs": ["records/words.json", "records/probe.json"], "run": {"role": "editor"}, "check": ["cut-plan"], "outputs": ["records/cut_plan.json", "records/cut_plan2.json", "records/paper.md"], "next_actor": "story-editor"},
+   {"id": "paper", "inputs": ["records/paper.md", "records/cut_plan2.json"], "run": {"role": "story-editor"}, "check": ["paper-read"], "outputs": ["records/story_review.json"], "next_actor": "editor"},
+   {"id": "overlays", "inputs": ["records/cut_plan2.json", "records/story_review.json"], "run": {"role": "editor"}, "check": ["overlay-plan"], "outputs": ["records/callouts_plan.json", "records/overlay_plan.json", "records/shorts_spec.json", "records/bed.json"], "next_actor": "editor"},
+   {"id": "arc", "inputs": ["records/cut_plan2.json", "records/overlay_plan.json", "records/callouts_plan.json", "records/bed.json", "source.mp4", "records/faces.json"], "run": {"role": "editor"}, "check": ["arc-read"], "outputs": ["Draft/arc.mp4", "records/arc_review.json"], "next_actor": "owner"},
+   {"id": "arc-choice", "inputs": ["Draft/arc.mp4", "records/arc_review.json"], "run": {"role": "owner"}, "check": ["decision"], "outputs": ["records/arc_decision.json"], "next_actor": "editor"},
+   {"id": "locked", "inputs": ["records/arc_decision.json", "records/cut_plan2.json"], "run": {"role": "editor"}, "check": ["locked-cut"], "outputs": ["records/story_map.json"], "next_actor": "finisher"},
+   {"id": "draft", "inputs": ["source.mp4", "records/cut_plan2.json", "records/story_map.json", "records/overlay_plan.json", "records/bed.json", "records/faces.json", "records/callouts_plan.json"], "run": {"role": "finisher"}, "check": ["draft-read"], "outputs": ["Draft/draft.mp4", "records/draft_review.json", "records/vplan.json"], "next_actor": "owner"},
+   {"id": "draft-choice", "inputs": ["Draft/draft.mp4", "records/draft_review.json"], "run": {"role": "owner"}, "check": ["decision"], "outputs": ["records/draft_decision.json"], "next_actor": "finisher"},
+   {"id": "masters", "inputs": ["records/draft_decision.json", "records/cut_plan2.json", "records/shorts_spec.json", "records/faces.json", "source.mp4", "records/story_map.json", "records/overlay_plan.json", "records/callouts_plan.json", "records/bed.json", "records/vplan.json"], "run": {"role": "finisher"}, "check": ["delivered-media"], "outputs": ["YouTube/main.mp4", "YouTube/main.srt", "Vertical/main.mp4", "Shorts/short.mp4", "Shorts/short.srt", "records/final_manifest.json", "records/hear.json"], "next_actor": "packager"},
+   {"id": "titles", "inputs": ["records/words.json", "records/final_manifest.json"], "run": {"role": "packager"}, "check": ["titles"], "outputs": ["records/publish.json"], "next_actor": "packager"},
+   {"id": "copy", "inputs": ["records/final_manifest.json", "records/publish.json", "records/words.json"], "run": {"role": "packager"}, "check": ["captions-read"], "outputs": ["records/copy.json", "records/copy_review.md"], "next_actor": "story-editor"},
+   {"id": "text-plan", "inputs": ["records/words.json", "records/final_manifest.json"], "run": {"role": "story-editor"}, "check": ["text-plan"], "outputs": ["records/text_plan.md"], "next_actor": "writer"},
+   {"id": "text", "inputs": ["records/text_plan.md", "records/words.json"], "run": {"role": "writer"}, "check": ["text-read"], "outputs": ["records/text_post.md", "records/text_review.md"], "next_actor": "packager"},
+   {"id": "release", "inputs": ["records/final_manifest.json", "records/publish.json", "records/copy.json", "records/copy_review.md", "records/text_post.md", "records/text_review.md"], "run": {"role": "packager"}, "check": ["release"], "outputs": ["records/release.json", "Review.md"], "next_actor": "owner"},
+   {"id": "release-choice", "inputs": ["records/release.json", "Review.md"], "run": {"role": "owner"}, "check": ["decision"], "outputs": ["records/release_decision.json"], "next_actor": "clock"},
+   {"id": "posting", "inputs": ["records/release.json", "records/release_decision.json"], "run": {"role": "clock"}, "check": ["posted"], "outputs": ["records/posting.json"], "next_actor": "clock"}
+  ]
+ },
+ "shorts-only": {
+  "external": ["source.mp4", "records/job.json"],
+  "stages": [
+   {"id": "short", "inputs": ["source.mp4", "records/job.json"], "run": {"role": "finisher"}, "check": ["short-media"], "outputs": ["Shorts/short.mp4", "Shorts/short.srt", "records/words.json", "records/final_manifest.json", "records/publish.json"], "next_actor": "packager"},
+   {"id": "copy", "inputs": ["records/final_manifest.json", "records/publish.json", "records/words.json"], "run": {"role": "packager"}, "check": ["captions-read"], "outputs": ["records/copy.json", "records/copy_review.md"], "next_actor": "packager"},
+   {"id": "release", "inputs": ["records/final_manifest.json", "records/copy.json", "records/copy_review.md", "records/publish.json"], "run": {"role": "packager"}, "check": ["release"], "outputs": ["records/release.json", "Review.md"], "next_actor": "owner"},
+   {"id": "release-choice", "inputs": ["records/release.json", "Review.md"], "run": {"role": "owner"}, "check": ["decision"], "outputs": ["records/release_decision.json"], "next_actor": "clock"},
+   {"id": "posting", "inputs": ["records/release.json", "records/release_decision.json"], "run": {"role": "clock"}, "check": ["posted"], "outputs": ["records/posting.json"], "next_actor": "clock"}
+  ]
+ }
+}

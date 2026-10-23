@@ -98,7 +98,18 @@ Derivation and intentional changes from the host:
 ## 2. Four engine answers and one video record
 
 The public API takes a video context through the core host boundary, never imports host tools, and uses one
-validated recipe revision. These are future APIs; no interface is implemented in this seam.
+validated recipe revision. Built in `pirillo_studio/spine/` (seam 2): `recipes.json` holds both recipes, each with
+its explicit `external` inputs; `catalog.json` the roles, tools and each check's `reads` (stage paths, `@inputs`,
+`@outputs`), `checker` and the review records it `produces`; `engine.py` the four answers, where `next` also
+returns the stage's `state`. Holds are `records/holds.json` rows `{stage, why, by}`; an owner decision is the
+stage's output `{task, verb, words}`, its verb one of approve, reject, redo, not-this, try-again, cant or undo.
+The video is keyed by `records/job.json` `id` (a non-empty string; missing refuses), never its folder, so a moved
+video keeps its send, task and handoff keys. A review record binds to the content it judged by containing that
+check's `judged` digest (sha256 over the check's other evidence hashes, which `check` names while it waits); a
+review without the current digest is still awaited. Whether every release row has its receipt is the `posted`
+check's answer, owned by the posting domain ("The release and posting domains own send receipts", below); the
+engine accepts `posted` only from that check and `waiting_owner` only from its own decision check. Paths that fold
+to one name on a case- and form-insensitive disk are one path, and no path under the video may pass a symlink.
 
 | Answer | Contract |
 |---|---|
