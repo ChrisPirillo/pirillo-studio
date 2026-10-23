@@ -140,7 +140,7 @@
   "done_when": "rebuilt to its spec (docs/architecture.md, Cutover): the plain and shorts-only recipes are data; one engine answers next, run, check and hand-off for both; no check names a recipe; the host's next, dispatch and holds call it behind one setting. The owner, 2026-10-22",
   "seams": [
    "1 the spine spec: recipes as data, the engine's four answers, the host's deciders mapped (docs/spine.md), for the owner to read: spec drafted",
-   "2 the engine and both recipes built new to it with their contract tests: built; 3 the host switched behind one setting (intake writes records/job.json id, the key every send and task id is bound to); 4 the host's next, dispatch, holds and recipe_absent deleted"
+   "2 the engine and both recipes built new to it with their contract tests: built; 3 the host switched behind one setting (intake writes records/job.json id, the key every send and task id is bound to): built off (data/studio.json spine, tools/spine_host.py), the engine record renamed records/spine.json (the host's run.json is its stage log); 3b each catalog check bound to its domain's core check as items 6, 14, 17, 18 and 39 land, then the switch made per video (section 6 keeps a video on one engine; today it is one global setting, off) and turned on for one; 4 the host's next, dispatch, holds and recipe_absent deleted"
   ]
  },
  {

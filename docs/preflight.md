@@ -104,7 +104,7 @@ validator (spine seam 2) owns both fields and refuses a recipe whose stage write
 domain (item 14) owns the numbers. The owner reviews this extension with spine.md before either is built.
 
 Writes one record, `records/ready/<stage>.json`, keyed by `key`, atomically (temp file and rename) under the
-video's single writer, and the spine's `run.json` references it by hash as the stage attempt's evidence. The host's
+video's single writer, and the spine's `records/spine.json` references it by hash as the stage attempt's evidence. The host's
 `preflight/<stage>.json` is its post-render delivered-file report, a different thing kept apart until item 15
 replaces it. Idempotent: two calls, or a call after a crash at any point, reach the one record for that key. The
 media probe, the expensive one, is not re-run while the key is unchanged; the disk probe (a filesystem call) and the
@@ -138,7 +138,7 @@ flowchart TD
     blocked -->|resolved| req
 ```
 
-In the spine's `run.json` a broken result is `waiting_owner` (spine.md section 3) with this task as its evidence; a
+In the spine's `records/spine.json` a broken result is `waiting_owner` (spine.md section 3) with this task as its evidence; a
 blocked result is the spine's `blocked`. A broken result's task follows [the Board model](board.md): stable `id`
 from the key, `kind: ask`, `loop: filed`, `source.filed_by: preflight` (the reply recipient), `what` (which
 file is broken), `why` (the probe's words: which stream, which value, where the decode failed), `source.record`

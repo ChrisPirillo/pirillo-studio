@@ -118,7 +118,7 @@ to one name on a case- and form-insensitive disk are one path, and no path under
 | `check(video, stage) -> {ok, state, next_action, detail}` | `ok` is true only for pass or verified posted; states are those below. Missing source inputs or maker outputs are blocked with their paths; independent review outputs are required at pass; check failure is fail with original check words, evidence and maker. Owner decision outstanding is waiting_owner. A check tool error never becomes a pass. Freshness binds the check implementation and all input/output bytes. |
 | `hand_off(video, stage) -> {actor, told, record}` | Only current pass can hand off. `actor` is `next_actor`; `told` is the durable role inbox/Board source/posting-clock work key, not a claim someone read it; `record` locates its receipt in the video record. Retries reconcile that same key, never send a duplicate. Owner decisions use the Board task contract below. |
 
-`records/run.json` is the one per-video stage record, keyed by video, recipe revision, stage and attempt identity.
+`records/spine.json` is the one per-video stage record, keyed by video, recipe revision, stage and attempt identity.
 It retains an append-only history of transitions inside that record: state, input/output hashes, check-version and
 verdict evidence, maker/checker, exact failure words, owner decision/task revision, and handoff/external receipt keys.
 An explicit rerun creates a new attempt; retrying that attempt after a crash does not. Writes are atomic under the

@@ -107,7 +107,7 @@ def drive(v, host, until=None):
 
 
 def record(v):
-    return json.loads((v.folder / "records" / "run.json").read_text())
+    return json.loads((v.folder / "records" / "spine.json").read_text())
 
 
 class Contract(unittest.TestCase):
@@ -126,10 +126,10 @@ class Contract(unittest.TestCase):
         posted, fresh = self.video("shorts-only", "posted"), self.video("plain", "fresh")
         drive(posted, self.host)
         for v in (posted, fresh):
-            before = (v.folder / "records" / "run.json").read_bytes() if (v.folder / "records" / "run.json").exists() else None
+            before = (v.folder / "records" / "spine.json").read_bytes() if (v.folder / "records" / "spine.json").exists() else None
             overview = [spine.next(x) for x in (posted, fresh)]
             self.assertEqual(spine.next(v), overview[[posted, fresh].index(v)])
-            after = (v.folder / "records" / "run.json").read_bytes() if (v.folder / "records" / "run.json").exists() else None
+            after = (v.folder / "records" / "spine.json").read_bytes() if (v.folder / "records" / "spine.json").exists() else None
             self.assertEqual(before, after)
         self.assertEqual(spine.next(posted), {"stage": None, "actor": None, "why": "posted", "state": "posted",
                                               "inputs_missing": []})
@@ -154,11 +154,11 @@ class Contract(unittest.TestCase):
                ("made by no stage", lambda r: r["stages"][0]["inputs"].append("records/nobody.json")),
                ("next_actor", lambda r: r["stages"][0].update(next_actor="writer")),
                ("decision check is an owner stage's only", lambda r: r["stages"][1].update(check=["decision"])),
-               ("engine's own record", lambda r: r["stages"][0]["outputs"].append("records/run.json")),
-               ("unsafe path", lambda r: r["stages"][0]["outputs"].append("records/./run.json")),
+               ("engine's own record", lambda r: r["stages"][0]["outputs"].append("records/spine.json")),
+               ("unsafe path", lambda r: r["stages"][0]["outputs"].append("records/./spine.json")),
                ("no check or no output", lambda r: r["stages"][3].update(outputs=[])),
                # APFS ignores case and Unicode form: each of these is a second name for one file
-               ("engine's own record", lambda r: r["stages"][0]["outputs"].append("records/Run.json")),
+               ("engine's own record", lambda r: r["stages"][0]["outputs"].append("records/Spine.json")),
                ("engine's own record", lambda r: r["external"].append("records/holds.json")),
                ("already made by short", lambda r: r["stages"][1]["outputs"].append("records/Words.json")),
                ("already made by the job", lambda r: r["external"].append("Source.mp4")),
@@ -339,7 +339,7 @@ class Contract(unittest.TestCase):
         (w.folder / "records" / "holds.json").write_text(json.dumps({"holds": [{"stage": "short", "why": "wait for the embargo", "by": "owner"}]}))
         self.assertEqual(spine.next(w)["why"], "wait for the embargo")
         for broken in ("{broken", '{"stages": {}, "history": [], "at": NaN}'):
-            (w.folder / "records" / "run.json").write_text(broken)
+            (w.folder / "records" / "spine.json").write_text(broken)
             with self.assertRaisesRegex(spine.SpineError, "unreadable stage record"):
                 spine.next(w)
 

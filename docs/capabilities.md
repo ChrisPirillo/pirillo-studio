@@ -216,7 +216,7 @@ copy its code. Stages are the spine's stage IDs; "none" means no video stage.
 | `tools/hear.py` flags; `qc.hear.*` | Hear-back flags on delivered files; masters | QC's `heard`; a flag clears only by a manual row (item 15) |
 | `tools/job.py` lines 68-157: `HOME`, `STUDIO`, `CONTENT`, `ROOT`, `WORKDIR`, `FINAL`, `RECORDS`, `DATA`, `CACHE`, `CUTSTACK_JOB`, the old `_work`, `_data` and `Final` layouts, `places.record_dirs`, `JOB_FILE`, `record()` | Where a video's folders and records are; every stage | Item 37: the spine's video folder and records paths; the old layouts are not read |
 | `job.py _load` (225-241) | Refuses a pending source join (`source-join.pending.json`); exits on a missing or invalid `job.json`; every stage | The spine's malformed-input refusal (spine.md) and preflight's inputs probe (item 6), which owns the pending join |
-| `job.py _log_run`, `_still_running`, `_write_running`; `timing.log`, `running.json` | Run timing and which run is live; every stage | Item 37: the spine's `run.json` |
+| `job.py _log_run`, `_still_running`, `_write_running`; `timing.log`, `running.json` | Run timing and which run is live; every stage | Item 37: the spine's `records/spine.json` |
 | `job.py rules`, `ruled_in`, `rule_live`, `rule_dated`, `gate_note` (573-705, `rules` at 583) | Dated rules and their gate notes; every stage | Item 12 (settings and rules as data) |
 | `tools/facts.py heard`; `qc.quotes.audio` | Chat quotes against the sound, else put to a person's ear | Out of C1 scope: `plain` has no chat |
 

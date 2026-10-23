@@ -1,6 +1,6 @@
 """The spine (docs/spine.md): a recipe is data, and one engine answers next, run, check and hand_off for any recipe.
 
-A video is a folder; `records/job.json` names its recipe and `records/run.json` is its one stage record. The host
+A video is a folder; `records/job.json` names its recipe and `records/spine.json` is its one stage record. The host
 supplies every effect through `Video`: starting a maker, filing an owner task, telling the next actor, serving a
 judged file and the domain checks. A check is called with its declared evidence only, never a recipe name.
 """
@@ -20,7 +20,7 @@ VERDICTS = ("pass", "fail", "running", "blocked")  # a domain check's answers; p
 VERBS = ("approve", "reject", "redo", "not-this", "try-again", "cant", "undo")
 KINDS = {".mp4": "video", ".mov": "video", ".png": "image", ".jpg": "image", ".md": "words", ".json": "words",
          ".srt": "words"}
-RESERVED = ("records/run.json", "records/run.lock", "records/holds.json")
+RESERVED = ("records/spine.json", "records/spine.lock", "records/holds.json")
 
 
 def data(name):
@@ -148,11 +148,11 @@ def defn(v, st):
 
 
 def load_record(v):
-    f = inside(v.folder, "records/run.json")
+    f = inside(v.folder, "records/spine.json")
     if not f.exists():
         return {"stages": {}, "history": []}
     try:
-        rec = load(v.folder, "records/run.json")
+        rec = load(v.folder, "records/spine.json")
         if isinstance(rec["stages"], dict) and isinstance(rec["history"], list):
             return rec
         raise TypeError("stages must be an object and history a list")
@@ -161,9 +161,9 @@ def load_record(v):
 
 
 def save(v, rec, sid, why="", r=None):
-    """Append the stage's transition (or r, a state not kept) to history and replace run.json atomically."""
+    """Append the stage's transition (or r, a state not kept) to history and replace spine.json atomically."""
     note(rec, sid, why, r)
-    atomic(v.folder / "records" / "run.json", json.dumps(rec, indent=1, sort_keys=True, allow_nan=False))
+    atomic(v.folder / "records" / "spine.json", json.dumps(rec, indent=1, sort_keys=True, allow_nan=False))
 
 
 def atomic(f, text):
@@ -187,7 +187,7 @@ def note(rec, sid, why, r=None):
 def writer(v):
     """The video's single writer, held across read, effect and write."""
     (v.folder / "records").mkdir(parents=True, exist_ok=True)
-    with open(inside(v.folder, "records/run.lock"), "a") as lock:
+    with open(inside(v.folder, "records/spine.lock"), "a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         yield
 
@@ -327,7 +327,7 @@ def task(v, recipe, st, r):
     first = part(judged[0], "content")
     return {"id": f"spine:{r['op']}", "kind": "ask", "what": f"Approve {st['id'].replace('-', ' ')}",
             "why": f"{st['next_actor']} waits on this decision; sending it back returns it to {producer}",
-            "source": {"record": f"records/run.json#{st['id']}/{r['attempt']}", "filed_by": producer, "related": []},
+            "source": {"record": f"records/spine.json#{st['id']}/{r['attempt']}", "filed_by": producer, "related": []},
             "judge": {"type": first["type"], "href": first["href"], "parts": [part(p, "content") for p in judged]},
             "actions": [{"verb": "approve", "label": "Approve",
                          "undo": {"verb": "undo", "until": None, "why": f"Until {st['next_actor']} starts"}},
@@ -387,7 +387,7 @@ def check(v, sid):
         was = r["state"]
         late = result.get("undo") and too_late(v, rec, recipe, st, was)
         if late:  # past the task's advertised undo window the receipt-backed result stands
-            if was == "pass":  # the approval the downstream work used stays the stage's output; run.json keeps the undo
+            if was == "pass":  # the approval the downstream work used stays the stage's output; spine.json keeps the undo
                 atomic(inside(v.folder, st["outputs"][0]), r["decided"])
             result = {"state": was, "words": [f"undo refused: {late} already started"], "by": r.get("by")}
         if result["state"] == "pass" and st["check"] == ["decision"]:
@@ -495,6 +495,6 @@ def hand_off(v, sid):
             save(v, rec, sid, "handoff recorded")
         if h["receipt"] is None:
             h["receipt"] = v.tell(st["next_actor"], key, {"video": v.job()[0], "stage": sid,
-                                                         "attempt": r["attempt"], "record": "records/run.json"})
+                                                         "attempt": r["attempt"], "record": "records/spine.json"})
             save(v, rec, sid, "handoff told")
-        return {"actor": h["actor"], "told": key, "record": f"records/run.json#stages/{sid}"}
+        return {"actor": h["actor"], "told": key, "record": f"records/spine.json#stages/{sid}"}
