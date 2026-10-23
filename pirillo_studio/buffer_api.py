@@ -79,16 +79,23 @@ def buffer_channel(s, cfg, token, platform="tiktok"):
     return channel["id"]
 
 
+def buffer_route(s, a):
+    """YouTube takes Shorts only; TikTok takes shorts and full verticals."""
+    p, kind = a["platform"], a["kind"]
+    if p not in ("youtube", "tiktok", "instagram", "threads") or p == "youtube" and kind != "short" \
+            or p == "tiktok" and kind not in ("short", "vertical"):
+        raise s.AdapterError("Buffer route does not support this post type", False)
+
+
 def buffer_video(s, a, cfg):
     """Resolve native API media; only the TikTok route needs its legacy browser fit."""
     platform = a["platform"]
-    if (platform not in ("youtube", "tiktok", "instagram", "threads")
-            or platform in ("youtube", "tiktok") and a["kind"] != "short"):
-        raise s.AdapterError("Buffer route does not support this post type", False)
+    buffer_route(s, a)
     if not a.get("file"):
         raise s.AdapterError("Buffer needs a current video", False)
-    fit = s.fitted(a["slug"], platform, a["file"]) if platform == "tiktok" else None
-    if platform == "tiktok":
+    legacy = platform == "tiktok" and a["kind"] == "short"      # a TikTok short keeps its browser-era fit record
+    fit = s.fitted(a["slug"], platform, a["file"]) if legacy else None
+    if legacy:
         if not fit:
             raise s.AdapterError("Buffer needs a current fitted video", False)
         path, seconds = fit["path"], fit["seconds"]
@@ -114,8 +121,7 @@ def buffer_post(s, a, cfg, token):
     No quick tunnel: its lifetime ends before Buffer's scheduled fetch can be guaranteed.
     """
     platform = a["platform"]
-    if platform not in ("youtube", "tiktok", "instagram", "threads") or platform in ("youtube", "tiktok") and a["kind"] != "short":
-        raise s.AdapterError("Buffer route does not support this post type", False)
+    buffer_route(s, a)
     words = a.get("cover_text") or ""
     assets_ = []
     if a.get("file") or a.get("image"):

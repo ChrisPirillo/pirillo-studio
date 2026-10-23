@@ -177,6 +177,18 @@ class BufferDeliveredVideo(unittest.TestCase):
         self.studio.fitted.assert_called_once_with("fixture", "tiktok", self.path.name)
         self.studio.fit_video.assert_not_called()
 
+    def test_tiktok_full_vertical_schedules_its_own_hosted_bytes(self):
+        """guard: never route a TikTok full vertical to a by-hand post while Buffer takes it"""
+        self.studio.video_fit_cap.side_effect = lambda cfg, platform: 285000000
+        with patch.object(buffer_api, "buffer_channel", return_value="channel"):
+            result = buffer_api.buffer_post(self.studio, self.row("tiktok", "vertical"), {}, "fixture-key")
+        self.assertEqual(result["state"], "scheduled")
+        self.studio.fitted.assert_not_called()
+        self.studio.fit_video.assert_called_once_with(str(self.path), 285000000, "fixture")
+        for kind in ("long", "article"):
+            with self.subTest(kind=kind), self.assertRaisesRegex(RuntimeError, "post type"):
+                buffer_api.buffer_post(self.studio, self.row("tiktok", kind), {}, "fixture-key")
+
     def test_tiktok_still_requires_current_fit(self):
         with self.assertRaisesRegex(RuntimeError, "current fitted video"):
             buffer_api.buffer_post(self.studio, self.row("tiktok"), {}, "fixture-key")
