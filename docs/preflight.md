@@ -109,7 +109,9 @@ video's single writer, and the spine's `run.json` references it by hash as the s
 replaces it. Idempotent: two calls, or a call after a crash at any point, reach the one record for that key. The
 media probe, the expensive one, is not re-run while the key is unchanged; the disk probe (a filesystem call) and the
 tools probe (versions and presence) are read on every call, because free space and installs are not an input's
-content and cost milliseconds. A source's content hash is cached against its path,
+content and cost milliseconds, except the first probe of a new key (`qualify`, below). The tools probe is `capability(id)` per declared tool, and `qualify(id)` once for a
+current key with no record (item 5, [capabilities.md](capabilities.md)); a cited voice patch also asks
+`voice("speech", cites)`, so a take with no owner pick is `waiting_owner`. A source's content hash is cached against its path,
 size, inode and change time; any change re-hashes (shortcut: stat identity stands for content between runs; upgrade
 to a full re-hash if a tool is found that rewrites a file and keeps all four).
 
@@ -186,7 +188,7 @@ expensive work it guards. This inventory is not permission to copy its code.
 | `studio.py video_probe` | Delivered file readable, duration and size, before a send; posting | Before | Posting stays in the core; it reads the media probe of the delivered file through the same probe tool |
 | `studio.py disk_free_gb`, `tools/disk_retention.py disk_line` | Free GB and days to the floor in the status line; none | n/a | Stays a host status (tidy); not a guard. Shares only the margin setting |
 | Board disk line (`studio.py` free_gb), `tools/retire.py` | Free GB printed; none | n/a | Status only; out of scope |
-| `pirillo_studio/runtime.py` (core) doctor | Prints `ffmpeg: MISSING`, never refuses; none | n/a | Stays a status; the tools probe is the gate |
+| `pirillo_studio/runtime.py` (core) doctor | Prints `ffmpeg: MISSING`, never refuses; none | n/a | Deleted by item 5 (capabilities.md); the machine status reads `status()`, and the tools probe is the gate |
 | `tools/source_join.py` | Extra take covers duration, then `room()`; media | Before | Media probe on each take; disk probe for the joined source |
 | `tools/cover_words.py`, `textstill.py`, `fit.py`, `claymation_*`, `podcast/`, `explainer.py`, `tableau.py`, `assemble.py`, `broll.py` probes | Tool presence and media reads for stills, fits, other recipes and B-roll | Mixed | Out of C1 scope: images, other recipes and B-roll are not in plain or shorts-only |
 | `vjoin, vrender, vaudio, vburn, grind, foil, archive, faces, bed, sheet` ffprobe reads | Frame counts, durations and packet reads used to build or measure output | During or after | Not checks: rendering and QC reads (items 14, 15). Media facts they need come from the record |

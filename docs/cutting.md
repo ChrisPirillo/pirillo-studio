@@ -63,7 +63,7 @@ Kept: 26.54 + 47.73 + 28.35 + 7.30 + 0.65 + 13.95 = 124.52 s; removed: 117.48 s;
   answer); `src` is in and out in source seconds on the measured clock; `enter` is how the span comes in: `open`
   (order 1 only), `jump` (a hard cut), `jcut` (his voice leads the picture by `lead_s`, taken from `lead_from`),
   `push` (a slow push, `push.to` and `push.s`), `pop` (a held face); `shot` is the size asked for (wide, med, close,
-  face, mouth), a request whose crop is rendering's; `patch` is a voice patch he recorded (its record, hash and own
+  face, mouth), a request whose crop is rendering's; `patch` is a voice patch in the owner's cloned voice (its record, hash and own
   words) played in place of the tape's words; `hide_picture` marks a span whose picture must never show (a patch's
   borrowed words, or a part the job marks voice-over). Two variants, validated as such:
   - a speech span has `words` (its first and last kept word ID in item 6's transcript, its identity on retime) and
@@ -173,7 +173,8 @@ one home each, never restated in this spec:
 - `cards`: each card's and callout's anchor words are kept, in one span; every `hide_picture` span has a `cover`
   card over its whole length. Reads plan, words, job, overlay and callouts plans.
 - `patches`: each patch record exists, matches its hash, rate and sample count, ends its take at its own end, and
-  joins clear of the tape on both sides. Reads plan, patch records.
+  joins clear of the tape on both sides, and its take has the owner's pick (`voice("speech", cites)`,
+  [capabilities.md](capabilities.md)). Reads plan, patch records, the voice record.
 - `cold-open`: its words sit inside one span and one shot, never in a J-cut's held frames. Reads plan.
 - `shorts`: section 1's variants; every range inside kept spans by word, a short opens on a word with no backward
   reference unless `stands_alone` names it, ends on its payoff word, and its settled length sits in the shorts band.
@@ -287,7 +288,7 @@ inventory is not permission to copy its code. "Here: X" is a check or field in s
 | `tools/instruct.py` card words | A card whose words are in no kept span refuses; overlays | Here: `cards` |
 | `tools/anchor.py --bind, --resolve, --check` | Overlays anchored to phrases, resolved after a recut; overlays, retime | Here: anchors are word IDs; `retime` carries them |
 | `tools/bed.py` brief | `bed.json` is the brief; notes and mix measured; overlays, draft | Here: `bed` as a request; notes, mix and lock item 14 |
-| `tools/voicepatch.py his_join, valley_at, join_problem, said_after` | Makes a patch from his recorded take; a join that is not clear refuses; fix | The maker's tool that writes a patch record (an input here); `join_problem` becomes `patches` |
+| `tools/voicepatch.py his_join, valley_at, join_problem, said_after` | Makes a patch from a take in the owner's cloned voice; a join that is not clear refuses; fix | The maker's tool that writes a patch record (an input here); `join_problem` becomes `patches` |
 | `tools/vo_cover.py spans, uncovered, hides, cover` | Every frame of a VO part or patch must sit under a card, else the render stops; arc, draft | Here: `hide_picture` and `cards`, before the render; burning the card is item 14. No `cut_plan2.json` gives an empty list today; here it blocks |
 | Plan readers that decide nothing: `grind, vrender, vhold, vburn, vaudio, foil, broll, card_cover, sheet, check_sheet*, hear, anchor, archive, overlay_tables, callouts, regrade, wardrobe, fcpxml, facts, wordcopy, preflight, refresh, status, recipe_never` | Read the plan to render, measure, map times, publish or show freshness; draft to final | Item 14 or 15 read the declared plan fields above; B-roll, archive, wardrobe and FCPXML are out of C1 scope (plain renders none of them) |
 | `tools/stages.json` editor rows `transcribed, plan, overlays, arc, locked, fix, retime` | Briefs, gates (`draft --check`), waits; checker-plans waits on `cut_plan.json`, not the plan everything reads | Spine stages `plan`, `overlays`, `arc`, `locked`; `fix` and `retime` rerun `plan` (spine.md) |
