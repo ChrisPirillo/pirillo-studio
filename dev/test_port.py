@@ -1,4 +1,4 @@
-import os, shutil, subprocess, sys, tempfile, unittest
+import os, shlex, shutil, subprocess, sys, tempfile, unittest
 from unittest import mock
 
 import port
@@ -191,7 +191,7 @@ class Landing(unittest.TestCase):
         with open(bound) as f:
             self.assertIn(f"+{sha}", f.read())
         os.remove(bound)  # the finish command makes it again: its bind step, as it runs it
-        self.assertIn(f"bind {self.host} {base} {self.hostp} \"$d\"", r.stderr)
+        self.assertIn(f"bind {shlex.quote(self.host)} {base} {shlex.quote(self.hostp)} \"$d\"", r.stderr)
         b = subprocess.run([sys.executable, "dev/port.py", "bind", self.host, base, self.hostp, self.repo], cwd=self.repo,
                            capture_output=True, text=True)
         self.assertEqual(b.stdout.strip(), bound)
