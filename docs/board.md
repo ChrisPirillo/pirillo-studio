@@ -74,6 +74,11 @@ the receipt. Undo is recorded, not deletion of history. Helper down is a page st
 not a ledger mutation; it disables writes and labels any retained display unavailable until a successful refresh.
 Each end has a contract below; retries must not duplicate a writer effect or deliver a reply twice.
 
+A task with a deadline is drawn from its effective state at read time, never only from its stored one: past its
+deadline it shows its timeout outcome, labeled as the deadline's and not the owner's choice, offers no answer, and a
+timeout that needs no run closes it as done. A decision that gates another task closes with that task (skipped or
+done) rather than outliving it. Neither depends on a feature switch being on.
+
 ## 3. Today's kinds and their destinations
 
 Evidence: host `tools/board_c.py` (`ROUTES`, `ROW_KIND`, `TURN_KIND`, `gather`, `model`, `_finish`),
