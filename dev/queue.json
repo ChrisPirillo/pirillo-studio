@@ -135,9 +135,10 @@
   "id": 37,
   "loop": "build",
   "layer": "product",
-  "state": "building",
+  "state": "parked",
   "title": "The spine: recipes as data and one engine that says what is next, runs it, checks it and hands off",
   "done_when": "rebuilt to its spec (docs/architecture.md, Cutover): the plain and shorts-only recipes are data; one engine answers next, run, check and hand-off for both; no check names a recipe; the host's next, dispatch and holds call it behind one setting. The owner, 2026-10-22",
+  "parked": "2026-10-22, at seam 2: three review rounds refused the engine (pirillo_studio/spine/, built new to docs/spine.md), each on a real gap the next round fixed: r1 (one-shot Claude agent) a review left from the last attempt passed the new one, the clock's send was keyed by attempt, a cannot-act lost its recipient and undo did not restore the producer; r2 (Codex gpt-6-astra) a hold during a started attempt dropped its key, cannot-act still routed to the owner, a pass could name bytes changed while its checker read them, and posting receipts were not bound to the release's platforms; r3 (Codex) a revised upstream check left dependent approvals standing, undo ignored its advertised window after posting, and a path alias (records/./run.json) passed validate. The candidate after r3 (tree 381e5720 on 52a66f4: engine 459, files 57, contract tests 440, 14 tests, each r3 fix red without it; pirillo_studio and dev OK, dev/check.py clean) is kept as core-r3.patch in the lead's Studio work folder _port 37-2 2026-10-22; unpark is one fresh review of it re-made on the then base",
   "seams": [
    "1 the spine spec: recipes as data, the engine's four answers, the host's deciders mapped (docs/spine.md), for the owner to read: spec drafted",
    "2 the engine and both recipes built new to it with their contract tests; 3 the host switched behind one setting; 4 the host's next, dispatch, holds and recipe_absent deleted"
