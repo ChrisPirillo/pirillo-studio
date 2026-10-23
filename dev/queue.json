@@ -208,7 +208,7 @@
   "id": 14,
   "loop": "build",
   "layer": "product",
-  "state": "queued",
+  "state": "building",
   "title": "Port the rendering domain",
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
   "backlog_issues": [
@@ -218,6 +218,9 @@
    357,
    1133,
    1136
+  ],
+  "seams": [
+   "1 the rendering spec: render requests and records as data, one API, the host's render steps and checks mapped (docs/rendering.md), for the owner to read: spec drafted; 2 rendering built new to it with its contract tests; 3 the host switched behind one setting; 4 the host's rendering code, tests and settings deleted"
   ]
  },
  {
