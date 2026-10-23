@@ -279,7 +279,7 @@
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
   "seams": [
    "1 the settings bootstrap: load_config moves to pirillo_studio/settings.py, the host keeps a forwarder: landed with this queue change ; 2 runtime availability diagnostics: doctor and its package constants move to pirillo_studio/runtime.py; the owner's Mac line is host data (MAC_ENV_NOTE), and spotlight_lines stays in the host, read through s (it probes the owner's Spotlight settings, and test_env patches that seam): landed with this queue change ; 3 the capabilities and voice spec: capabilities declared as data, one qualification record, the selected voice, the host's pieces mapped (docs/capabilities.md), for the owner to read: spec drafted; job.py's context move dropped, its paths and run log mapped to item 37, its job load to the spine and item 6, its dated rules to item 12",
-   "4 capabilities and voice built new to it with their contract tests ; 5 the host switched behind one setting ; 6 the host's doctor, voice and capability code, tests and settings deleted"
+   "4 capabilities and voice built new to it with their contract tests: built ; 5 the host switched behind one setting ; 6 the host's doctor, voice and capability code, tests and settings deleted"
   ]
  },
  {

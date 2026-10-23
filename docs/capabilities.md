@@ -60,6 +60,15 @@ The declaration, recipe data beside the stages (spine.md section 1), validated b
   the setting `platforms.<platform>.token_days` (item 12). Whether posting works is posting's receipt (item 11),
   never a probe here, so a revoked key shows at the first send and its receipt, not as a stale pass.
 
+**Probe workloads (the lead's decision, 2026-10-23).** A probe's workload is host data, the setting
+`capabilities.<probe>` passed through the adapter, refused when missing or invalid and bound into the key with the
+record's `probe.workload`: `encode-sample` its frame size, rate and seconds. A `model` entry's `run` is its engine's
+args after the resolved runtime. `speak-fixture` runs them on the setting's fixture sentence (`{text}`) to a temporary
+file (`{out}`) under the time limit and passes only when that file decodes as audio longer than the setting's
+`min_seconds`, measured by the qualified ffmpeg the entry `needs`. `transcribe-fixture` runs them on the fixture audio
+file the setting names with its sha256 (`{audio}`) and passes only when the setting's expected words appear in order in
+the engine's output.
+
 The qualification record, one file per capability, `capabilities/<id>.json` in the machine's state:
 
 ```json

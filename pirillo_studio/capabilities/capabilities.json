@@ -1,0 +1,12 @@
+{
+ "note": "docs/capabilities.md section 1: the capabilities a stage's tools list may name, generic ones only. A host passes its own declaration file (its speech engine, accounts) through the adapter's declarations path; the schema is declare.py's.",
+ "capabilities_version": "1",
+ "capabilities": {
+  "ffmpeg": {"kind": "executable", "find": "ffmpeg", "version": {"args": ["-version"], "min": "7.0"},
+             "qualify": "encode-sample", "get": "install ffmpeg on the studio runtime path"},
+  "encoder:h264-hardware": {"kind": "encoder", "needs": ["ffmpeg"], "codec": "h264_videotoolbox",
+                            "qualify": "encode-sample", "get": "use an ffmpeg built with the hardware encoder"},
+  "guide:writing-voice": {"kind": "guide", "find": "writing-voice", "qualify": "present",
+                          "get": "install the writing-voice guide where the makers load guides"}
+ }
+}
