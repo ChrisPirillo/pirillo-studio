@@ -288,42 +288,51 @@ def _key(reads):
 def check(video):
     """Write one auditable verdict, including a blocked record for an unreadable declared input."""
     with io.writer(video):
-        reads, results, plan_key = {}, {}, None
-        running = "inputs"
-        try:
-            plan = io.read(video, 'records/cut_plan2.json')
-            plan_key = plan['key']
-            if plan_key != io.settle_key(plan['made_from'], plan['plan_version'], plan['measurement_key']):
-                raise SpineError('settled plan key does not match its inputs and settings')
-            paths = set(_BASE) | set(plan['made_from'])
-            if any(inside(video.folder, p).exists() for p in _SHORTS):
-                paths.update(_SHORTS)
-            patched = [s['patch']['record'] for s in plan['spans'] if 'patch' in s]
-            if patched:
-                paths.update(patched)
-                paths.add('records/voice.json')
-            reads = io.hashes(video, sorted(paths))
-            if any(reads[p] != value for p, value in plan['made_from'].items()):
-                raise SpineError('settled plan inputs changed; settle the current inputs')
-            if reads.get('records/shorts_spec.json'):
-                spec, made = io.read(video, 'records/shorts_spec.json'), {_SHORTS[0]: reads[_SHORTS[0]]}
-                if (spec['made_from'], spec['plan'], spec['key']) != (made, plan_key, io.shorts_key(plan_key, made)):
-                    raise SpineError('records/shorts_spec.json: stale; settle the current shorts plan')
-            words = io.words(io.read(video, 'records/words.json'))
-            job = io.read(video, 'records/job.json')
-            measurements = io.measurements(video, io.read(video, 'records/probe.json'))
-            if digest(canon(measurements)) != plan['measurement_key']:
-                raise SpineError('source measurements changed; settle the current readings')
-            running = 'own-words'
-            results['own-words'] = own_words(plan, words)
-            running = 'edges'
-            results['edges'] = edges(plan, words, measurements)
-            running = 'takes'
-            results['takes'] = takes(plan, words)
-            running = 'jcuts'
-            results['jcuts'] = jcuts(plan, words, measurements)
-            running = 'shots'
-            results['shots'] = shots(plan)
+        result = verdict(video)
+        io.write(video, 'records/checks/cut.json', result)
+        return result
+
+
+def verdict(video, overlays=True):
+    """check's body, the caller holding the video's writer; overlays False judges the settled plan alone, before
+    the overlays stage writes cards, bed and shorts (docs/cutting.md section 3)."""
+    reads, results, plan_key = {}, {}, None
+    running = "inputs"
+    try:
+        plan = io.read(video, 'records/cut_plan2.json')
+        plan_key = plan['key']
+        if plan_key != io.settle_key(plan['made_from'], plan['plan_version'], plan['measurement_key']):
+            raise SpineError('settled plan key does not match its inputs and settings')
+        paths = set(_BASE if overlays else _BASE[:4]) | set(plan['made_from'])
+        if overlays and any(inside(video.folder, p).exists() for p in _SHORTS):
+            paths.update(_SHORTS)
+        patched = [s['patch']['record'] for s in plan['spans'] if 'patch' in s]
+        if patched:
+            paths.update(patched)
+            paths.add('records/voice.json')
+        reads = io.hashes(video, sorted(paths))
+        if any(reads[p] != value for p, value in plan['made_from'].items()):
+            raise SpineError('settled plan inputs changed; settle the current inputs')
+        if reads.get('records/shorts_spec.json'):
+            spec, made = io.read(video, 'records/shorts_spec.json'), {_SHORTS[0]: reads[_SHORTS[0]]}
+            if (spec['made_from'], spec['plan'], spec['key']) != (made, plan_key, io.shorts_key(plan_key, made)):
+                raise SpineError('records/shorts_spec.json: stale; settle the current shorts plan')
+        words = io.words(io.read(video, 'records/words.json'))
+        job = io.read(video, 'records/job.json')
+        measurements = io.measurements(video, io.read(video, 'records/probe.json'))
+        if digest(canon(measurements)) != plan['measurement_key']:
+            raise SpineError('source measurements changed; settle the current readings')
+        running = 'own-words'
+        results['own-words'] = own_words(plan, words)
+        running = 'edges'
+        results['edges'] = edges(plan, words, measurements)
+        running = 'takes'
+        results['takes'] = takes(plan, words)
+        running = 'jcuts'
+        results['jcuts'] = jcuts(plan, words, measurements)
+        running = 'shots'
+        results['shots'] = shots(plan)
+        if overlays:
             running = 'cards'
             overlay = io.read(video, 'records/overlay_plan.json')
             callouts = io.read(video, 'records/callouts_plan.json')
@@ -331,25 +340,24 @@ def check(video):
             if bed['plan'] != plan_key or not bed['request'].strip() or not bed['tempo_from'].strip():
                 raise SpineError('bed does not name the current plan and request')
             results['cards'] = cards(plan, words, job, overlay, callouts)
-            running = 'patches'
-            patch_records = {p: {'record': io.read(video, p), 'sha': reads[p]} for p in patched}
-            results['patches'] = patches(plan, patch_records, io.read(video, 'records/voice.json')) if patched else []
-            running = 'cold-open'
-            results['cold-open'] = cold_open(plan)
-            running = 'shorts'
-            results['shorts'] = shorts(io.read(video, _SHORTS[0]), io.read(video, _SHORTS[1]), plan, words) if _SHORTS[0] in reads else []
-            running = 'input freshness'
-            if reads != io.hashes(video, sorted(paths)):
-                raise SpineError('cutting inputs changed during check')
-            detail = [flag for flags in results.values() for flag in flags]
-            state = 'fail' if detail else 'pass'
-        except Exception as error:
-            state, detail = 'blocked', f'{running} check could not run: {error}'
-        result = {'ok': state == 'pass', 'state': state,
-                  'next_action': 'request_arc' if state == 'pass' else 'revise' if state == 'fail' else 'supply_inputs',
-                  'detail': detail, 'plan': plan_key, 'reads': reads, 'key': _key(reads), 'checks': results}
-        io.write(video, 'records/checks/cut.json', result)
-        return result
+        running = 'patches'
+        patch_records = {p: {'record': io.read(video, p), 'sha': reads[p]} for p in patched}
+        results['patches'] = patches(plan, patch_records, io.read(video, 'records/voice.json')) if patched else []
+        running = 'cold-open'
+        results['cold-open'] = cold_open(plan)
+        running = 'shorts'
+        results['shorts'] = shorts(io.read(video, _SHORTS[0]), io.read(video, _SHORTS[1]), plan, words) if _SHORTS[0] in reads else []
+        running = 'input freshness'
+        if reads != io.hashes(video, sorted(paths)):
+            raise SpineError('cutting inputs changed during check')
+        detail = [flag for flags in results.values() for flag in flags]
+        state = 'fail' if detail else 'pass'
+    except Exception as error:
+        state, detail = 'blocked', f'{running} check could not run: {error}'
+    result = {'ok': state == 'pass', 'state': state,
+              'next_action': 'request_arc' if state == 'pass' else 'revise' if state == 'fail' else 'supply_inputs',
+              'detail': detail, 'plan': plan_key, 'reads': reads, 'key': _key(reads), 'checks': results}
+    return result
 
 
 def _fresh(video, required):
@@ -389,6 +397,16 @@ def request_arc(video):
         return result
 
 
+def story_map(record, plan, decision_hash, blocks):
+    """The locked record, less locked_at, for this check record, plan, approved decision and story blocks."""
+    order = [s['id'] for s in _ordered(plan)]
+    if [s for block in blocks for s in block['spans']] != order or any(not b['why'].strip() for b in blocks):
+        raise SpineError('story blocks do not cover the plan in story order')
+    return {'plan': plan['key'], 'check': record['key'],
+            'arc_decision': f'records/arc_decision.json#{decision_hash}',
+            'reads': {p: record['reads'][p] for p in (*_BASE[4:], *_SHORTS)}, 'blocks': blocks, 'tail': order[-1]}
+
+
 def lock(video):
     """Only a current, explicit approval locks; rejection carries the owner's words back to the maker."""
     with io.writer(video):
@@ -403,15 +421,7 @@ def lock(video):
             return {'ok': False, 'state': 'fail', 'next_action': 'revise', 'detail': decision['words']}
         if decision['decision'] != 'approve':
             raise SpineError('arc decision is not explicit approval')
-        blocks = decision['blocks']
-        order = [s['id'] for s in _ordered(plan)]
-        if [s for block in blocks for s in block['spans']] != order or any(not b['why'].strip() for b in blocks):
-            raise SpineError('story blocks do not cover the plan in story order')
-        decision_hash = identities['records/arc_decision.json']
-        output = {'plan': plan['key'], 'check': record['key'],
-                  'arc_decision': f'records/arc_decision.json#{decision_hash}',
-                  'reads': {p: record['reads'][p] for p in (*_BASE[4:], *_SHORTS)},
-                  'blocks': blocks, 'tail': order[-1]}
+        output = story_map(record, plan, identities['records/arc_decision.json'], decision['blocks'])
         path = inside(video.folder, 'records/story_map.json')
         if path.exists():
             previous = io.read(video, 'records/story_map.json')

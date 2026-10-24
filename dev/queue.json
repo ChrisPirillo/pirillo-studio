@@ -203,7 +203,7 @@
    38
   ],
   "seams": [
-   "1 the cutting spec: the cut plan as data, one API, the host's cut checks mapped (docs/cutting.md), for the owner to read: spec drafted; 2 cutting built new to it with its contract tests: built; 3 the host switched behind one setting; 4 the host's cutting code, tests and settings deleted"
+   "1 the cutting spec: the cut plan as data, one API, the host's cut checks mapped (docs/cutting.md), for the owner to read: spec drafted; 2 cutting built new to it with its contract tests: built; 3a cutting bound to the spine's catalog checks (pirillo_studio/cutting/spine_checks.py): built; 3b the host switched behind one setting (data/studio.json cutting, binding spine_host's cut-plan, overlay-plan and locked-cut to 3a); 4 the host's cutting code, tests and settings deleted"
   ]
  },
  {
