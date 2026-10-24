@@ -195,11 +195,16 @@ def measure(video, req, path, result):
         if 'voice_binding' in req:
             label = 'voice'
             duration = req['frame_map'][-1]['out'][1]
-            result['checks'][label] = sound.compare_audio(video, req, path, req['voice_binding'],
+            result['checks'][label] = sound.compare_audio(video, req, path,
+                req['mix_binding'] if video.native or 'mix_binding' in req else req['voice_binding'],
                 [{'src': [0, duration], 'out': [0, duration]}], complete_reference=True)
         if 'audio_binding' in req:
             label = 'bed'
             result['checks'].update(sound.measure(video, req, path))
+        elif req.get('bed_binding', {}).get('mode') == 'voice_only':
+            result['checks']['bed'] = entry(req, 'bed', {'mode': 'voice_only'}, True,
+                'bound bed brief names no assets; delivered audio compared with prepared voice',
+                req['frame_map'][-1]['frames'][1])
         if burned:
             caption['ok'] = ok
             caption['result'] = 'pass' if ok else 'fail'

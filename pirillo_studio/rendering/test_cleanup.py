@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from ..spine.files import filehash
-from . import compositor, decoded, records
+from . import compositor, decoded, records, request
 from .render import render
 from . import test_compositor
 
@@ -30,7 +30,7 @@ class SampleTrim(unittest.TestCase):
                         str(source)], 'fixture')
             stream = decoded.probe(source, ['-select_streams', 'a:0', '-show_streams'])['streams'][0]
             self.assertAlmostEqual(float(stream['start_time']), .02)
-            req = {'output_id': 'draft', 'settings': {'audio': {'sample_rate': 48000},
+            req = {'output_id': 'draft', 'settings': {'mix': request.settings()['shared']['mix'], 'audio': {'sample_rate': 48000},
                    'video': {'fps': '30000/1001'}}, 'plan_data': {'spans': [{'id': 's'}]},
                    'frame_map': [{'span': 's', 'source_frames': [1, 3], 'frames': [0, 2],
                                   'asset': {'file': source.name, 'sha256': filehash(source)}}]}
@@ -53,7 +53,7 @@ class SampleTrim(unittest.TestCase):
                      'out': [i * 1001 / 30000, (i + 1) * 1001 / 30000],
                      'asset': {'file': 'source.wav', 'sha256': filehash(source)}}
                     for i, a in enumerate([1, 3, 5])]
-            req = {'output_id': 'draft', 'settings': {'audio': {'sample_rate': 48000},
+            req = {'output_id': 'draft', 'settings': {'mix': request.settings()['shared']['mix'], 'audio': {'sample_rate': 48000},
                     'video': {'fps': '30000/1001'}}, 'frame_map': rows,
                     'plan_data': {'spans': [{'id': str(i)} for i in range(3)]}}
             compositor.voice(SimpleNamespace(folder=folder), req)

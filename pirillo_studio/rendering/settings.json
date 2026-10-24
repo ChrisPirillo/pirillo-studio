@@ -21,6 +21,31 @@
       "loudness_max_lufs": -12,
       "true_peak_max_dbtp": -1
     },
+    "mix": {
+      "version": "1",
+      "voice_chain": [],
+      "bed_eq": [
+        "highpass=f=80",
+        "lowpass=f=8000"
+      ],
+      "bed_loudness_lufs": -30,
+      "duck": {
+        "threshold": 0.015,
+        "ratio": 4,
+        "attack": 20,
+        "release": 250,
+        "makeup": 1,
+        "knee": 2.8,
+        "link": "average",
+        "detection": "rms"
+      },
+      "pin": {
+        "limit": 0.9,
+        "attack": 5,
+        "release": 50,
+        "level": false
+      }
+    },
     "encoder": {
       "note": "encoder.py CODEC and X264: explicit portable engine and quality, never runtime fallback.",
       "engine": "libx264",
@@ -63,10 +88,10 @@
     }
   },
   "profiles": {
-    "arc": {"note": "draft.py arc output profile.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
-    "draft": {"note": "delivery_spec.json kinds.draft.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
-    "long": {"note": "delivery_spec.json kinds.long.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
-    "vertical": {"note": "delivery_spec.json kinds.vertical.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "tall", "render_checks": ["subject"]},
-    "short": {"note": "delivery_spec.json kinds.short.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "tall", "render_checks": ["subject", "context", "word-ends"]}
+    "arc": {"note": "draft.py arc output profile.", "groups": ["video", "audio", "mix", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
+    "draft": {"note": "delivery_spec.json kinds.draft.", "groups": ["video", "audio", "mix", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
+    "long": {"note": "delivery_spec.json kinds.long.", "groups": ["video", "audio", "mix", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
+    "vertical": {"note": "delivery_spec.json kinds.vertical.", "groups": ["video", "audio", "mix", "encoder", "verification", "measurement"], "shape": "tall", "render_checks": ["subject"]},
+    "short": {"note": "delivery_spec.json kinds.short.", "groups": ["video", "audio", "mix", "encoder", "verification", "measurement"], "shape": "tall", "render_checks": ["subject", "context", "word-ends"]}
   }
 }

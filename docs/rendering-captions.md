@@ -44,8 +44,8 @@ and verifies the delivered composite. It does not generate glyph pixels from ASS
 composition remains deferred. Missing raster data or stale identity refuses by name. Publication and
 reuse revalidate the generated caption record plus its referenced burn/raster bytes before accepting them.
 
-Seam 2g owns pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context
-and their raster edges/safe bounds, processed voice/mix/bed bindings, split-clock master correspondence,
+Seam 2h owns pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context
+and their raster edges/safe bounds, split-clock master correspondence,
 and native tall/master composition. Missing/differing source color matrices, ASS-only burns and missing
 bed evidence still refuse. Text-only cover cards require a resolved raster asset. Partial patch excerpts/cold
 opens, J-cuts into or after hidden picture, and excerpt J-cuts without the settled predecessor still refuse.

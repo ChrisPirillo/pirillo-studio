@@ -8,7 +8,7 @@ from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, decoded, mapping, pixels, raster, records
+from . import clocks, decoded, mapping, mix, pixels, raster, records
 
 
 def caption_identity(video):
@@ -24,14 +24,14 @@ def caption_identity(video):
 
 
 def names(req):
-    return cues.artifact_names(req['output_id'])
+    return cues.artifact_names(req['output_id']) + list(mix.names(req))
 
 
 def prepare(video, req):
     if req['stage'] not in ('arc', 'draft') or req['settings']['shape'] != 'wide':
-        raise SpineError('compositor: native masters/tall unsupported (seam 2g)')
+        raise SpineError('compositor: native masters/tall unsupported (seam 2h)')
     if 'grade' in req['settings']:
-        raise SpineError('compositor: grades unsupported (seam 2g)')
+        raise SpineError('compositor: grades unsupported (seam 2h)')
     if any(c['kind'] != 'cover' for c in req['cards_data']['cards']):
         raise SpineError('compositor: non-cover card raster coverage unsupported')
     voice, picture = clocks.split(req, mapping.pieces(req))
@@ -49,9 +49,10 @@ def prepare(video, req):
         path = records.path(video, name)
         stream = decoded.probe(path, ['-select_streams', 'v:0', '-show_streams'])['streams'][0]
         if stream.get('color_space') != req['settings']['video']['color_space']:
-            raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2g)')
+            raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2h)')
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
         row['crop'] = [0, 0, *size]
+    mix.prepare(video, {**req, 'frame_map': voice})
     return {'frame_map': voice, 'picture_map': picture, 'elements': []}
 
 
@@ -93,7 +94,7 @@ def voice(video, req):
         graph.append(f'[{i}:a:0]aresample={rate}:async=1:first_pts=0,atrim=start_sample={a}:end_sample={a + count},'
                      f'asetpts=PTS-STARTPTS[a{i}]')
         joined.append(f'[a{i}]')
-    graph.append(''.join(joined) + f'concat=n={len(joined)}:v=0:a=1[voice]')
+    graph.append(''.join(joined) + f'concat=n={len(joined)}:v=0:a=1,{mix.voice_filter(req)}[voice]')
     with tempfile.TemporaryDirectory(prefix='.voice-', dir=target.parent) as temporary:
         work = Path(temporary) / 'voice.wav'
         decoded.run('ffmpeg', ['-v', 'error', '-y', *args, '-filter_complex', ';'.join(graph),
@@ -110,7 +111,10 @@ def voice(video, req):
 def bind(video, req, generated):
     req['generated'] = generated
     req['inputs'].update({p: h for p, h in generated.items() if h is not None})
-    req['voice_binding'] = {'file': names(req)[0], 'sha256': generated[names(req)[0]]}
+    req['voice_binding'] = {'file': names(req)[0], 'sha256': generated[names(req)[0]],
+                            'processing_chain': copy.deepcopy(req['settings']['mix']['voice_chain']),
+                            'settings_version': req['settings']['mix']['version']}
+    mix.bind(req, generated)
     req['caption_binding'] = {'record': names(req)[1], 'sha256': generated[names(req)[1]]}
     caption = records.read(video, names(req)[1])
     if caption['burn'] is not None:
@@ -134,6 +138,7 @@ def encode(video, req, path):
     if caption['state'] != 'captioned':
         raise SpineError(f"captions: {caption['state']}: {caption['refusals'] or caption['missing']}")
     cues.sidecar(video.captioner, req['output_id'])
+    mix.build(video, req, records.path(video, names(req)[0]))
     bind(video, req, {p: filehash(records.path(video, p)) for p in names(req)})
     if caption['burn'] is not None:
         raster.inspect(video, req, caption)
@@ -153,7 +158,7 @@ def encode(video, req, path):
         graph.append(f'[{i}:v:0]{filters}[v{i}]')
         joined.append(f'[v{i}]')
     graph.append(''.join(joined) + f'concat=n={len(joined)}:v=1:a=0[picture]')
-    args += ['-i', str(records.path(video, names(req)[0]))]
+    args += ['-i', str(records.path(video, req['mix_binding']['file']))]
     picture = '[picture]'
     if caption['burn'] is not None:
         args += ['-i', str(records.path(video, req['caption_binding']['raster']['file']))]

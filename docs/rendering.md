@@ -271,21 +271,21 @@ Caption burns compare every delivered frame with source plus bound raster. New f
 ASS-only burns, unbound/stale rasters, missing alpha, unsafe raster pixels and mismatched cue edges refuse by name. Missing/unsupported coverage never passes; default profiles keep every required check.
 ### Seam 2f: recovery and caption cleanups
 Built: cached re-measurement skips generated backups; previous artifacts retain accepted hashes; cues artifact names include burn; committed restart retires stale backups without restoring; caption restore holds the captions writer lock. Cue-time errors name cue times, raster bounds use intervals, and the production compositor binds supplied caption rasters. [Contract and recovery flow](rendering-captions.md).
-
-Seam 2g next: pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, processed voice/mix/bed bindings, split-clock master correspondence and native tall/master composition.
+### Seam 2g: bound sound
+Native wide arc/draft binds the bed brief and assets, versioned processed voice, retained ducked stem and final mix.
+Delivered audio is measured against those retained bytes; voice-only is explicit. Recovery uses the existing artifact lifecycle.
+The sound schema, settings and flow are in [the sound contract](rendering-sound.md).
+Seam 2h next: pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
 Missing/differing source color, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
-
 | Function | Reads | Writes and answer |
 |---|---|---|
 | `render(video, output) -> record` | The stage's resolved request, item 17 plan or supplied file, settings, assets, approvals and current preflight result | Only output-owned work files and its render record; returns current record on unchanged content. `measure_existing` does not encode. |
 | `measure(file) -> readings` | Exact file bytes plus declared plan, caption, subject and actual stem bindings from its record | Hash-bound readings, frame/edge evidence and coverage; never changes media or chooses an edit. |
 | `check(record) -> {ok, state, next_action, detail}` | Current hashes, readings, acceptance settings and approval bindings | No media writes; names file, failed reading, measured value, setting owner and corrective actor. Item 15 uses this same result. |
-
 Each call refuses missing, unsafe or contradictory inputs by name. No implicit encoder, target, frame rate or
 recipe fallback. The engine owns preflight blocks and decision tasks, with their spine/Board states; this domain
 owns only the states in section 3. A tool failure identifies the step and stderr; an unavailable measurement
 refuses with its reading and required tool. `ok` is true only for a checked delivered result, not for waiting.
-
 Render to a unique sibling work file on the destination volume, close it, measure it and check the current input
 hashes again before atomic rename. Commit the hash-bound record last. Readers require both matching record and
 file; a crash between rename and record cannot look finished. Preserve the prior accepted file under its content

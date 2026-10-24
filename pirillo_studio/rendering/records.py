@@ -104,7 +104,14 @@ def backup_name(request, sha):
     if any(c not in '0123456789abcdef' for c in sha[7:]):
         raise SpineError('previous file_sha256: malformed')
     target = Path(request['file'])
-    return (target.parent / f".render-{request['output_id']}-accepted-{sha[7:]}{target.suffix}").as_posix()
+    # New sound artifacts may have identical bytes; legacy backup names stay recoverable.
+    suffix = '-' + target.name if request['file'] in artifact_names(request)[4:] else target.suffix
+    return (target.parent / f".render-{request['output_id']}-accepted-{sha[7:]}{suffix}").as_posix()
+
+
+def artifact_names(request):
+    from . import compositor
+    return compositor.names(request)
 
 
 def preserve(video, request, previous, *, replacing=True):
@@ -132,7 +139,7 @@ def preserve(video, request, previous, *, replacing=True):
     if generated:
         saved['artifacts'] = dict(generated)
         saved['current'] = {n: filehash(path(video, n, writable=True))
-                            for n in cues.artifact_names(request['output_id'])}
+                            for n in artifact_names(request)}
     current = artifact_identities(request, saved)
     if not replacing:
         return saved
@@ -217,13 +224,14 @@ def artifact_identities(request, previous):
         raise SpineError('previous record: wrong output')
     artifacts = previous.get('artifacts', {})
     accepted = record.get('request', {}).get('generated', {})
-    names = cues.artifact_names(request['output_id'])
+    names = artifact_names(request)
     # Seam 2e recorded voice, caption JSON and SRT, before burn became a generated artifact.
     if (not isinstance(artifacts, dict) or artifacts != accepted
-            or artifacts and set(artifacts) not in (set(names), set(names[:3]))):
+            or artifacts and set(artifacts) not in (set(names), set(names[:4]), set(names[:3]))):
         raise SpineError('previous generated artifacts: wrong accepted identities or output names')
     current = previous.get('current', {})
-    if (not isinstance(current, dict) or set(current) != (set(names) if artifacts else set())
+    allowed = (set(names),) if set(artifacts) == set(names) else (set(names), set(names[:4]))
+    if (not isinstance(current, dict) or (set(current) not in allowed if artifacts else bool(current))
             or previous.get('unavailable')):
         raise SpineError('previous current artifacts: missing identities or wrong output names')
     for identities in (artifacts, current):
@@ -251,7 +259,7 @@ def recover(video, request, record):
         restore(video, request, previous)
     if 'artifact_work' in record:
         artifact, temporary = record['artifact_work']
-        if artifact not in cues.artifact_names(request['output_id']):
+        if artifact not in artifact_names(request):
             raise SpineError('previous artifact work: wrong output name')
         remove_work(video, {**request, 'file': artifact}, temporary)
     if 'work' in record:

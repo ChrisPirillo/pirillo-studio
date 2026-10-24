@@ -8,7 +8,7 @@ from ..cutting import checks, plan as cutting
 from ..spine.files import SpineError, canon, digest, inside, load, safe
 from . import records
 
-RENDERER_VERSION = "rendering-2f-1"
+RENDERER_VERSION = "rendering-2g-1"
 _OUTPUTS = {"arc": ("arc", "Draft/arc.mp4"), "draft": ("draft", "Draft/draft.mp4"),
             "long": ("masters", "YouTube/main.mp4"), "vertical": ("masters", "Vertical/main.mp4")}
 _PATH_FIELDS = {"file", "path", "record", "asset", "stem", "audio", "image", "font", "lut", "source", "voice"}
@@ -274,10 +274,12 @@ def _resolve(video, stage, output):
                 raise SpineError(f"{name}: stale plan")
             result[label + "_data"] = data
             identity[label] = inputs.normalize({k: v for k, v in data.items() if k != "plan"})
+            if label == "bed":
+                identity["bed_brief"] = inputs.hashes[name]
     if not imported and video.native:
         from . import compositor
         identity['captions'] = compositor.caption_identity(video)
-        profile['checks'] = list(dict.fromkeys(profile['checks'] + ['voice', 'captions', 'frame-map', 'cards']))
+        profile['checks'] = list(dict.fromkeys(profile['checks'] + ['voice', 'captions', 'frame-map', 'cards', 'bed']))
         identity['settings'] = inputs.normalize(profile)
     result['inputs'] = inputs.hashes
     if not imported and video.prepare is not None:

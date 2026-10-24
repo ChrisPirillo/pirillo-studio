@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from ..captions import cues
 from ..spine.files import SpineError, digest, filehash
-from . import records, test_compositor
+from . import compositor, records, test_compositor
 from .render import render
 from .test_rendering import PowerLoss
 
@@ -42,10 +42,11 @@ class Recovery(unittest.TestCase):
     def test_three_artifact_predecessor_can_render(self):
         # defect: c0dd9c7d4b2f4d5e9b8f763facd96942, seam 2e records refused forever.
         predecessor = copy.deepcopy(self.accepted)
-        del predecessor['request']['generated'][cues.artifact_names('draft')[3]]
+        predecessor['request']['generated'] = {p: h for p, h in predecessor['request']['generated'].items()
+                                                if p in cues.artifact_names('draft')[:3]}
         records.write(self.case.v, records.name(predecessor['request']), predecessor)
         result = self.case.accepted()
-        self.assertEqual(set(result['request']['generated']), set(cues.artifact_names('draft')))
+        self.assertEqual(set(result['request']['generated']), set(compositor.names(result['request'])))
         self.assertFalse(list(self.case.folder.rglob('.render-*')))
 
     def test_missing_and_corrupt_generated_bytes_never_become_accepted_identity(self):

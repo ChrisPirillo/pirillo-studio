@@ -214,8 +214,9 @@ class Compositor(Fixture):
         self.captioner.align = self.align
         self.settings['shared']['verification']['render_checks'] = ['bed']
         refused = render(self.v, 'draft')
-        self.assertEqual((refused['state'], refused['reading']), ('measure_refused', 'bed'), refused)
-        self.assertFalse((self.folder / 'Draft/draft.mp4').exists())
+        self.assertEqual(refused['state'], 'waiting_owner', refused)
+        self.assertEqual(refused['request']['bed_binding']['mode'], 'voice_only')
+        self.assertTrue(self.get(refused['readings'])['checks']['bed']['ok'])
         for enter in ('push',):
             self.cut['spans'][0].update(enter=enter, push={'to': 'close', 's': .2})
             self.save_cut()

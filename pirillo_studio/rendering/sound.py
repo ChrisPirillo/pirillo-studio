@@ -1,5 +1,6 @@
 """Bound-bed evidence from actual finished audio, using normalized speech-band PCM."""
 import array
+from contextlib import ExitStack
 import math
 import sys
 import tempfile
@@ -66,6 +67,15 @@ def _measure(video, req, path):
         _refuse('bed: missing, stale or unbound stem hash')
     if not hashes[target_name]:
         _refuse('bed: delivered mix missing')
+    voice_path = None
+    if 'voice_binding' in req:
+        voice = req['voice_binding']
+        voice_path = records.path(video, voice['file'])
+        actual = filehash(voice_path)
+        if (voice_path in (stem_path, target) or not actual or actual != voice['sha256']
+                or req['inputs'].get(voice['file']) != actual):
+            _refuse('bed: missing, stale or non-independent processed voice')
+        hashes[voice['file']] = actual
     offset, gain = _number(binding['offset_s']), _number(binding['gain_db'])
     policy = req['settings']['measurement']
     keys = ('bed_sample_rate', 'bed_band_low_hz', 'bed_band_high_hz', 'bed_window_s',
@@ -92,6 +102,9 @@ def _measure(video, req, path):
         mix_pcm, stem_pcm = (Path(temporary) / name for name in ('mix.raw', 'stem.raw'))
         _pcm(target, mix_pcm, p)
         _pcm(stem_path, stem_pcm, p)
+        voice_pcm = Path(temporary) / 'voice.raw'
+        if voice_path is not None:
+            _pcm(voice_path, voice_pcm, p)
         count = mix_pcm.stat().st_size // 4
         stem_count = stem_pcm.stat().st_size // 4
         if not count:
@@ -102,7 +115,10 @@ def _measure(video, req, path):
         # Split at tacet boundaries so an exemption never hides an adjacent undeclared gap.
         boundaries = sorted({0, count, *(min(count, max(0, round(t * rate)))
                                         for pair in tacets for t in pair)})
-        with mix_pcm.open('rb') as mix_file, stem_pcm.open('rb') as stem_file:
+        with ExitStack() as stack:
+            mix_file = stack.enter_context(mix_pcm.open('rb'))
+            stem_file = stack.enter_context(stem_pcm.open('rb'))
+            voice_file = stack.enter_context(voice_pcm.open('rb')) if voice_path is not None else None
             for left, right in zip(boundaries, boundaries[1:]):
                 if any(start <= left / rate and right / rate <= end for start, end in tacets):
                     continue
@@ -110,6 +126,13 @@ def _measure(video, req, path):
                     length = min(window, right - start)
                     mix_file.seek(start * 4)
                     mix = _samples(mix_file, length)
+                    delivered_power = sum(x*x for x in mix) / length
+                    if voice_file is not None:
+                        voice_file.seek(start * 4)
+                        voice = _samples(voice_file, length)
+                        if len(voice) != length:
+                            _refuse('bed: incomplete processed voice coverage')
+                        mix = [a - b for a, b in zip(mix, voice)]
                     stem_start = start - shift
                     if stem_start < 0 or stem_start + length > stem_count:
                         _refuse(f'bed: missing stem coverage at {start / rate}:{(start + length) / rate}s')
@@ -129,7 +152,8 @@ def _measure(video, req, path):
                           gain_db is not None and abs(gain_db - gain) <= p['bed_gain_tolerance_db'] and
                           correlation >= p['bed_correlation_min'])
                     rows.append({'start_s': start / rate, 'end_s': (start + length) / rate,
-                                 'stem_dbfs': stem_db, 'mix_dbfs': _db(math.sqrt(mix_power)),
+                                 'stem_dbfs': stem_db, 'mix_dbfs': _db(math.sqrt(delivered_power)),
+                                 'comparison_dbfs': _db(math.sqrt(mix_power)),
                                  'residual_dbfs': _db(residual), 'gain_db': gain_db,
                                  'correlation': correlation, 'ok': ok})
     for name, before in hashes.items():
@@ -139,6 +163,7 @@ def _measure(video, req, path):
     return {'bed': {'ok': ok, 'result': 'pass' if ok else 'fail',
                     'value': {'files': hashes, 'windows': rows, 'offset_s': offset, 'expected_gain_db': gain,
                               'speech_band_hz': [p['bed_band_low_hz'], p['bed_band_high_hz']],
+                              'processed_voice_subtracted': voice_path is not None,
                               'units': 'dBFS (normalized PCM RMS); gain dB; correlation dimensionless'},
                     'setting': 'rendering.settings#measurement.bed_gain_tolerance_db',
                     'coverage': {'start_s': 0, 'end_s': duration, 'samples': count,
