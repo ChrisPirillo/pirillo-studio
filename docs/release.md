@@ -144,6 +144,15 @@ for its own decision while the rest go.
 
 ## 4. Host steps and checks, and their replacements
 
+`pirillo_studio/release/spine_checks.py` binds `titles`, `text-read` and `release` to the existing read-only
+validators. `text-plan` remains unbound until item 39 provides a plan validator; `captions-read` awaits its
+copy-read seam. `posted` remains posting's (item 11), and `decision` the spine's (item 37). The release
+completion envelope (`records/checks/release.json`) must be engine evidence: today's catalog/stage inputs
+do not declare it, so the release binding blocks and names that gap rather than assuming completion. A refused build writes no
+`Review.md`, a declared output of `release`, so `engine.verdict` blocks with "maker outputs missing" before the
+check runs and the refusal's words never reach the packager; both gaps are the release/spine interface's to
+settle before the host binds this check.
+
 Each `release.<name>` check below sits under one spine check id: titles checks under `titles`, the copy and its read
 under `captions-read`, the text post and its read under `text-read`, everything else under `release`.
 
