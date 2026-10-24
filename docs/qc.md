@@ -137,6 +137,31 @@ The hear engine must be independent of the captions aligner: a hear record whose
 cue record's `aligner` (captions.md section 1) makes `heard` `unavailable` naming both, never a pass.
 `masters` already lists `records/hear.json`; `short` gains it as an output. QC writes only its verdicts.
 
+**What seam 2b left open** (item 15 seam 2c, for the owner to read; each line is the proposal, built in seam 2d
+once read):
+
+- Names. A delivered file is named by the path its own render or cue record gives (rendering's paths); release.md
+  never renames one and its `release.naming` names outputs in the release record only. `delivered` checks that each
+  manifest member is the path its record names, never a name derived from a title.
+- One hear record per delivered output. `masters` writes `records/hear/<output-id>.json` for `long`, `vertical`
+  and each `short-<id>`, `short` writes `records/hear/short-<id>.json`, each bound to its own file's hash, and
+  `heard` judges every output the final manifest lists (long, vertical and each `masters` short on the plan
+  clock through rendering's frame map; a shorts-only short on its own transcript). Replaces the single
+  `records/hear.json` above.
+- Shorts by the manifest. `delivered` and `heard` enumerate shorts from the final manifest's members
+  (`Shorts/<id>.mp4`, rendering.md section 1), never a fixed `short` binding.
+- Where a heard flag is excused. Plain: the plan's `named` (cutting.md section 1), as built. Shorts-only has no
+  plan, so the `short` stage's maker writes `records/heard_named.json`, entries of the same shape (`rule`
+  `heard.<kind>`, `at_src`, `why`; the supplied file is the source, so `at_src` is on its own clock), declared as
+  that stage's output; an excused flag is a manual row for its judge, as on plain.
+- Removed tape heard again. For each removed range with words, a flag needs a run of the smaller of
+  `qc.heard.removed_run` and the range's word count: consecutive heard words, captioned by nothing, equal in order
+  to that range's words, and heard within `qc.heard.match_s` of any output time the frame map gives either kept
+  word that bounds the range in the source (the last kept word before it, the first after it; the cold open gives
+  a word two); a range with no kept word on a side is checked against the side it has, and an output that carries
+  neither bounding word has no removed flag for that range. A common word heard anywhere else is never the flag. One setting,
+  QC's own.
+
 ## 2. One API
 
 | Function | Reads | Writes and answer |
@@ -242,7 +267,7 @@ domain's record.
 | `preflight_audio.py` continuity; `qc.audio.loudness`, `qc.audio.continuous` | Delivered sound, final | rendering.md: item 15 consumes item 14's reading for the final verdict (#1510). |
 | `hear.py`; `qc.py run_hear_flags`, `run_hear_clipped`, `_hear_row`; `qc.hear.*`; `hear_named.json`; `shorts.listen` | Hear-back of delivered words, final | QC's own `heard` check at masters and short: the actual rendered file against the mapped source clock; a named flag is a manual row with its why; no engine is unavailable; no full-pass fallback. |
 | `qc.py run_cue_*`, `run_burned_timing`, `run_split_continuations`; `qc.captions.*`, `captions.one-height`, `captions.bookends-beanie`, `vertical.captions-clear` | Timed captions and placement; also `qc.py run_render_caption_onsets`, `qc.render.caption-onsets` and `heard_stale` (heard words against the current sidecar) | Item 18 (captions.md section 4); catalog entries read its record (`readings.max_onset_off_s`), and `heard_stale` becomes the `hear` binding's hash in `heard`. `run_cue_timing` and `run_burned_timing` run only at the explainer's `full` stage: out of C1 scope. |
-| `qc.py run_draft_name`, `run_links`, `run_delivered_names`; `qc.draft.name`, `qc.files.links`, `qc.release.names`; `publish.py place`, `rename_delivered`, `write_manifest`, `probe_delivery` | Names, links and the delivered set | QC's own `delivered` check at masters: every manifest member present, each render record passing, names from item 39's naming setting, and each delivered file isolated (no hard link or shared inode with a mutable file, rendering.md's final-file isolation). rendering.md defers this here. |
+| `qc.py run_draft_name`, `run_links`, `run_delivered_names`; `qc.draft.name`, `qc.files.links`, `qc.release.names`; `publish.py place`, `rename_delivered`, `write_manifest`, `probe_delivery` | Names, links and the delivered set | QC's own `delivered` check at masters: every manifest member present, each render record passing, each named by the path its own record gives (section 1, "What seam 2b left open"), and each delivered file isolated (no hard link or shared inode with a mutable file, rendering.md's final-file isolation). rendering.md defers this here. |
 | `qc.py run_inks`, `run_cards_*`, `run_page_shot`, `run_archive_*`, `run_overlay_plan`, `run_pushes`, `run_chat_wrap`, `run_coldopen_*`, `run_quotes_audio`; `qc.cards.*`, `qc.archive.*`, `qc.chat.*`, `qc.overlays.*`, `qc.overlay-plan.*`, `qc.pushes.*`, `qc.cold-open.*`, `qc.quotes.audio`; `proof_plan.py run_proof_gaps`, `qc.proof.gaps` | Overlay, card and chat plans; rendered cards | Item 17's `overlay-plan` check for plans; item 14 for rendered card edges. |
 | `qc.py run_facts_row_wording`; `qc.facts.*`, `qc.research.*`, `qc.paper.read`, `qc.broll.reads`, `qc.story.*` reader rows | Research and story reads, paper | Spine `paper-read`: a manual entry judged by the story reader. |
 | `qc.py run_explainer_gate`, `run_scenes_*`, `run_craft*`, `run_stings`, `run_narration_false_start`, `run_broll_*`, `run_animation_contract`; `qc.scenes.*`, `craft.*`, `qc.broll.*`, `qc.explainer.*`, `shorts.crayon-frame` | Scenes, narration, animation and B-roll | Out of C1 scope: plain drops the animator and B-roll, and scene and narration stages are in neither C1 recipe. |
