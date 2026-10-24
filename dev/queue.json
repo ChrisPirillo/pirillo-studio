@@ -195,16 +195,15 @@
   "id": 17,
   "loop": "build",
   "layer": "product",
-  "state": "parked",
+  "state": "building",
   "title": "Port the cutting domain",
-  "parked": "2026-10-24, at seam 3b: three review rounds by fresh one-shot Claude agents refused the measure adapter, one class each time (an error the core validator does not catch: r1 a gate averaged into room tone, no audio stream, load_audio exiting; r2 a torn source's ffprobe error; r3 a zero or NaN duration), each fixed by the lead with its test. Candidate Studio 3babcd404 on e9a0449ea (work/_port 17-3b 2026-10-24, studio.patch; test_measure_host 3 OK, maker ready), unreviewed. Unpark: one fresh review of it re-made on the then base",
   "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
   "backlog_issues": [
    59,
    38
   ],
   "seams": [
-   "1 the cutting spec: the cut plan as data, one API, the host's cut checks mapped (docs/cutting.md), for the owner to read: spec drafted; 2 cutting built new to it with its contract tests: built; 3a cutting bound to the spine's catalog checks (pirillo_studio/cutting/spine_checks.py): built; 3b the host switched behind one setting (data/studio.json cutting, binding spine_host's cut-plan, overlay-plan and locked-cut to 3a): the host measure(path) adapter (Studio tools/measure_host.py: duration and sample rate from ffprobe, fps from packet stamps, audio rows on splice_check.Env with a gate its own quiet row, whole-picture motion on jcut.changed) is a candidate; item 6's records/probe.json must take fps and duration_s from measure_host stamps, fps and format duration, or every video disagrees; the binding next; 4 the host's cutting code, tests and settings deleted"
+   "1 the cutting spec: the cut plan as data, one API, the host's cut checks mapped (docs/cutting.md), for the owner to read: spec drafted; 2 cutting built new to it with its contract tests: built; 3a cutting bound to the spine's catalog checks (pirillo_studio/cutting/spine_checks.py): built; 3b the host switched behind one setting (data/studio.json cutting, binding spine_host's cut-plan, overlay-plan and locked-cut to 3a): the host measure(path) adapter (Studio tools/measure_host.py: duration and sample rate from ffprobe, fps from packet stamps, audio rows on splice_check.Env with a gate its own quiet row, whole-picture motion on jcut.changed) built; item 6's records/probe.json must take fps and duration_s from measure_host stamps, fps and format duration, or every video disagrees; the binding next; 4 the host's cutting code, tests and settings deleted"
   ]
  },
  {
