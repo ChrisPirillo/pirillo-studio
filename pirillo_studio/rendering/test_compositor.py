@@ -31,6 +31,8 @@ class Compositor(Fixture):
         self.cut['cold_open'] = None
         self.settings['shared']['video']['sizes']['wide'] = [160, 90]
         self.settings['shared']['encoder']['crf'] = 0
+        self.put('records/faces.json', {'frames': [
+            {'frame': i, 'boxes': [[70, 35, 20, 20]]} for i in range(30)]})
         self.truth = {'0:w1': [.1, .3]}
         self.heard = []
         self.captioner = SimpleNamespace(folder=self.folder,

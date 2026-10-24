@@ -8,7 +8,7 @@ from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, decoded, mapping, mix, pixels, raster, records
+from . import clocks, decoded, framing, mapping, mix, pixels, raster, records
 
 
 def caption_identity(video):
@@ -50,7 +50,8 @@ def prepare(video, req):
         if stream.get('color_space') != req['settings']['video']['color_space']:
             raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2h)')
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
-        row['crop'] = [0, 0, *size]
+        row['crop'] = ([0, 0, *size] if row['kind'] == 'cover' else
+                       framing.crop(req, spans[row['span']], row['source_frames'], size))
     mix.prepare(video, {**req, 'frame_map': voice})
     return {'frame_map': voice, 'picture_map': picture, 'elements': []}
 
@@ -153,6 +154,8 @@ def encode(video, req, path):
         if row['kind'] == 'cover':
             filters += f',loop=loop={count - 1}:size=1:start=0'
         filters += f',crop={w}:{h}:{x}:{y}:exact=1,scale={width}:{height}:flags=bilinear'
+        # Fix scaling's format before concat can negotiate a different chroma path.
+        filters += ',format=' + ('rgb24' if caption['burn'] is not None else settings['video']['pix_fmt'])
         filters += f",setsar={settings['video']['sample_aspect_ratio']},settb=AVTB,setpts=N/({settings['video']['fps']}*TB)"
         graph.append(f'[{i}:v:0]{filters}[v{i}]')
         joined.append(f'[v{i}]')

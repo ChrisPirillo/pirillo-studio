@@ -1,11 +1,6 @@
 # Rendering: locked plans to measured files
 
-Draft for the owner to read, queue item 14 seam 1. This is a rebuild contract, not implemented behavior.
-The [spine](spine.md) runs stages declared as recipe data; rendering makes their files and supplies readings.
-A check declares its inputs, never a recipe name. C1 covers only `plain` and `shorts-only`.
-Item 17 owns kept words, order, cuts, framing intent, retime, cards' timing and which moments become shorts.
-Item 14 materializes those decisions: arc, draft, final long cut, full vertical and individual short files.
-The [input preflight](preflight.md) runs before expensive work; its probes are not duplicated here.
+Draft for the owner to read, queue item 14 seam 1. This is a rebuild contract, not implemented behavior. The [spine](spine.md) runs stages declared as recipe data; rendering makes their files and supplies readings. A check declares its inputs, never a recipe name. C1 covers only `plain` and `shorts-only`. Item 17 owns kept words, order, cuts, framing intent, retime, cards' timing and which moments become shorts. Item 14 materializes those decisions: arc, draft, final long cut, full vertical and individual short files. The [input preflight](preflight.md) runs before expensive work; its probes are not duplicated here.
 
 ## 1. Requests and records are data
 
@@ -55,7 +50,7 @@ An arc consumes an immutable candidate plan, before the owner's arc choice locks
 - `spans[].enter`: `open|jump|jcut|push|pop`, exactly cutting's values; no separate cut-kind vocabulary.
 - `spans[].lead_s`: approved voice lead for a `jcut`; realized on the output frame grid.
 - `spans[].lead_from`: the settled J-cut lead's source evidence; no new lead chosen while rendering.
-- `spans[].shot`: requested shot size; rendering computes the crop from the subject observations.
+- `spans[].shot`: requested shot size; rendering computes an integer source-pixel crop from all subject boxes on the picture clock, including J-cut holds. Wide retains the whole frame; med/close use `video.shot_fractions` times source width, with height on the output aspect. The fixed crop centres on their union and slides minimally inside the source; missing/empty observations, invalid sizes or a subject that cannot fit refuse naming the span, never widen.
 - `spans[].push`: requested `to` shot and `s` duration; rendering realizes the approved movement.
 - `spans[].expression`: the held expression's `after_word` anchor and `seen` description, not a new cut decision.
 - `spans[].patch`: approved voice replacement's `record`, `sha` and `words`; hash and read its actual audio.
@@ -256,7 +251,9 @@ be accepted; retry regenerates incomplete artifacts. Seam 2e protects generated 
 records together with the previously accepted video through the render lifecycle.
 ```mermaid
 flowchart LR
-  A[Resolve both clocks] --> B[rendering: prepare voice]
+  A[Resolve both clocks] --> I[Fit requested shot to observed subjects]
+  I --> B[rendering: prepare voice]
+  I --> J[Refuse invalid geometry by span]
   B --> C[Generate captions and sidecar]
   C --> D[Encode picture and voice]
   D --> E[measuring: decode pixels and sound]
@@ -272,11 +269,14 @@ ASS-only burns, unbound/stale rasters, missing alpha, unsafe raster pixels and m
 ### Seam 2f: recovery and caption cleanups
 Built: cached re-measurement skips generated backups; previous artifacts retain accepted hashes; cues artifact names include burn; committed restart retires stale backups without restoring; caption restore holds the captions writer lock. Cue-time errors name cue times, raster bounds use intervals, and the production compositor binds supplied caption rasters. [Contract and recovery flow](rendering-captions.md).
 ### Seam 2g: bound sound, built for native wide arc/draft ([its contract](rendering-sound.md))
+Seam 2h part 3: shot framing built in `framing.crop`, integrated before voice/caption work and checked by mapping, subject coverage and decoded pixels. Face/mouth remain unsupported: the host uses facial landmarks, not fixed source fractions, and this observation contract has only subject boxes.
+
 Seam 2h next: pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
 Missing/differing source color, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
 |---|---|---|
+| `framing.crop(req, span, source_frames, size) -> [x,y,width,height]` | Requested shot, picture source frames, source dimensions, subject boxes and rendering video settings | Integer fixed crop or a named span refusal; no input/media writes. |
 | `render(video, output) -> record` | The stage's resolved request, item 17 plan or supplied file, settings, assets, approvals and current preflight result | Only output-owned work files and its render record; returns current record on unchanged content. `measure_existing` does not encode. |
 | `measure(file) -> readings` | Exact file bytes plus declared plan, caption, subject and actual stem bindings from its record | Hash-bound readings, frame/edge evidence and coverage; never changes media or chooses an edit. |
 | `check(record) -> {ok, state, next_action, detail}` | Current hashes, readings, acceptance settings and approval bindings | No media writes; names file, failed reading, measured value, setting owner and corrective actor. Item 15 uses this same result. |

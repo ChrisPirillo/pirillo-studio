@@ -8,7 +8,7 @@ from ..cutting import checks, plan as cutting
 from ..spine.files import SpineError, canon, digest, inside, load, safe
 from . import records
 
-RENDERER_VERSION = "rendering-2g-1"
+RENDERER_VERSION = "rendering-2h-3"
 _OUTPUTS = {"arc": ("arc", "Draft/arc.mp4"), "draft": ("draft", "Draft/draft.mp4"),
             "long": ("masters", "YouTube/main.mp4"), "vertical": ("masters", "Vertical/main.mp4")}
 _PATH_FIELDS = {"file", "path", "record", "asset", "stem", "audio", "image", "font", "lut", "source", "voice"}
@@ -114,7 +114,7 @@ def _profile(video, kind, inputs):
         cutting.text(encoder["preset"], "rendering.settings encoder.preset")
     if "crf" in encoder and cutting.number(encoder["crf"], "rendering.settings encoder.crf") < 0:
         raise SpineError("rendering.settings encoder.crf: negative quality")
-    canon(result)
+    # resolve serializes after preparation so geometry errors can name their span.
     inputs.normalize(result)
     return result
 

@@ -11,6 +11,7 @@
       "color_primaries": "bt709",
       "color_transfer": "bt709",
       "sizes": {"wide": [1920, 1080], "tall": [1080, 1920]},
+      "shot_fractions": {"med": 0.7, "close": 0.5},
       "max_bytes": 8589934592
     },
     "audio": {

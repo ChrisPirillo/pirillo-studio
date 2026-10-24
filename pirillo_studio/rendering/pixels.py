@@ -19,14 +19,16 @@ def integer(value, name, minimum=0):
     return value
 
 
-def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=False, seeks=None):
+def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=False, seeks=None, stream=None):
     entries = ['-select_streams', 'v:0', '-show_streams']
     if fps is not None or frames_required is not None:
-        entries += ['-show_frames', '-show_entries', 'stream=width,height,avg_frame_rate,r_frame_rate,time_base:frame=pts,duration']
+        entries += ['-show_frames', '-show_entries', 'stream=width,height,pix_fmt,avg_frame_rate,r_frame_rate,time_base:frame=pts,duration']
     raw = decoded.probe(path, entries)
     streams = raw['streams']
     if len(streams) != 1:
         decoded.refuse('frame-map', 'verification.complete_decode', 'asset has no unique video stream')
+    if stream is not None:
+        stream.update(streams[0])
     if frames_required is not None:
         count = len(raw['frames'])
         if count < frames_required or (exact and count != frames_required):
@@ -57,7 +59,7 @@ def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=Fa
     return [integer(streams[0][key], key, 1) for key in ('width', 'height')]
 
 
-def frames(path, size, *, reference, row, output_seek, source_seek, raster=None):
+def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, raster=None):
     """Yield one span's absolute RGB differences; only a declared cover may repeat."""
     width, height = [integer(value, 'pixel size', 1) for value in size]
     executable = shutil.which('ffmpeg')
@@ -74,7 +76,9 @@ def frames(path, size, *, reference, row, output_seek, source_seek, raster=None)
     x, y, w, h = row['crop']
     rgb = f'scale={width}:{height}:flags=bilinear,format=rgb24,format=gbrp'
     clock = 'settb=expr=1/1,setpts=N'
-    filters = [f'trim=end_frame={source_count}', f'crop={w}:{h}:{x}:{y}:exact=1', rgb]
+    # Match the encoder's scaling format before RGB comparison, including chroma resampling.
+    scaled = f'scale={width}:{height}:flags=bilinear,format={pix_fmt},{rgb}' if raster is None else rgb
+    filters = [f'trim=end_frame={source_count}', f'crop={w}:{h}:{x}:{y}:exact=1', scaled]
     if row['kind'] == 'cover' and source_count == 1:
         filters.append(f'loop=loop={count - 1}:size=1:start=0')
     graph = [f'[0:v:0]trim=end_frame={count},{rgb},{clock}[actual]',
@@ -180,7 +184,8 @@ def _compare(video, req, output_path, *, raster=None):
         assets[row['asset']['file']] = {'path': _asset(video, req, row, verified), 'sha256': row['asset']['sha256']}
         cursor = end
     seeks = {r['frames'][0]: None for r in rows}
-    if dimensions(output, frames_required=cursor, exact=True, seeks=seeks) != size:
+    stream = {}
+    if dimensions(output, frames_required=cursor, exact=True, seeks=seeks, stream=stream) != size:
         decoded.refuse('frame-map', 'video.sizes.' + setting['shape'], 'output dimensions differ')
     for row in rows:
         start, end = row['frames']
@@ -190,6 +195,7 @@ def _compare(video, req, output_path, *, raster=None):
         source_seek = verified[(name, row['kind'])]['seeks'][source_start]
         with contextlib.closing(frames(output, size, reference=assets[name]['path'], row=row,
                                        output_seek=seeks[start], source_seek=source_seek,
+                                       pix_fmt=stream['pix_fmt'],
                                        **({'raster': raster} if raster is not None else {}))) as differences:
             for index in range(start, end):
                 delta = next(differences, None)
