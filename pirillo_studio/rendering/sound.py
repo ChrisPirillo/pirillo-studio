@@ -187,6 +187,8 @@ def _compare_audio(video, req, path, asset, segments, complete_reference):
         stream = streams[0]
         channels = int(number(stream['channels']))
         layout = stream.get('channel_layout')
+        if layout is None and channels in (1, 2):
+            layout = {1: 'mono', 2: 'stereo'}[channels]  # PCM WAV omits these unambiguous layouts.
         if channels < 1 or channels > 2 and not layout:
             decoded.refuse('audio-correspondence', 'measurement', 'unknown audio channel layout')
         layouts.append((channels, layout))

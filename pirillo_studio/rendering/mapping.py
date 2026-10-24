@@ -2,18 +2,16 @@
 
 prepare(request) supplies frame_map crops/assets, elements, and optional audio/caption bindings.
 The core derives the edit independently; a renderer cannot change source selection or cover identity.
-J-cuts, pushes, patches and retiming need separate picture/voice clocks and refuse until implemented.
+Separate picture maps support J-cuts and whole patches; moving crops and retiming still refuse.
 """
 import copy
-from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError, canon
 
 
-def timeline(req):
+def pieces(req):
     """Materialize the locked intervals, including a repeated cold open, on one frame grid."""
-    fps = Fraction(req['settings']['video']['fps'])
     settled, words = req['plan_data'], req['words_data']
     ordered = sorted(settled['spans'], key=lambda row: row['order'])
     selected = req['selected']
@@ -34,18 +32,21 @@ def timeline(req):
                 raise SpineError('frame-map: cold open is outside its kept span')
             pieces.append((span, src))
         pieces.extend((s, s['src']) for s in ordered)
-    rows, end = [], 0
-    for span, src in pieces:
-        if span['enter'] in ('jcut', 'push') or 'patch' in span:
-            raise SpineError(f"frame-map: {span['id']} needs unresolved picture/voice or moving-crop coverage")
-        a, b = [round(Fraction(str(plan.number(t, 'frame-map src'))) * fps) for t in src]
-        if a < 0 or b <= a:
-            raise SpineError('frame-map: source interval collapses on the output grid')
-        rows.append({'span': span['id'], 'src': [float(a / fps), float(b / fps)],
-                     'out': [float(end / fps), float((end + b - a) / fps)],
-                     'frames': [end, end + b - a], 'source_frames': [a, b]})
-        end += b - a
-    return rows
+    return pieces
+
+
+def timeline(req):
+    """Legacy combined map; separate clocks require an explicit picture_map binding."""
+    from . import clocks
+    selected = pieces(req)
+    if any('patch' in span or span['enter'] == 'jcut' for span, _ in selected):
+        raise SpineError('frame-map: separate picture_map required for J-cut/patch clocks')
+    voice, _ = clocks.split(req, selected)
+    return [{k: v for k, v in row.items() if k != 'asset'} for row in voice]
+
+
+def pictures(req):
+    return req['picture_map'] if 'picture_map' in req else req['frame_map']
 
 
 def rectangle(value, at):
@@ -59,8 +60,14 @@ def rectangle(value, at):
 
 def validate(req):
     """Compare all renderer rows with the request, never the renderer's own claimed edit."""
-    expected = timeline(req)
-    rows = req['frame_map']
+    if 'picture_map' in req:
+        from . import clocks
+        voice, expected = clocks.split(req, pieces(req))
+        if req['frame_map'] != voice:
+            raise SpineError('frame-map: voice clock or asset differs from locked edit')
+    else:
+        expected = timeline(req)
+    rows = pictures(req)
     if len(rows) != len(expected):
         raise SpineError('frame-map: missing or extra planned pieces')
     spans = {s['id']: s for s in req['plan_data']['spans']}
@@ -100,7 +107,7 @@ def bind(video, req, inputs):
     """Hash the renderer's resolved inputs before encoding; the same resolver runs at commit."""
     binding = video.prepare(copy.deepcopy(req))
     if not isinstance(binding, dict) or set(binding) - {
-            'frame_map', 'elements', 'audio_binding', 'caption_binding'}:
+            'frame_map', 'picture_map', 'elements', 'audio_binding', 'caption_binding'}:
         raise SpineError('frame-map: invalid renderer preparation result')
     resolved = copy.deepcopy(binding)
     identity = inputs.normalize(resolved)

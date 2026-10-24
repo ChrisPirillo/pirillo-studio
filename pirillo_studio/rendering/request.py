@@ -8,7 +8,7 @@ from ..cutting import checks, plan as cutting
 from ..spine.files import SpineError, canon, digest, inside, load, safe
 from . import records
 
-RENDERER_VERSION = "rendering-2c-1"
+RENDERER_VERSION = "rendering-2d-1"
 _OUTPUTS = {"arc": ("arc", "Draft/arc.mp4"), "draft": ("draft", "Draft/draft.mp4"),
             "long": ("masters", "YouTube/main.mp4"), "vertical": ("masters", "Vertical/main.mp4")}
 _PATH_FIELDS = {"file", "path", "record", "asset", "stem", "audio", "image", "font", "lut", "source", "voice"}
@@ -255,10 +255,14 @@ def _resolve(video, stage, output):
             result.update(lock="records/story_map.json", lock_data=_locked(inputs, settled, check))
         selected = _short(inputs, settled, output) if kind in {"short", "vertical"} else None
         result["selected"] = selected
+        result["patches"] = {}
         for span in settled["spans"]:
             if "patch" in span:
                 patch_name = span["patch"]["record"]
                 patch = inputs.read(patch_name)
+                if inputs.hashes[patch_name] != span['patch']['sha']:
+                    raise SpineError(f'{patch_name}: stale patch record identity')
+                result['patches'][patch_name] = patch
                 if not any(isinstance(patch.get(k), str) for k in ("audio", "file", "path")):
                     raise SpineError(f"{patch_name}: missing actual patch audio path")
         identity["plan"] = inputs.normalize({k: settled[k] for k in ("spans", "cold_open", "end_hold_s")})
@@ -270,6 +274,12 @@ def _resolve(video, stage, output):
                 raise SpineError(f"{name}: stale plan")
             result[label + "_data"] = data
             identity[label] = inputs.normalize({k: v for k, v in data.items() if k != "plan"})
+    if not imported and video.native:
+        from . import compositor
+        identity['captions'] = compositor.caption_identity(video)
+        profile['checks'] = list(dict.fromkeys(profile['checks'] + ['voice', 'captions', 'frame-map', 'cards']))
+        identity['settings'] = inputs.normalize(profile)
+    result['inputs'] = inputs.hashes
     if not imported and video.prepare is not None:
         from . import mapping
         identity['renderer_binding'] = mapping.bind(video, result, inputs)

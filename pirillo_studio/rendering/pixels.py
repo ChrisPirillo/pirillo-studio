@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from ..spine.files import filehash
-from . import decoded, records
+from . import decoded, mapping, records
 
 
 def integer(value, name, minimum=0):
@@ -115,8 +115,8 @@ def _asset(video, req, row, verified):
         decoded.refuse('frame-map', 'verification.complete_decode', f"stale or unbound asset: {asset['file']}")
     key = (asset['file'], row['kind'])
     if key not in verified:
-        needed = max(r['source_frames'][1] for r in req['frame_map'] if r['asset']['file'] == asset['file'])
-        seeks = {r['source_frames'][0]: None for r in req['frame_map'] if r['asset']['file'] == asset['file']}
+        needed = max(r['source_frames'][1] for r in mapping.pictures(req) if r['asset']['file'] == asset['file'])
+        seeks = {r['source_frames'][0]: None for r in mapping.pictures(req) if r['asset']['file'] == asset['file']}
         size = dimensions(path, req['settings']['video']['fps'] if row['kind'] == 'source' else None,
                           req['settings']['measurement']['grid_tolerance_s'], frames_required=needed, seeks=seeks)
         verified[key] = {'size': size, 'seeks': seeks}
@@ -151,7 +151,7 @@ def _compare(video, req, output_path):
     before = filehash(output)
     if before is None:
         decoded.refuse('frame-map', 'verification.complete_decode', 'output missing')
-    rows = req['frame_map']
+    rows = mapping.pictures(req)
     if not isinstance(rows, list) or not rows:
         decoded.refuse('frame-map', 'measurement', 'empty frame binding')
     evidence, assets, verified, cursor = [], {}, {}, 0

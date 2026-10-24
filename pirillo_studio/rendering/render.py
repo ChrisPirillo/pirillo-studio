@@ -17,8 +17,9 @@ class Video:
     The decoded adapter supplies acceptance; an absent reading never counts as a pass here.
     """
 
-    def __init__(self, folder, stage, *, versions, preflight, encode, measure=None, settings=None, prepare=None):
+    def __init__(self, folder, stage, *, versions, preflight, encode=None, measure=None, settings=None, prepare=None, captioner=None):
         self.folder, self.stage = Path(folder), stage
+        self.native, self.captioner = encode is None, captioner
         self.versions, self.preflight = versions, preflight
         if measure is None:
             from . import decoded, measure as readings
@@ -28,6 +29,12 @@ class Video:
                     raise SpineError(f'{tool}: declared version is stale')
             self.versions = {**versions, **actual}
             measure = lambda req, path: readings.measure(self, req, path)
+        if self.native:
+            from . import compositor
+            if prepare is not None:
+                raise SpineError('compositor: custom preparation requires a custom encoder')
+            encode = lambda req, path: compositor.encode(self, req, path)
+            prepare = lambda req: compositor.prepare(self, req)
         self.encode, self.measure, self.prepare = encode, measure, prepare
         self.settings = request.settings() if settings is None else settings
 
@@ -101,7 +108,10 @@ def approval(video, req):
 
 def fresh(video, req, acceptance):
     current = request.resolve(video, req['stage'], req['output'])
-    if current['key'] != req['key'] or current['inputs'] != req['inputs']:
+    generated = req.get('generated', {})
+    original = {p: h for p, h in req['inputs'].items() if p not in generated}
+    if (current['key'] != req['key'] or current['inputs'] != original
+            or any(filehash(records.path(video, p)) != h for p, h in generated.items())):
         raise SpineError('render inputs changed before publication')
     if acceptance is not None:
         approved, _, hashes, _ = approval(video, req)
@@ -133,9 +143,20 @@ def _render(video, req):
         read = records.path(video, source)
         if read in owned or (read.parent, read.name[:len(work[1])]) == work:
             raise SpineError(f"{source}: an input is a file this output writes")
+    if video.native and req['mode'] == 'render':
+        from . import compositor
+        for produced in compositor.names(req):
+            records.path(video, produced, writable=True)
+            if produced in req['inputs']:
+                raise SpineError(f'{produced}: input aliases generated output')
     old = records.read(video, name)
     base = {'output': req['output'], 'key': req['key'], 'file': req['file'], 'mode': req['mode'],
             'request': req, 'ok': False}
+    if 'frame_map' in req:
+        base.update(frame_map=req['frame_map'], elements=req['elements'],
+                    duration_s=req['frame_map'][-1]['out'][1])
+    if 'picture_map' in req:
+        base['picture_map'] = req['picture_map']
     target = records.path(video, req['file'], writable=True)
     found = filehash(target)
     stored = None
@@ -161,6 +182,8 @@ def _render(video, req):
             records.write(video, name, waiting)
             return waiting
     cached = accepted is not None and accepted['key'] == req['key']
+    if cached and video.native and req['mode'] == 'render':
+        cached = compositor.reuse(video, req, accepted)
     temporary, step, candidate_sha = None, 'prepare', None
     try:
         if cached:

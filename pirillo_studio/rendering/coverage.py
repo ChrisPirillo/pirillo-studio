@@ -25,7 +25,7 @@ def subjects(req, pixels_ok):
             raise SpineError('subject: frame has no declared subject boxes')
         observations[index] = [mapping.rectangle(box, 'subject box') for box in boxes]
     unseen, outside, covered, checked = [], [], [], 0
-    for row in req['frame_map']:
+    for row in mapping.pictures(req):
         x, y, w, h = row['crop']
         for index in range(*row['frames']):
             if row['kind'] == 'cover':
@@ -66,6 +66,8 @@ def draft(video, req, path, pixels_ok):
     record = records.read(video, name)
     if record is None:
         raise SpineError('draft-match: approved draft record missing')
+    if 'picture_map' in req or 'picture_map' in record:
+        raise SpineError('draft-match: split-clock master correspondence unsupported (seam 2e)')
     asset = {'file': record['file'], 'sha256': record['file_sha256']}
     if filehash(records.path(video, asset['file'])) != asset['sha256']:
         raise SpineError('draft-match: viewed draft bytes changed')
@@ -179,6 +181,11 @@ def measure(video, req, path, result):
         if 'draft-match' in req['settings']['checks']:
             label = 'draft-match'
             result['checks'][label] = draft(video, req, path, ok)
+        if 'voice_binding' in req:
+            label = 'voice'
+            duration = req['frame_map'][-1]['out'][1]
+            result['checks'][label] = sound.compare_audio(video, req, path, req['voice_binding'],
+                [{'src': [0, duration], 'out': [0, duration]}], complete_reference=True)
         if 'audio_binding' in req:
             label = 'bed'
             result['checks'].update(sound.measure(video, req, path))
