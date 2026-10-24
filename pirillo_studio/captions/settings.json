@@ -1,0 +1,48 @@
+{
+  "tall": {
+    "note": "Burned full vertical and shorts: the host's tall caption defaults (font, size, outline, shadow, ASS colours and highlight, line limits, cue lengths, cue pause), its overlap tolerance and its QC cue-onset tolerance; bands in the order placement tries them.",
+    "font": "Poppins",
+    "size": 92,
+    "outline": 7,
+    "shadow": 3,
+    "primary": "&H00FFFFFF",
+    "secondary": "&H00FFFFFF",
+    "outline_colour": "&H00000000",
+    "back": "&H80000000",
+    "highlight": "&H0022E0FF&",
+    "max_words": 3,
+    "max_chars": 18,
+    "min_cue_s": 0.7,
+    "max_s": 1.8,
+    "pause_s": 0.6,
+    "overlap_tol_s": 0.011,
+    "onset_tol_s": 0.4,
+    "bands": ["bottom", "top"]
+  },
+  "wide": {
+    "note": "Sidecar-only arc, draft and long cut: the host's sidecar limits and cue pause, its overlap tolerance and its QC cue-onset tolerance.",
+    "max_chars": 42,
+    "max_words": 12,
+    "max_s": 6.0,
+    "min_cue_s": 0.8,
+    "pause_s": 0.6,
+    "overlap_tol_s": 0.011,
+    "onset_tol_s": 0.4
+  },
+  "safe_tall": {
+    "note": "The host's one tall safe zone, in pixels from each frame edge; rendering reads it too.",
+    "left": 90,
+    "right": 140,
+    "top": 250,
+    "bottom": 500
+  },
+  "frame": {
+    "note": "The host's tall frame in pixels.",
+    "width": 1080,
+    "height": 1920
+  },
+  "aligner": {
+    "note": "The host's forced aligner model; the adapter reports the version actually loaded.",
+    "model": "MMS_FA"
+  }
+}
