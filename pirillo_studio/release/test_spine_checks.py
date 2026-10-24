@@ -214,3 +214,43 @@ class Bound(Fixture):
         answer = engine.check(e, "text")
         self.assertEqual(answer["state"], "blocked", answer)
         self.assertIn("maker outputs missing: " + TEXT, str(answer))
+
+    def test_release_choice_reads_the_per_row_decision(self):
+        """e2e: records/spine.json release-choice answers from records/release_decision.json's rows, not a task verb."""
+        stages = [copy.deepcopy(next(s for s in self.v.stages["stages"] if s["id"] == i)) for i in ("release", "release-choice")]
+        stages[1]["next_actor"] = "owner"  # the last stage hands to its own actor; posting follows in the bundled recipe
+        recipe = {"external": stages[0]["inputs"], "stages": stages}
+        self.v.stages = recipe
+        self.put("records/job.json", {"recipe": "fixture", "id": "video"})
+        host = Host()
+        e = engine.Video(self.v.folder, start=host.start, ask=host.ask, tell=host.tell, href=lambda p: p,
+                         checks=spine_checks.checks(self.v), recipes={"fixture": recipe},
+                         decisions=spine_checks.decisions(self.v))
+        engine.run(e, "release")
+        rows = [r["id"] for r in self.built()["rows"]]
+        engine.check(e, "release")
+        engine.hand_off(e, "release")
+        engine.run(e, "release-choice")
+        answer = engine.check(e, "release-choice")
+        self.assertEqual((answer["state"], answer["next_action"]), ("waiting_owner", "the owner decides on the Board"))
+        self.assertIn(rows[0], str(answer["detail"]["words"]))
+        api.decide(self.v, {**dict.fromkeys(rows, "approved"), rows[0]: {"changes": "shorter", "maker": "packager"}}, "owner")
+        self.assertEqual(engine.check(e, "release-choice")["state"], "fail")
+        self.assertEqual([engine.next(e)[k] for k in ("stage", "actor")], ["release", "packager"])
+        self.assertIn(f"{rows[0]}: shorter (to packager)", engine.next(e)["why"])
+        engine.run(e, "release")
+        engine.check(e, "release")
+        engine.hand_off(e, "release")
+        engine.run(e, "release-choice")
+        self.assertEqual(engine.check(e, "release-choice")["state"], "fail")  # unchanged words keep his send-back
+        api.decide(self.v, {rows[0]: "approved"}, "owner")
+        self.assertTrue(engine.check(e, "release-choice")["ok"])
+        (self.v.folder / "records/release_decision.json").rename(self.v.folder / "kept.json")
+        for bad in ({"state": "posted", "words": []}, ValueError("torn"), {"state": "pass", "words": []}):
+            # guard: a reader's error, or a pass with no decision record, never passes
+            with patch.object(spine_checks, "choice", side_effect=[bad] if isinstance(bad, Exception) else lambda v: bad):
+                e.decisions = spine_checks.decisions(self.v)
+                answer = engine.check(e, "release-choice")
+                self.assertEqual((answer["state"], answer["detail"]["words"][0][:31]),
+                                 ("blocked", "decision: check error ValueErro"), answer)
+                self.assertEqual(engine.next(e)["actor"], "packager")

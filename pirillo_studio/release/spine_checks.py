@@ -1,8 +1,8 @@
 """Release checks for engine.Video(checks=...), called under records/spine.lock; never run a maker.
 
-Bound: titles, text-read and release. text-plan stays unbound: item 39 has no plan validator yet.
-captions-read stays with item 39's copy-read seam; posted belongs to posting (item 11), decision to the spine
-(item 37). A file read must be engine evidence or hash-pinned in its release record; otherwise it blocks.
+Bound: titles, text-read and release; release-choice's owner decision through the engine's decisions adapter
+(`decisions`), read per row by api.check. text-plan stays unbound: item 39 has no plan validator yet.
+captions-read stays with item 39's copy-read seam; posted belongs to posting (item 11). A file read must be engine evidence or hash-pinned in its release record; otherwise it blocks.
 The release check judges the built package, before the owner's decision: api._current is the read-only part
 of api.check. Both recipes declare the completion envelope as a release output, so its hash is engine
 evidence. A refused build renders Review.md from its record unless the owner edited the page there;
@@ -112,3 +112,21 @@ def checks(video):
     v = version(video)
     return {name: (v, lambda evidence, name=name: judge(video, evidence, name))
             for name in ("titles", "text-read", "release")}
+
+
+def choice(video):
+    """release-choice's decision, per row (docs/release.md section 1): every row approved on its current hashes
+    passes; a row sent back fails to the release's producer with its note; rows with no current decision wait."""
+    out = api.check(video)
+    if out["state"] == "approved":
+        return {"state": "pass", "words": []}
+    if out["state"] == "changes":
+        return {"state": "fail", "words": [f"{c['row']}: {c['note']} (to {c['maker']})" for c in out["detail"]["changes"]]}
+    if out["state"] == "waiting_owner":
+        return {"state": "waiting_owner", "words": ["waiting on the owner's decision on rows: "
+                                                    + ", ".join(out["detail"]["waiting"])]}
+    return {"state": "blocked", "words": [f"{RELEASE}: {out['state']}: {out['detail']}"]}
+
+
+def decisions(video):
+    return {"release-choice": (version(video), lambda: choice(video))}

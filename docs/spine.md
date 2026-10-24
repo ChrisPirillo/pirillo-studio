@@ -111,6 +111,9 @@ its explicit `external` inputs; `catalog.json` the roles, tools and each check's
 `@outputs`), `checker` and the review records it `produces`; `engine.py` the four answers, where `next` also
 returns the stage's `state`. Holds are `records/holds.json` rows `{stage, why, by}`; an owner decision is the
 stage's output `{task, verb, words}`, its verb one of approve, reject, redo, not-this, try-again, cant or undo.
+A domain whose owner decides per part reads its own decision record instead, through the video's `decisions`
+adapter (`release-choice`: the release's rows, docs/release.md section 1): it answers pass, fail (a send-back to
+the judged content's producers), `waiting_owner` or blocked, and any other answer or error blocks.
 The video is keyed by `records/job.json` `id` (a non-empty string; missing refuses), never its folder, so a moved
 video keeps its send, task and handoff keys. A review record binds to the content it judged by containing that
 check's `judged` digest (sha256 over the check's other evidence hashes, which `check` names while it waits); a

@@ -96,7 +96,9 @@ deciding, and also writes `records/release_edits.json`. `edit` only appends ther
 the only writer of `records/release.json` and `Review.md`. The `release-choice` decision check binds each row's word,
 file, sidecar and thumbnail hashes (`records/release_decision.json`), not the bytes of the whole `release.json`, so a
 rebuild leaves every unchanged row approved: for this one decision, row hashes replace spine.md's whole-input
-freshness.
+freshness. The engine reads it through `spine_checks.decisions` (the engine's `decisions` adapter): every row approved
+on its current hashes passes, a row sent back fails to the release's producer with its note and maker, rows with
+no current decision wait on the owner, and a refused, stale or unavailable release blocks.
 
 ## 2. One API
 

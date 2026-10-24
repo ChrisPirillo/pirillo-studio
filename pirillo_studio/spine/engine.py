@@ -34,13 +34,16 @@ class Video:
     start(actor, run, folder, stage, key) -> receipt starts a maker; ask(task) -> receipt files an owner task in the
     Board's shape; tell(actor, key, handoff) -> receipt delivers a handoff; href(path) -> the served URL of a judged
     file; checks {check id: (version, fn(evidence) -> {"state", "words"})}; preflight(stage, passed, recipe_revision)
-    -> {"state", "detail", "next_action", "key"} (docs/preflight.md; required when a stage declares tools). Each
+    -> {"state", "detail", "next_action", "key"} (docs/preflight.md; required when a stage declares tools);
+    decisions {owner stage id: (version, fn() -> {"state": pass|fail|waiting_owner|blocked, "words"})} reads a domain's
+    own decision record in place of {task, verb, words} (release-choice's per-row decision, docs/release.md). Each
     adapter reconciles by its key, so a retry after a crash never repeats an effect. recipes and catalog default to
     this package's data."""
 
-    def __init__(self, folder, *, start, ask, tell, href, checks, recipes=None, catalog=None, preflight=None):
+    def __init__(self, folder, *, start, ask, tell, href, checks, recipes=None, catalog=None, preflight=None,
+                 decisions=None):
         self.folder, self.start, self.ask, self.tell, self.href = Path(folder), start, ask, tell, href
-        self.checks = checks
+        self.checks, self.decisions = checks, decisions or {}
         self.recipes = data("recipes.json") if recipes is None else recipes
         self.catalog = data("catalog.json") if catalog is None else catalog
         validate(self.recipes, self.catalog)
@@ -71,7 +74,7 @@ class Video:
 
 
 def versions(v, st):
-    return {c: ENGINE if c == "decision" else v.checks[c][0] for c in st["check"]}
+    return {c: ENGINE + v.decisions.get(st["id"], ("",))[0] if c == "decision" else v.checks[c][0] for c in st["check"]}
 
 
 def defn(v, st):
@@ -319,6 +322,18 @@ def evidence(v, st, c):
 
 def decision(v, st, r, recipe):
     """The built-in owner check: an approval of this exact task passes; a send-back fails to the producer."""
+    makers = {p: actor(s) for s in recipe["stages"] for p in s["outputs"]}
+    if st["id"] in v.decisions:  # the domain reads its own record; a block is its judged content's producer's
+        try:
+            out = v.decisions[st["id"]][1]()
+            if out["state"] not in ("pass", "fail", "waiting_owner", "blocked") or not isinstance(out["words"], list):
+                raise ValueError(f"answered {out!r}")
+            if out["state"] == "pass" and not inside(v.folder, st["outputs"][0]).is_file():  # a pass keeps it (check)
+                raise ValueError(f"passed with no {st['outputs'][0]}")
+        except Exception as e:  # a check error never becomes a pass
+            out = {"state": "blocked", "words": [f"decision: check error {type(e).__name__}: {e}"]}
+        return {"state": out["state"], "words": out["words"], "by": next_maker(makers, st) if out["state"] == "blocked"
+                else "owner"}
     f = inside(v.folder, st["outputs"][0])
     if not f.exists():
         return {"state": "waiting_owner", "words": [f"waiting on the owner's decision on task spine:{r['op']}"]}
@@ -334,7 +349,6 @@ def decision(v, st, r, recipe):
     if verb == "approve":
         return {"state": "pass", "words": []}
     if verb in ("cant", "undo"):
-        makers = {p: actor(s) for s in recipe["stages"] for p in s["outputs"]}
         return {"state": "waiting_owner", "words": [words or verb], "undo": verb == "undo",
                 "by": next_maker(makers, st) if verb == "cant" else "owner"}
     return {"state": "fail", "words": [f"owner {verb}: {words}"]}
