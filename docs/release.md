@@ -251,9 +251,11 @@ unchanged build showing nothing written. Nothing is sent.
 
 ## 6. One switch, then delete
 
-The host's sole switch is `studio.json` `release`, initially false. With it on, the spine's `titles`, `copy`,
-`text`, `release` and `release-choice` stages call this API and the clock ingests `rows`; off preserves the host path
-byte for byte; on cannot fall back.
+The host's sole switch is the video's adoption onto the spine (the host's `spine` switch and its per-video adopt;
+the host's `release` key holds its release profile, not a switch). On an adopted video the spine's `titles`, `copy`,
+`text`, `release` and `release-choice` stages call this API (the release stage's run is the host's
+`spine_host.py release <slug>`, which builds and prints the envelope) and the clock ingests `rows`; every other video
+keeps the host path byte for byte; on cannot fall back.
 
 The switch-and-delete landing removes, for C1 paths: in `publish.py` `release_files`, `release_gate`,
 `release_changes`, `description`, `clean`, `delivered_name`, `rename_delivered`, `place`, `vertical_routes`,
