@@ -149,7 +149,13 @@ def current(v, st, r, done):
     """Whether record r still stands on the bytes and checks on disk now; done adds outputs and check versions."""
     if r is None or r["def"] != defn(v, st) or r["inputs"] != hashes(v, st["inputs"]):
         return False
-    return not done or (r.get("outputs") == hashes(v, st["outputs"]) and r.get("checks") == versions(v, st))
+    return not done or (r.get("outputs") == hashes(v, judged_files(st, v)) and r.get("checks") == versions(v, st))
+
+
+def judged_files(st, v):
+    """The outputs a pass stands on, with the stage's own preflight record when a check reads it (recipe.py)."""
+    own = f"records/ready/{st['id']}.json"
+    return st["outputs"] + ([own] if any(own in v.catalog["checks"][c]["reads"] for c in st["check"]) else [])
 
 
 def decide(v):
@@ -356,7 +362,7 @@ def check(v, sid):
             result = {"state": was, "words": [f"undo refused: {late} already started"], "by": r.get("by")}
         if result["state"] == "pass" and st["check"] == ["decision"]:
             r["decided"] = inside(v.folder, st["outputs"][0]).read_text()
-        r.update(state=result["state"], words=result["words"], outputs=hashes(v, st["outputs"]),
+        r.update(state=result["state"], words=result["words"], outputs=hashes(v, judged_files(st, v)),
                  checks=versions(v, st), by=result.get("by", actor(st)))
         if st["check"] == ["decision"]:
             reopen(rec, recipe, st, result, was)

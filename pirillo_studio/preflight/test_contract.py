@@ -430,3 +430,4 @@ class Unknown(Case):
         rec = probe.preflight(self.dir, stage, self.cfg, self.host, "sha256:rev",
                               {r: {"by": "intake", "sha256": None} for r in stage["inputs"]})
         self.assertEqual(rec["blocks"], [{"probe": "disk", "what": "Draft/draft.webm"}])
+

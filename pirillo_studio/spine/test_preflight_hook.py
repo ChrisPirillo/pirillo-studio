@@ -5,7 +5,8 @@ import tempfile
 import unittest
 
 from pirillo_studio.spine import engine as spine
-from pirillo_studio.spine.test_engine import Host, new_video, record
+from pirillo_studio.spine.test_engine import make, new_video, record
+from pirillo_studio.spine.test_host import Host
 
 
 class PreflightHook(unittest.TestCase):
@@ -70,6 +71,18 @@ class PreflightHook(unittest.TestCase):
         spine.ready(v, v.recipe()[1], st)
         self.assertIn({"path": "Draft/arc.mp4", "size": {"bytes_per_s": 2000000}}, self.calls[0][0]["outputs"])
         self.assertEqual(self.calls[0][1]["records/faces.json"]["by"], "media")
+
+    def test_a_pass_stands_on_the_preflight_record_its_check_read(self):
+        """guard: a media pass is current only while the ready record its check judged is unchanged."""
+        v = self.host.video(new_video(self.root, "plain"))
+        spine.run(v, "media")
+        st = spine.find(v.recipe()[1], "media")
+        make(v, st)
+        self.assertEqual(spine.check(v, "media")["state"], "pass")
+        r = spine.load_record(v)["stages"]["media"]
+        self.assertTrue(spine.current(v, st, r, True))
+        (v.folder / "records/ready/media.json").write_text('{"state": "blocked"}')
+        self.assertFalse(spine.current(v, st, r, True))
 
     def test_an_unknown_answer_raises(self):
         for answer in ({"state": "ok"}, {"state": "ready", "key": ""}, None):

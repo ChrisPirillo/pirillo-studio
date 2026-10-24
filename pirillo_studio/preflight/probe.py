@@ -19,6 +19,10 @@ GAP = "media.max_audio_gap_s"   # the host's one limit, passed in cfg
 GB = 1e9
 ORDER = ("inputs", "tools", "media", "disk")
 PROBE = "ffprobe"   # the one media probe tool (section 1)
+PROBE_VERSION = "1"   # records/probe.json's schema (section 1)
+PROBE_FIELDS = {"duration_s": "duration_s", "fps": "fps_measured", "fps_tagged": "fps_tagged",
+                "sample_rate": "audio_rate_hz", "width": "width", "height": "height", "color": "color"}
+READY = "records/ready/media.json"
 
 
 class BrokenMedia(Exception):
@@ -50,13 +54,48 @@ def _sha(path):
 def _read(path):
     """A record that is missing, torn or from another preflight_version is no record: it never reads as ready."""
     try:
-        with open(path) as f:
-            rec = json.load(f)
+        with open(path, "rb") as f:
+            return _valid(json.loads(f.read()))
     except (OSError, ValueError):
         return None
+
+
+def _valid(rec):
     ok = isinstance(rec, dict) and rec.get("preflight_version") == VERSION and isinstance(rec.get("files"), dict) \
         and [p.get("probe") for p in rec.get("probes") or [] if isinstance(p, dict)] == list(ORDER)
     return rec if ok else None
+
+
+def projection(raw, source_sha):
+    """records/probe.json from records/ready/media.json's bytes and source.mp4's content hash now (section 1, seam
+    3c); ValueError names why the record answers no probe. It never measures."""
+    try:
+        rec = _valid(json.loads(raw))
+    except ValueError:
+        rec = None
+    if rec is None or rec.get("stage") != "media":
+        raise ValueError(f"{READY}: no current media ready record")
+    if rec["state"] != "ready":
+        raise ValueError(f"{READY} is {rec['state']}: {rec.get('detail')}")
+    if not (isinstance(rec.get("key"), str) and rec["key"]):
+        raise ValueError(f"{READY} has no key")
+    if (rec["files"].get("source.mp4") or {}).get("sha256") != source_sha:
+        raise ValueError(f"{READY} answers another source.mp4 than the one there now")
+    d = (rec["probes"][ORDER.index("media")].get("detail") or {}).get("source.mp4")
+    lacks = [n for n in PROBE_FIELDS.values() if not isinstance(d, dict) or d.get(n) is None]
+    if lacks:
+        raise ValueError(f"{READY} lacks {', '.join(lacks)} for source.mp4")
+    return {"probe_version": PROBE_VERSION, "source": source_sha, "ready": rec["key"],
+            "ready_sha256": "sha256:" + hashlib.sha256(raw).hexdigest(), **{k: d[n] for k, n in PROBE_FIELDS.items()}}
+
+
+def write_probe(video):
+    """The media stage maker's write after its ready answer: the projection, under the video's single writer."""
+    with open(os.path.join(video, READY), "rb") as f:
+        raw = f.read()
+    out = projection(raw, _sha(os.path.join(video, "source.mp4")))
+    _write(os.path.join(video, "records", "probe.json"), out)
+    return out
 
 
 def _write(path, rec):

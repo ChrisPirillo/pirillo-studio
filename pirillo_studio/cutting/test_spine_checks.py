@@ -4,7 +4,7 @@ import threading
 from pirillo_studio.cutting import checks, settle, spine_checks
 from pirillo_studio.cutting.test_cutting import Fixture
 from pirillo_studio.spine import engine
-from pirillo_studio.spine.test_engine import Host
+from pirillo_studio.spine.test_host import Host
 
 
 class Bound(Fixture):

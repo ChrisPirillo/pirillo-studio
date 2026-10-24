@@ -7,7 +7,7 @@ from pirillo_studio.release.inputs import ENVELOPE, RELEASE, REVIEW, TEXT, TEXT_
 from pirillo_studio.release.test_release import Fixture
 from pirillo_studio.spine import engine
 from pirillo_studio.spine.files import filehash
-from pirillo_studio.spine.test_engine import Host
+from pirillo_studio.spine.test_host import Host
 
 
 class Bound(Fixture):

@@ -68,7 +68,8 @@ def validate(recipes, catalog):
                 if c not in checks:
                     raise SpineError(f"{at}: unknown check {c}")
                 for p in checks[c]["reads"]:
-                    if p not in ("@inputs", "@outputs") and p not in st["inputs"] + st["outputs"]:
+                    if p not in ("@inputs", "@outputs") and p not in st["inputs"] + st["outputs"] and not (
+                            "tools" in st and p == f"records/ready/{st['id']}.json"):  # its preflight's record
                         raise SpineError(f"{at}: check {c} reads {p}, which the stage does not declare")
                 if checks[c]["checker"] == actor(st) or not set(checks[c]["produces"]) <= set(st["outputs"]) or \
                         "@outputs" not in checks[c]["reads"] and not set(checks[c]["produces"]) <= set(checks[c]["reads"]):
