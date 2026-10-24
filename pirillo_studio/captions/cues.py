@@ -145,8 +145,10 @@ def _inputs(video, output):
             if any(not isinstance(got.get(n), str) for n in [model] + ([font] if font else [])):
                 raise SpineError(f"versions: no hash for {model} or {font}")
             context["versions"] = got
+    render_identity = digest(canon({"mode": mode, "duration_s": duration, "frame_map": pieces,
+                                    "elements": context["elements"]}))
     context["key"] = digest(canon({
-        "output": output, "reads": reads, "voice": context["voice_sha256"], "missing": context["missing"],
+        "output": output, "reads": {**reads, at: render_identity}, "voice": context["voice_sha256"], "missing": context["missing"],
         "settings": {"profile": name, name: s[name], "safe_tall": s["safe_tall"], "frame": s["frame"]},
         "aligner": {"model": model, "version": context["versions"].get(model)},
         "font": context["versions"].get(font), "code": _code()}))
@@ -159,6 +161,7 @@ def _record(c, state, cues=None, refusals=(), uncaptioned=(), held=(), readings=
             "kept": None if c["owner"] else "records/cut_plan2.json#spans",
             "plan_sha256": None if c["owner"] else c["reads"]["records/cut_plan2.json"],
             "clock": None if c["owner"] else f"records/render/{c['output']}.json#frame_map",
+            "frame_map_sha256": digest(canon(c["pieces"])),
             "voice": c["voice"], "voice_sha256": c["voice_sha256"], "settings": f"captions.settings#{c['name']}",
             "aligner": {"model": model, "version": c["versions"].get(model)}, "cues": cues,
             "held": list(held), "uncaptioned": list(uncaptioned), "burn": burn, "sidecar": sidecar,

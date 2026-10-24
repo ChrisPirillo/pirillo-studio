@@ -1,13 +1,13 @@
 """Decoded readings for section 3's measuring state; never edit media or infer semantic coverage.
 
 The lifecycle writes these readings with records.readings_name and commits their hash last.
-Plan/subject/layer/stem correspondence remains unavailable until a renderer supplies a measurable binding.
+Plan/subject/layer/stem correspondence requires the renderer's hash-bound preparation.
 """
 from fractions import Fraction
 from pathlib import Path
 
 from ..spine.files import canon, filehash
-from . import decoded, records
+from . import coverage as correspondence, decoded, records
 
 
 def measure(video, req, path):
@@ -15,6 +15,12 @@ def measure(video, req, path):
         return _measure(video, req, path)
     except (KeyError, TypeError, IndexError) as error:
         decoded.refuse(str(error), 'measurement', f'missing or invalid decoded input: {error}')
+
+
+def inputs(video, req):
+    for name, sha in req['inputs'].items():
+        if not sha or filehash(records.path(video, name)) != sha:
+            decoded.refuse('inputs.' + name, 'verification.complete_decode', f'{name}: missing or stale input bytes')
 
 
 def _measure(video, req, path):
@@ -42,6 +48,7 @@ def _measure(video, req, path):
             decoded.refuse('tools.' + tool, 'verification.tools', f'{tool}: missing or stale tool version')
     if not req.get('key'):
         decoded.refuse('key', 'verification.complete_decode', 'missing measurement request identity')
+    inputs(video, req)
     streams, packets = decoded.streams(path)
     counts = {kind: sum(row['kind'] == kind for row in streams) for kind in ('video', 'audio')}
     if counts != setting['verification']['streams']:
@@ -143,12 +150,16 @@ def _measure(video, req, path):
     for label in ('frame-map', 'draft-match', 'cards', 'context', 'captions', 'subject', 'word-ends', 'bed'):
         check(label, None, False, 'verification.checks', 'no decoded correspondence binding for ' + label,
               covered={'frames': 0, 'unseen': [[coverage['start_s'], coverage['end_s']]]})
+    correspondence.measure(video, req, path, result)
     for label in setting['checks']:
         if label not in result['checks']:
             check(label, None, False, 'verification.checks', 'unknown measurement ' + label, covered={'frames': 0})
-    result['frame_checks'] = ['decode', 'count', 'clock', 'size', 'color', 'held_tail', 'flash']
+    result['frame_checks'] = ['decode', 'count', 'clock', 'size', 'color', 'held_tail', 'flash'] + [
+        name for name in ('frame-map', 'cards', 'subject', 'word-ends', 'draft-match', 'captions')
+        if result['checks'][name]['value'] is not None]
     if filehash(records.path(video, name)) != before:
         decoded.refuse('file_sha256', 'verification.complete_decode', 'media changed during measurement')
+    inputs(video, req)
     if decoded.tools() != current_tools:
         decoded.refuse('tools', 'verification.tools', 'tools changed during measurement')
     canon(result)

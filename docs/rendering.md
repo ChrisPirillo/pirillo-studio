@@ -200,6 +200,49 @@ platform fit is a separate derived output with its own record; a refused origina
 
 ## 2. The engine calls one API
 
+### Seam 2c: resolved renderer inputs
+
+`Video(..., prepare=callback)` accepts a deterministic, read-only resolver. It runs during request resolution,
+including the freshness check before publication. It returns `frame_map`, `elements`, and optional
+`audio_binding`/`caption_binding`; absent required coverage still refuses. It does not encode or write records.
+The core checks its edit against the settled request and hashes all resolved assets into the request key.
+The existing encode callback consumes that bound request. The final render record exposes `mode`, `duration_s`,
+`frame_map` and `elements` at top level for item 18; full decoded evidence stays at `records.readings_name(request)`.
+
+Each map row keeps `{span, src: [seconds], out: [seconds]}` for captions, with half-open integer `frames` and
+`source_frames`, `kind: source|cover`, `asset: {file, sha256}` and integer source-pixel `crop: [x,y,width,height]`.
+`mapping.timeline(request)` supplies the canonical rows; preparation adds only the resolved picture geometry.
+Cuts snap to the nearest frame on the declared output grid; source FPS and every decoded source PTS/duration
+must match that grid. `end_hold_s` is already included in cutting's settled final `src`, never appended twice.
+Cold-open words precede story-order spans; a short uses only its settled pieces. A cover row retains its oral
+`src` clock, names its planned `card` ID, and holds asset frame `[0,1]` across every hidden-picture output frame.
+The renderer supplies the cover asset even when the editorial card contains text rather than a file path.
+
+Source subject observations are `faces_data.frames: [{frame, boxes: [[x,y,width,height], ...]}]`, on that same
+source grid. Every uncovered mapped frame needs nonempty observations, all inside its decoded crop. Duplicate
+or missing observations refuse. Full opaque covers are explicitly excluded, never treated as unseen subjects.
+
+`audio_binding` names `{stem: {file, sha256}, offset_s, gain_db, tacets: [[start_s,end_s], ...]}` on the output
+clock. Speech-band PCM is compared with the actual stem, in windows split at tacet boundaries. Missing samples
+outside tacets refuse. This is conservative acoustic correspondence, not speech recognition or source separation.
+Draft equivalence compares decoded viewed pixels and complete multichannel audio as well as source/crop/card maps.
+Short end-word checks compare all mapped source audio and identify opening/end word frame ranges; changed mixes
+cannot claim source-voice equivalence without a separate processed-voice binding.
+
+`caption_binding: {record, sha256}` references item 18's captioned record, voice and actual sidecar bytes.
+Caption records also bind `frame_map_sha256` to their normalized `{span,src,out}` rows. Captions' cache identity
+reads that clock, duration, mode and relevant elements, not render lifecycle status or measurement metadata;
+its concurrent-write check still binds the whole input file. Wide sidecars are checked against those cues and
+decoded output duration. A declared burn with no decoded glyph evidence refuses, never passes from ASS text.
+
+Next compositor seam: initial voice preparation and caption-generation/burn sequencing; separate J-cut/patch
+picture and voice clocks, pushes, retimed/different-rate source and grade transforms; anchored non-cover cards,
+context and caption raster edges/safe bounds (including transparent glyphs), and processed voice/mix bindings.
+These require resolved compositor layers and audio, not invented observations. The present map supports fixed
+crops and full opaque covers; non-cover cards/elements remain unavailable. Default profiles retain all required
+checks, so an incomplete preparation cannot become delivered. Synthetic tests exercise each implemented contract
+component and explicit refusals; they do not prove this unbuilt compositor or subjective picture/sound quality.
+
 | Function | Reads | Writes and answer |
 |---|---|---|
 | `render(video, output) -> record` | The stage's resolved request, item 17 plan or supplied file, settings, assets, approvals and current preflight result | Only output-owned work files and its render record; returns current record on unchanged content. `measure_existing` does not encode. |

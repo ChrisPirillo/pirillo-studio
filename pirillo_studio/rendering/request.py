@@ -8,10 +8,10 @@ from ..cutting import checks, plan as cutting
 from ..spine.files import SpineError, canon, digest, inside, load, safe
 from . import records
 
-RENDERER_VERSION = "rendering-2b-1"
+RENDERER_VERSION = "rendering-2c-1"
 _OUTPUTS = {"arc": ("arc", "Draft/arc.mp4"), "draft": ("draft", "Draft/draft.mp4"),
             "long": ("masters", "YouTube/main.mp4"), "vertical": ("masters", "Vertical/main.mp4")}
-_PATH_FIELDS = {"file", "path", "record", "asset", "stem", "audio", "image", "font", "lut", "source"}
+_PATH_FIELDS = {"file", "path", "record", "asset", "stem", "audio", "image", "font", "lut", "source", "voice"}
 _IGNORED = {"title", "display_title", "locked_at", "note"}
 
 
@@ -235,6 +235,8 @@ def _resolve(video, stage, output):
     profile = _profile(video, kind, inputs)
     if not imported:
         profile["checks"] = profile["checks"] + profile["verification"]["render_checks"] + profile["render_checks"]
+        if stage == 'masters':
+            profile['checks'] += profile['verification']['master_checks']
     result = {"output": output, "output_id": output_id, "stage": stage,
               "mode": "measure_existing" if imported else "render", "source": source,
               "source_sha256": source_hash, "file": destination, "plan_sha256": None,
@@ -268,6 +270,9 @@ def _resolve(video, stage, output):
                 raise SpineError(f"{name}: stale plan")
             result[label + "_data"] = data
             identity[label] = inputs.normalize({k: v for k, v in data.items() if k != "plan"})
+    if not imported and video.prepare is not None:
+        from . import mapping
+        identity['renderer_binding'] = mapping.bind(video, result, inputs)
     canon(result)
     if cutting.hashes(video, list(inputs.hashes)) != inputs.hashes:
         raise SpineError("render inputs changed while resolving")

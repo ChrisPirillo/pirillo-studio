@@ -51,7 +51,7 @@ class Fixture(unittest.TestCase):
         self.encodes = 0
         self.states = []
         self.settings = load(Path(request.__file__).parent, 'settings.json')
-        self.settings['shared']['verification'].update(checks=['decode'], render_checks=[])
+        self.settings['shared']['verification'].update(checks=['decode'], render_checks=[], master_checks=[])
         for profile in self.settings['profiles'].values():
             profile['render_checks'] = []  # this fixture tests the lifecycle adapter, not decoded acceptance
         self.v = Video(self.folder, 'arc', settings=self.settings,

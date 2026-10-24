@@ -17,7 +17,7 @@ class Video:
     The decoded adapter supplies acceptance; an absent reading never counts as a pass here.
     """
 
-    def __init__(self, folder, stage, *, versions, preflight, encode, measure=None, settings=None):
+    def __init__(self, folder, stage, *, versions, preflight, encode, measure=None, settings=None, prepare=None):
         self.folder, self.stage = Path(folder), stage
         self.versions, self.preflight = versions, preflight
         if measure is None:
@@ -28,7 +28,7 @@ class Video:
                     raise SpineError(f'{tool}: declared version is stale')
             self.versions = {**versions, **actual}
             measure = lambda req, path: readings.measure(self, req, path)
-        self.encode, self.measure = encode, measure
+        self.encode, self.measure, self.prepare = encode, measure, prepare
         self.settings = request.settings() if settings is None else settings
 
 
@@ -134,7 +134,7 @@ def _render(video, req):
         if read in owned or (read.parent, read.name[:len(work[1])]) == work:
             raise SpineError(f"{source}: an input is a file this output writes")
     old = records.read(video, name)
-    base = {'output': req['output'], 'key': req['key'], 'file': req['file'],
+    base = {'output': req['output'], 'key': req['key'], 'file': req['file'], 'mode': req['mode'],
             'request': req, 'ok': False}
     target = records.path(video, req['file'], writable=True)
     found = filehash(target)
@@ -198,6 +198,8 @@ def _render(video, req):
         result['ok'] = result['state'] == 'delivered'
         for field in ('duration_s', 'fps', 'loudness_lufs', 'true_peak_dbtp', 'frame_checks'):
             result[field] = readings[field]
+        if req['mode'] == 'render' and 'frame_map' in req:
+            result.update(frame_map=req['frame_map'], elements=req['elements'])
         if result['state'] == 'waiting_owner':
             result['viewed'] = {'file': req['file'], 'file_sha256': readings['file_sha256'],
                                 'plan': req['plan_key']}
