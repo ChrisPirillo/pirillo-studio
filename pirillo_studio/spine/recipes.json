@@ -16,7 +16,7 @@
    {"id": "copy", "inputs": ["records/final_manifest.json", "records/publish.json", "records/words.json"], "run": {"role": "packager"}, "check": ["captions-read"], "outputs": ["records/copy.json", "records/copy_review.md"], "next_actor": "story-editor"},
    {"id": "text-plan", "inputs": ["records/words.json", "records/final_manifest.json"], "run": {"role": "story-editor"}, "check": ["text-plan"], "outputs": ["records/text_plan.md"], "next_actor": "writer"},
    {"id": "text", "inputs": ["records/text_plan.md", "records/words.json"], "run": {"role": "writer"}, "check": ["text-read"], "outputs": ["records/text_post.md", "records/text_review.md"], "next_actor": "packager"},
-   {"id": "release", "inputs": ["records/final_manifest.json", "records/publish.json", "records/copy.json", "records/copy_review.md", "records/text_post.md", "records/text_review.md"], "run": {"role": "packager"}, "check": ["release"], "outputs": ["records/release.json", "Review.md"], "next_actor": "owner"},
+   {"id": "release", "inputs": ["records/final_manifest.json", "records/publish.json", "records/copy.json", "records/copy_review.md", "records/text_post.md", "records/text_review.md"], "run": {"role": "packager"}, "check": ["release"], "outputs": ["records/release.json", "Review.md", "records/checks/release.json"], "next_actor": "owner"},
    {"id": "release-choice", "inputs": ["records/release.json", "Review.md"], "run": {"role": "owner"}, "check": ["decision"], "outputs": ["records/release_decision.json"], "next_actor": "clock"},
    {"id": "posting", "inputs": ["records/release.json", "records/release_decision.json"], "run": {"role": "clock"}, "check": ["posted"], "outputs": ["records/posting.json"], "next_actor": "clock"}
   ]
@@ -26,7 +26,7 @@
   "stages": [
    {"id": "short", "inputs": ["source.mp4", "records/job.json"], "run": {"role": "finisher"}, "check": ["short-media"], "outputs": ["Shorts/short.mp4", "Shorts/short.srt", "records/words.json", "records/final_manifest.json", "records/publish.json", "records/heard_named.json"], "next_actor": "packager", "tools": ["ffmpeg", "ffprobe"], "size": {"Shorts/short.mp4": {"bytes_per_s": 7500000}}, "scratch_gb": 0.5},
    {"id": "copy", "inputs": ["records/final_manifest.json", "records/publish.json", "records/words.json"], "run": {"role": "packager"}, "check": ["captions-read"], "outputs": ["records/copy.json", "records/copy_review.md"], "next_actor": "packager"},
-   {"id": "release", "inputs": ["records/final_manifest.json", "records/copy.json", "records/copy_review.md", "records/publish.json"], "run": {"role": "packager"}, "check": ["release"], "outputs": ["records/release.json", "Review.md"], "next_actor": "owner"},
+   {"id": "release", "inputs": ["records/final_manifest.json", "records/copy.json", "records/copy_review.md", "records/publish.json"], "run": {"role": "packager"}, "check": ["release"], "outputs": ["records/release.json", "Review.md", "records/checks/release.json"], "next_actor": "owner"},
    {"id": "release-choice", "inputs": ["records/release.json", "Review.md"], "run": {"role": "owner"}, "check": ["decision"], "outputs": ["records/release_decision.json"], "next_actor": "clock"},
    {"id": "posting", "inputs": ["records/release.json", "records/release_decision.json"], "run": {"role": "clock"}, "check": ["posted"], "outputs": ["records/posting.json"], "next_actor": "clock"}
   ]

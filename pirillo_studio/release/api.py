@@ -85,6 +85,16 @@ def _append(video, row, text, by, replaced, at_key):
     return edits
 
 
+def _unedited(video):
+    """Review.md is missing or still its own render: a refusal may replace it; an owner-edited page is kept."""
+    f = inside(video.folder, REVIEW)
+    if not f.exists():
+        return True
+    named = review.parse(f.read_text())[0]
+    shown = named and inside(video.folder, review.prev(named))
+    return bool(shown) and shown.exists() and shown.read_text() == f.read_text()
+
+
 def _his_edits(video, rec):
     """Bring the owner's changed Review.md blocks back through edit; True when one was appended."""
     f = inside(video.folder, REVIEW)
@@ -112,11 +122,12 @@ def _his_edits(video, rec):
 
 
 def _finished(video, rec):
-    """A record whose build ran to its end: the envelope (written last) binds it, and a built one's Review.md is its render."""
+    """A record whose build ran to its end: the envelope (written last) binds it, Review.md exists, and a built one's is its render."""
     env = inside(video.folder, ENVELOPE)
     if not env.exists() or _json(video, ENVELOPE).get("reads", {}).get(RELEASE) != filehash(inside(video.folder, RELEASE)):
         return False
-    return rec["state"] != "built" or filehash(inside(video.folder, REVIEW)) == rec["review"]["sha256"]
+    page = filehash(inside(video.folder, REVIEW))
+    return page is not None and (rec["state"] != "built" or page == rec["review"]["sha256"])
 
 
 def _key_at(video, reads, s, on):
@@ -156,7 +167,7 @@ def build(video):
         if ctx is not None:
             measure(video, rec, s, ctx)
         page = None
-        if rec["state"] == "built":
+        if rec["state"] == "built" or rec["state"] == "refused" and _unedited(video):
             page = review.render(rec, lambda r: rowing.words(r, rec["outputs"]))
             rec["review"] = {"file": REVIEW, "sha256": digest(page.encode())}
             write(video, review.prev(rec["key"]), page)

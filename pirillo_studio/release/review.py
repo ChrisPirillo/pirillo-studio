@@ -18,6 +18,8 @@ def _fence(text):
 def render(rec, words):
     """First line names the key; each row's words in a fence longer than any backtick run inside them."""
     out = f"release {rec['key']}\n\n"
+    if rec["state"] == "refused":
+        return out + "Release refused\n\n" + "\n".join(str(d) for d in rec["detail"]) + "\n"
     heads = [(o["id"], f"{o['id']}: {o['title']}") for o in rec["outputs"]] + [(None, "text post")]
     for oid, head in heads:
         rows = [r for r in rec["rows"] if r["output"] == oid]

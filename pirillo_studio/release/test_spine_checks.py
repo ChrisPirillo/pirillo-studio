@@ -18,7 +18,7 @@ class Bound(Fixture):
         paths = catalog["reads"]
         if name == "release":
             stage = next(s for s in self.v.stages["stages"] if s["id"] == "release")
-            paths = stage["inputs"] + stage["outputs"] + [ENVELOPE]
+            paths = stage["inputs"] + stage["outputs"]
         return {p: {"sha256": filehash(self.v.folder / p)} for p in paths}
 
     def judge(self, name, evidence=None):
@@ -88,16 +88,12 @@ class Bound(Fixture):
     def test_release_fail(self):
         self.v.scores = [0, 0, 0]
         self.assertEqual(api.build(self.v)["state"], "refused")
-        # Evidence built by hand: a refused build writes no Review.md, and the engine blocks on that before this check
-        # runs (docs/release.md section 4, an undecided interface contract).
-        ev = self.evidence("release")
-        del ev[REVIEW]
-        self.state("release", "fail", ev)
+        self.state("release", "fail")
 
     def test_release_undeclared_completion_envelope_blocks(self):
         self.built()
         ev = self.evidence("release")
-        del ev[ENVELOPE]
+        ev.pop(ENVELOPE, None)
         self.assertIn(ENVELOPE, str(self.state("release", "blocked", ev)["words"]))
 
     def test_nonfinite_scorer_and_symlink_block(self):
@@ -136,10 +132,9 @@ class Bound(Fixture):
             self.assertEqual(answer["state"], "blocked")
             self.assertIn("missing own_urls.playlists", str(answer["words"]))
 
-    def test_engine_passes_only_a_current_release(self):
-        # A minimal recipe explicitly supplies the envelope absent from today's bundled recipe.
+    def engine_release(self):
+        """Run the bundled release stage with upstream artifacts supplied by the fixture."""
         stage = copy.deepcopy(next(s for s in self.v.stages["stages"] if s["id"] == "release"))
-        stage["outputs"].append(ENVELOPE)
         stage["next_actor"] = "packager"
         recipe = {"external": stage["inputs"], "stages": [stage]}
         self.v.stages = recipe
@@ -148,9 +143,74 @@ class Bound(Fixture):
         e = engine.Video(self.v.folder, start=host.start, ask=host.ask, tell=host.tell, href=lambda p: p,
                          checks=spine_checks.checks(self.v), recipes={"fixture": recipe})
         engine.run(e, "release")
+        return e
+
+    def test_engine_passes_only_a_current_release(self):
+        e = self.engine_release()
         self.built()
         self.assertEqual(engine.check(e, "release")["state"], "pass")
         self.assertEqual(self.get("records/spine.json")["stages"]["release"]["state"], "pass")
         self.put("thumbs/a.jpg", b"different bytes")
         # A previously successful engine attempt cannot authorize a changed transitive input.
         self.assertEqual(engine.check(e, "release")["state"], "blocked")
+
+    def test_engine_envelope_changes_reopen_and_missing_blocks(self):
+        e = self.engine_release()
+        self.built()
+        self.assertEqual(engine.check(e, "release")["state"], "pass")
+        self.put(ENVELOPE, {"reads": {RELEASE: "sha256:unfinished"}})
+        answer = engine.check(e, "release")
+        self.assertEqual(answer["state"], "blocked", answer)
+        self.assertIn(RELEASE, str(answer))
+        (self.v.folder / ENVELOPE).unlink()
+        answer = engine.check(e, "release")
+        self.assertEqual(answer["state"], "blocked", answer)
+        self.assertIn(ENVELOPE, str(answer))
+
+    def test_refusal_replaces_its_own_page_and_keeps_an_edited_one(self):
+        self.built()
+        self.v.lint = ["release text needs revision"]
+        self.publish["title"] = "Gadget: refused"
+        self.sync()
+        rec = api.build(self.v)
+        self.assertEqual(rec["state"], "refused")
+        self.assertTrue(self.text(REVIEW).startswith(f"release {rec['key']}\n\nRelease refused"))
+        edited = self.text(REVIEW) + "\nhis note\n"
+        self.put(REVIEW, edited)
+        self.publish["title"] = "Gadget: still refused"
+        self.sync()
+        self.assertNotEqual(api.build(self.v)["key"], rec["key"])
+        self.assertEqual(self.text(REVIEW), edited)
+
+    def test_engine_refusal_reaches_packager_and_recovers(self):
+        e = self.engine_release()
+        self.v.lint = ["release text needs revision"]
+        rec = api.build(self.v)
+        answer = engine.check(e, "release")
+        self.assertEqual(answer["state"], "fail", answer)
+        self.assertIn("packager", str(answer["next_action"]))
+        for detail in rec["detail"]:
+            self.assertIn(str(detail["value"]), "\n".join(answer["detail"]["words"]))
+            self.assertIn(str(detail), self.text(REVIEW))
+        (self.v.folder / REVIEW).unlink()
+        api.build(self.v)
+        self.assertTrue((self.v.folder / REVIEW).is_file())
+        self.v.lint = []
+        self.publish["title"] = "Gadget: works better"
+        self.sync()
+        engine.run(e, "release")
+        self.built()
+        self.assertEqual(engine.check(e, "release")["state"], "pass")
+
+    def test_other_stage_missing_output_still_blocks(self):
+        stage = copy.deepcopy(next(s for s in self.v.stages["stages"] if s["id"] == "text"))
+        stage["next_actor"] = "writer"
+        recipe = {"external": stage["inputs"], "stages": [stage]}
+        self.put("records/text_plan.md", "Plan")
+        self.put("records/job.json", {"recipe": "fixture", "id": "video"})
+        e = Host().video(self.v.folder, recipes={"fixture": recipe})
+        engine.run(e, "text")
+        (self.v.folder / TEXT).unlink()
+        answer = engine.check(e, "text")
+        self.assertEqual(answer["state"], "blocked", answer)
+        self.assertIn("maker outputs missing: " + TEXT, str(answer))

@@ -4,9 +4,9 @@ Bound: titles, text-read and release. text-plan stays unbound: item 39 has no pl
 captions-read stays with item 39's copy-read seam; posted belongs to posting (item 11), decision to the spine
 (item 37). A file read must be engine evidence or hash-pinned in its release record; otherwise it blocks.
 The release check judges the built package, before the owner's decision: api._current is the read-only part
-of api.check. Two gaps in the release/spine interface (the lead's to settle before the host binds it): the
-completion envelope must be supplied as evidence, and today's catalog does not declare it; and a refused build
-writes no Review.md, a declared output, so engine.verdict blocks on it before this check can say why.
+of api.check. Both recipes declare the completion envelope as a release output, so its hash is engine
+evidence. A refused build renders Review.md from its record unless the owner edited the page there;
+the engine can deliver the refusal's words to the packager without relaxing missing-output checks.
 """
 from pathlib import Path
 
