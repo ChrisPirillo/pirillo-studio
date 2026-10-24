@@ -36,8 +36,7 @@ def policy(req):
         raise SpineError('mix.version: nonempty version required')
     _chain(p['voice_chain'], 'mix.voice_chain')
     _chain(p['bed_eq'], 'mix.bed_eq')
-    if not -70 <= _number(p['bed_loudness_lufs'], 'mix.bed_loudness_lufs') <= -5:
-        raise SpineError('mix.bed_loudness_lufs: outside supported loudness range')
+    _number(p['bed_loudness_lufs'], 'mix.bed_loudness_lufs')
     duck = p['duck']
     _keys(duck, ('threshold', 'ratio', 'attack', 'release', 'makeup', 'knee', 'link', 'detection'), 'mix.duck')
     ranges = {'threshold': (0.000976563, 1), 'ratio': (1, 20), 'attack': (0.01, 2000),
@@ -59,11 +58,6 @@ def policy(req):
 
 def voice_filter(req):
     return _chain(policy(req)['voice_chain'], 'mix.voice_chain')
-
-
-def names(req):
-    prefix = f"records/render/{req['output_id']}"
-    return prefix + '-bed.wav', prefix + '-mix.wav'
 
 
 def _duration(req):
@@ -115,12 +109,10 @@ def prepare(video, req):
     """Validate media coverage without creating artifacts; caller owns the rendering transaction."""
     policy(req)
     plan = bed_plan(req)
-    for name in names(req):
+    for name in records.artifact_names(req)[4:]:
         records.path(video, name, writable=True)
     for asset in plan['assets']:
-        source = records.path(video, asset['file'])
-        if filehash(source) != asset['sha256']:
-            raise SpineError(f"{asset['file']}: bed asset missing or changed")
+        source = _source(video, asset)
         probe = decoded.probe(source, ['-show_streams', '-show_frames'])
         streams = probe['streams']
         if len(streams) != 1 or streams[0]['codec_type'] != 'audio':
@@ -130,6 +122,13 @@ def prepare(video, req):
         if count < math.ceil(_duration(req) * rate):
             raise SpineError(f"{asset['file']}: bed audio does not cover output duration")
     return plan
+
+
+def _source(video, asset):
+    source = records.path(video, asset['file'])
+    if filehash(source) != asset['sha256']:
+        raise SpineError(f"{asset['file']}: bed asset missing or changed")
+    return source
 
 
 def _options(values):
@@ -144,15 +143,15 @@ def _commit(video, name, work):
 
 
 def build(video, req, voice_path):
-    """Write the real contribution and final audio under the caller's records.writer lock."""
-    plan, p = prepare(video, req), policy(req)
-    bed_name, mix_name = names(req)
+    """Write the real contribution and final audio under the caller's records.writer lock; prepare() probed the bed."""
+    plan, p = bed_plan(req), policy(req)
+    bed_name, mix_name = records.artifact_names(req)[4:]
     target = records.path(video, mix_name, writable=True)
     target.parent.mkdir(parents=True, exist_ok=True)
     rate = req['settings']['audio']['sample_rate']
     count = round(_duration(req) * rate)
     if plan['mode'] == 'voice_only':
-        for name in names(req):
+        for name in (bed_name, mix_name):
             old = records.path(video, name, writable=True)
             if old.exists():
                 old.unlink()
@@ -160,7 +159,7 @@ def build(video, req, voice_path):
     with tempfile.TemporaryDirectory(prefix='.mix-', dir=target.parent) as temporary:
         work = Path(temporary)
         mixed = work / 'mix.wav'
-        source = records.path(video, plan['assets'][0]['file'])
+        source = _source(video, plan['assets'][0])
         shape = f"aresample={rate},atrim=end_sample={count},asetpts=PTS-STARTPTS," + _chain(p['bed_eq'], 'mix.bed_eq')
         reading = decoded.run('ffmpeg', ['-v', 'info', '-i', str(source), '-af', shape + ',ebur128',
                               '-f', 'null', '-'], 'bed.loudness')
@@ -191,7 +190,7 @@ def build(video, req, voice_path):
 
 def bind(req, generated):
     plan = bed_plan(req)
-    bed_name, mix_name = names(req)
+    bed_name, mix_name = records.artifact_names(req)[4:]
     req['bed_binding'] = plan
     if plan['mode'] == 'bed':
         req['mix_binding'] = {'file': mix_name, 'sha256': generated[mix_name]}
@@ -203,6 +202,6 @@ def bind(req, generated):
                                 'gain_db': 0, 'offset_s': 0, 'tacets': plan['tacets']}
     else:
         req['mix_binding'] = {k: req['voice_binding'][k] for k in ('file', 'sha256')}
-        if any(generated[name] is not None for name in names(req)):
+        if any(generated[name] is not None for name in (bed_name, mix_name)):
             raise SpineError(f'{bed_name}: unexpected bed for voice_only')
         req.pop('audio_binding', None)

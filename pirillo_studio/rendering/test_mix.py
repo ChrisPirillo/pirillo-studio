@@ -65,6 +65,12 @@ class Mix(unittest.TestCase):
         del missing_hash['audio_binding']['stem']['sha256']
         with self.assertRaises(MeasurementRefused):
             sound.measure(self.case.v, missing_hash, self.case.folder / result['file'])
+        voice = self.case.folder / req['voice_binding']['file']
+        accepted_voice = voice.read_bytes()
+        voice.write_bytes(accepted_voice + b'\0')
+        with self.assertRaisesRegex(MeasurementRefused, 'stale or non-independent processed voice'):
+            sound.measure(self.case.v, req, self.case.folder / result['file'])
+        voice.write_bytes(accepted_voice)
         (self.case.folder / req['audio_binding']['stem']['file']).unlink()
         with self.assertRaises(MeasurementRefused):
             sound.measure(self.case.v, req, self.case.folder / result['file'])

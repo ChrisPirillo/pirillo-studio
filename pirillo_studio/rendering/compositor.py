@@ -23,8 +23,7 @@ def caption_identity(video):
     return {'settings': settings, 'code': cues._code(), 'versions': versions}
 
 
-def names(req):
-    return cues.artifact_names(req['output_id']) + list(mix.names(req))
+names = records.artifact_names
 
 
 def prepare(video, req):

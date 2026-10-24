@@ -110,8 +110,9 @@ def backup_name(request, sha):
 
 
 def artifact_names(request):
-    from . import compositor
-    return compositor.names(request)
+    """Every generated artifact of an output: item 18's four, then the retained bed stem and the final mix."""
+    prefix = f"records/render/{request['output_id']}"
+    return cues.artifact_names(request['output_id']) + [prefix + '-bed.wav', prefix + '-mix.wav']
 
 
 def preserve(video, request, previous, *, replacing=True):
