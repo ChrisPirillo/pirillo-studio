@@ -118,6 +118,16 @@ class Meddle(unittest.TestCase):
             f.write(text.replace("\\n", "\\n\\n", 1))
 """
 
+LAND_COMMIT = """\
+    g = ['git', '-c', 'user.email=t@t', '-c', 'user.name=t', '-C', 'scratch']   # land.py: commit and push off the live checkout
+    subprocess.run(['git', 'worktree', 'add', '-q', '--detach', 'scratch', 'origin/main'], check=True)
+    subprocess.run(g + ['apply', '--index', os.path.abspath(sys.argv[5])], check=True)
+    subprocess.run(g + ['commit', '-qm', sys.argv[3]], check=True)
+    subprocess.run(g + ['push', '-q', 'origin', 'HEAD:main'], check=True)
+    subprocess.run(['git', 'worktree', 'remove', '--force', 'scratch'], check=True)
+    subprocess.run(['git', 'merge', '-q', '--ff-only', 'origin/main'])   # land.py's follow, which skips a conflicting live edit
+"""
+
 
 class Landing(unittest.TestCase):
     """guard: a core landing makes nothing live before both halves commit, tests the host half against the new core
@@ -134,7 +144,7 @@ class Landing(unittest.TestCase):
         shutil.copytree(os.path.join(root, "dev", "pirillo_pipes"), os.path.join(self.repo, "dev", "pirillo_pipes"),
                         ignore=shutil.ignore_patterns("__pycache__"))
         self.write(self.repo, "dev/old.json", "{}\n")
-        self.write(self.host, "tools/studio.py", "import sys\nprint('export STUDIO_LAND_TOKEN=t')\n"
+        self.write(self.host, "tools/studio.py", "import sys\n"
                    "sys.exit('land commit refused: fixture' if sys.argv[2] == 'commit' else 0)\n")
         for d in ("core", "host"):
             self.git(self.d, "init", "-q", "--bare", d + ".git")
@@ -143,6 +153,7 @@ class Landing(unittest.TestCase):
             self.git(os.path.join(self.d, d), "commit", "-q", "-m", "base")
             self.git(os.path.join(self.d, d), "remote", "add", "origin", os.path.join(self.d, d + ".git"))
             self.git(os.path.join(self.d, d), "push", "-q", "origin", "main")
+        self.git(self.host, "tag", "base")   # the host patch base, as land commit --base names it
         with open(os.path.join(self.repo, "dev/queue.json")) as f:
             self.before = f.read()
         self.patterns = self.write(self.d, "outside/patterns.txt", "zz-no-such-private-thing/\n")
@@ -173,7 +184,7 @@ class Landing(unittest.TestCase):
 
     def land(self, patterns, base="base", **env):
         env = dict(os.environ, PIRILLO_PRIVATE_PATTERNS=patterns, **env)
-        return subprocess.run([sys.executable, "dev/port.py", "land", self.host, "who", self.review, self.core,
+        return subprocess.run([sys.executable, "dev/port.py", "land", self.host, self.review, self.core,
                                self.hostp, base, "c", "h"], cwd=self.repo, capture_output=True, text=True, env=env)
 
     def test_the_host_half_carries_its_fixture_rebound_to_the_new_core(self):
@@ -251,37 +262,31 @@ class Landing(unittest.TestCase):
     def host_ok(self):
         """A host whose land commit passes only on the new core (dev/fresh.py) while the live core still lacks it."""
         self.write(self.host, "tools/studio.py", f"""import os, subprocess, sys
-print('export STUDIO_LAND_TOKEN=t')
-if sys.argv[2] in ('commit', 'end'):
-    from dev.fresh import NEW  # only the new core has it, through PYTHONPATH: the new host needs it from its commit on
 if sys.argv[2] == 'commit':
+    from dev.fresh import NEW  # only the new core has it, through PYTHONPATH: the new host needs it from its commit on
     if sys.argv[6:8] != ['--base', 'base']:
         sys.exit('land commit refused: no --base naming the host patch base')
     if os.path.exists({os.path.join(self.repo, "dev/fresh.py")!r}):
         sys.exit('land commit refused: the core went live before the host commit')
-    g = ['git', '-c', 'user.email=t@t', '-c', 'user.name=t']
-    subprocess.run(g + ['apply', '--index', sys.argv[5]], check=True)
-    subprocess.run(g + ['commit', '-qm', sys.argv[3]], check=True)
-""")
+""" + LAND_COMMIT)
 
     def landed(self):
         self.assertTrue(os.path.exists(os.path.join(self.repo, "dev/fresh.py")))
-        self.assertIn("Core-change: " + self.git(self.repo, "rev-parse", "HEAD"), self.git(self.host, "log", "-1", "--format=%B"))
+        self.assertIn("Core-change: " + self.git(self.repo, "rev-parse", "HEAD"), self.git(self.d, "--git-dir=host.git", "log", "-1", "--format=%B", "main"))
         self.assertEqual(self.git(self.d, "--git-dir=core.git", "rev-parse", "main"), self.git(self.repo, "rev-parse", "HEAD"))
-        self.assertEqual(self.git(self.d, "--git-dir=host.git", "rev-parse", "main"), self.git(self.host, "rev-parse", "HEAD"))
+        pushed = self.git(self.d, "--git-dir=host.git", "rev-parse", "main")
+        self.assertEqual(pushed, self.git(self.host, "rev-parse", "origin/main"))
+        self.assertEqual(pushed, self.git(self.host, "rev-parse", "HEAD"))
 
     def test_a_queue_only_core_is_linked_as_core_queue(self):
         """defect: item 5 seam 5's host half (Working, 2026-10-23) was refused: its core commit c4794cc changed only
         dev/queue.json, and the host refuses a Core-change sha that changes no core code."""
-        self.write(self.host, "tools/studio.py", "import subprocess, sys\nprint('export STUDIO_LAND_TOKEN=t')\n"
-                   "if sys.argv[2] == 'commit':\n    g = ['git', '-c', 'user.email=t@t', '-c', 'user.name=t']\n"
-                   "    subprocess.run(g + ['apply', '--index', sys.argv[5]], check=True)\n"
-                   "    subprocess.run(g + ['commit', '-qm', sys.argv[3]], check=True)\n")
+        self.write(self.host, "tools/studio.py", "import os, subprocess, sys\nif sys.argv[2] == 'commit':\n" + LAND_COMMIT)
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         shutil.copy(os.path.join(root, "pirillo_studio/host.py"), self.write(self.repo, "pirillo_studio/host.py", ""))
         r = self.land(self.patterns)
         self.assertEqual(r.returncode, 0, r.stderr)
-        body = self.git(self.host, "log", "-1", "--format=%B")
+        body = self.git(self.d, "--git-dir=host.git", "log", "-1", "--format=%B", "main")
         self.assertIn("Core-queue: " + self.git(self.repo, "rev-parse", "HEAD"), body)
         self.assertNotIn("Core-change:", body)
 
@@ -291,20 +296,54 @@ if sys.argv[2] == 'commit':
         r = self.land(self.patterns)
         self.assertIn("only its push failed", r.stdout)
         self.assertFalse(os.path.exists(os.path.join(self.repo, "dev/fresh.py")))  # committed, not live
-        finish = r.stderr.split("already written):\n")[1]
+        finish = r.stderr.split("holds its commit):\n")[1]
         self.git(self.repo, "remote", "set-url", "origin", os.path.join(self.d, "core.git"))
         for _ in range(2):
             self.assertNotEqual(subprocess.run(["bash", "-c", finish], capture_output=True).returncode, 0)
         self.assertEqual(self.git(self.d, "--git-dir=core.git", "rev-parse", "main"), self.git(self.repo, "rev-parse", "HEAD"))
-        self.assertEqual(self.git(self.d, "--git-dir=host.git", "rev-parse", "main"), self.git(self.host, "rev-parse", "HEAD"))
+        self.assertEqual(self.git(self.d, "--git-dir=host.git", "log", "--format=%s", "main"), "base")
         self.assertEqual(self.git(self.host, "log", "--format=%s"), "base")
         self.assertFalse(os.path.exists(os.path.join(self.host, "x")))  # port.py never writes the host half itself
         self.assertFalse(os.path.exists(os.path.join(self.repo, "dev/fresh.py")))  # a refused finish writes no live file
         self.host_ok()
+        self.write(self.host, "x", "another session's edit\n")   # the live host's follow is refused, so the core waits
+        self.assertNotEqual(subprocess.run(["bash", "-c", finish], capture_output=True).returncode, 0)
+        self.assertFalse(os.path.exists(os.path.join(self.repo, "dev/fresh.py")))
+        os.remove(os.path.join(self.host, "x"))
+        self.git(self.host, "merge", "-q", "--ff-only", "origin/main")
         for _ in range(2):  # the finish, run twice once the host passes, lands the host and then makes the core live
             f = subprocess.run(["bash", "-c", finish], capture_output=True, text=True)
             self.assertEqual(f.returncode, 0, f.stderr)
         self.landed()
+
+    def test_the_host_patch_is_checked_at_its_base_and_the_core_waits_for_the_live_host(self):
+        """defect: reviews of 59f5913 and deda3c5 (2026-10-23): the host patch was checked on the live host's files, which
+        lag origin/main while a render runs and carry other sessions' edits, and the core went live while land.py's follow
+        left the live host on the old commit."""
+        self.patch("fresh", lambda w: self.write(w, "dev/fresh.py", "NEW = 1\n"))
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        shutil.copy(os.path.join(root, "pirillo_studio/host.py"), self.write(self.repo, "pirillo_studio/host.py", ""))
+        self.host_ok()
+        self.write(self.host, "x", "another session's edit\n")
+        r = self.land(self.patterns)
+        self.assertIn("the live host has not followed", r.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.repo, "dev/fresh.py")))
+        with open(os.path.join(self.host, "x")) as f:
+            self.assertEqual(f.read(), "another session's edit\n")
+        os.remove(os.path.join(self.host, "x"))
+        self.git(self.host, "merge", "-q", "--ff-only", "origin/main")   # the next landing's follow
+        subprocess.run(["bash", "-c", r.stderr.split("once the live host holds it: ")[1]], check=True)
+        self.landed()
+
+    def test_a_host_patch_that_does_not_apply_at_its_base_lands_nothing(self):
+        self.patch("fresh", lambda w: self.write(w, "dev/fresh.py", "NEW = 1\n"))
+        self.host_ok()
+        head = self.git(self.repo, "rev-parse", "HEAD")
+        self.write(self.d, "host.patch", "diff --git a/y b/y\n--- a/y\n+++ b/y\n@@ -1 +1 @@\n-a\n+b\n")
+        r = self.land(self.patterns)
+        self.assertIn("Nothing is live", r.stderr)
+        self.assertEqual(self.git(self.repo, "rev-parse", "HEAD"), head)
+        self.assertEqual(self.git(self.d, "--git-dir=core.git", "rev-parse", "main"), head)
 
     def test_the_host_half_tests_the_new_core_before_it_goes_live(self):
         self.patch("fresh", lambda w: self.write(w, "dev/fresh.py", "NEW = 1\n"))
