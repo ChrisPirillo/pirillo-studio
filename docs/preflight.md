@@ -111,7 +111,8 @@ media probe, the expensive one, is not re-run while the key is unchanged; the di
 tools probe (versions and presence) are read on every call, because free space and installs are not an input's
 content and cost milliseconds, except the first probe of a new key (`qualify`, below). The tools probe is `capability(id)` per declared tool, and `qualify(id)` once for a
 current key with no record (item 5, [capabilities.md](capabilities.md)); a cited voice patch also asks
-`voice("speech", cites)`, so a take with no owner pick is `waiting_owner`. A source's content hash is cached against its path,
+`voice("speech", cites)` for a stage declaring `voice:speech` (`cites`, the patch's take and original, passed by the
+spine), so a take with no owner pick is `waiting_owner`, the voice API's own Board ask its evidence. A source's content hash is cached against its path,
 size, inode and change time; any change re-hashes (shortcut: stat identity stands for content between runs; upgrade
 to a full re-hash if a tool is found that rewrites a file and keeps all four).
 
@@ -121,12 +122,14 @@ files the owner's Board task (section 3) once per key; the task is the Board's r
 
 ## 3. One preflight's path
 
-The three ends are the only states the code writes. Probe boxes are steps inside one call.
+The four ends are the only states the code writes. Probe boxes are steps inside one call.
 
 ```mermaid
 flowchart TD
     req([requested by run]) --> tools[probe inputs and tools]
     tools -->|input missing or stale, tool missing or wrong version| blocked[blocked: names the input, the tool or the GB short]
+    tools -->|a declared voice or a cited take has no owner pick| waiting[waiting_owner: the voice's one Board ask]
+    waiting -->|the owner picks| req
     tools -->|key recorded: media reused| disk
     tools -->|ok| media[probe media]
     media -->|unreadable, stream missing, rate unknown| broken[broken media: names the file and why]
@@ -282,7 +285,7 @@ run on the core, the switch and the old C1 path are removed together.
   Packet gaps in the source are now found by the media probe before analysis (contract 6); the delivered read stays
   in item 15 and this seam does not claim #1510 fixed.
 - Ledger `SHARED-VIDEO-PREFLIGHT-R1`, in `test_draft_preflight`: the arc bypassed plan checks until after rendering;
-  `SHARED-VIDEO-PREFLIGHT-REVIEW-WARN-R1`: dated warnings looked green. Contracts 1 and 2: three ends, no warn state.
+  `SHARED-VIDEO-PREFLIGHT-REVIEW-WARN-R1`: dated warnings looked green. Contracts 1 and 2: four ends, no warn state.
 - `job.py measure_fps`: the camera tagged 30 and shot 30.0686, and counting at the tagged rate threw away 14 frames;
   `cutstack.py probe` still reads the tagged rate and defaults to 30. Contract 11 and the measured rate end it.
 - `job.py source_probe`: a render asked ffprobe for the frame size once per piece, 97 times, 10 to 13 s before
