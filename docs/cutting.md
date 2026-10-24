@@ -179,6 +179,12 @@ one home each, never restated in this spec:
 - `shorts`: section 1's variants; every range inside kept spans by word, a short opens on a word with no backward
   reference unless `stands_alone` names it, ends on its payoff word, and its settled length sits in the shorts band.
   Reads both shorts plans, plan, words.
+- `paper-read` (the spine's check on `paper`, `paper_read.py`): the story editor's `records/story_review.json` says
+  `lands`, names the fact the close lands on with each earlier telling, and each read (gag setups, button, points told
+  more than once, open loops against `OPEN_LOOP_S`, pace, look) in its shape; `lands: true` over its own evidence, or
+  `lands: false`, fails with every problem named. Its `plan` is the engine's judged digest of paper and plan (the host's
+  paper.py mark): a review of another plan fails naming the digest to read. Reads paper, plan and story review; no
+  manual QC row.
 - `locked-cut` (the spine's check on `locked`): the lock names the current plan, check key, reads and decision.
 
 Never: writes, moves or re-encodes the source or any owner file; reads the recipe name; turns an unreadable plan,

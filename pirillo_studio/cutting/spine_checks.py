@@ -8,6 +8,7 @@ on itself. settle is the maker's (the stage's run): fn reads what settle wrote a
 
 - cut-plan: the settled plan's checks, before the overlays stage writes cards, bed and shorts.
 - overlay-plan: the whole check, written as records/checks/cut.json, the record request_arc and lock authorize from.
+- paper-read: the story editor's records/story_review.json, judged by paper_read (seam 3c).
 - locked-cut: records/story_map.json is cutting.lock's record for the current plan, check and decision; never locks.
 
 A read is the engine's evidence, or pinned by its hash inside that evidence (the settled plan's and the shorts spec's
@@ -17,6 +18,7 @@ from pathlib import Path
 
 from ..spine.files import digest
 from . import checks as cut
+from . import paper_read
 from . import plan as io
 
 HERE = Path(__file__).parent
@@ -62,5 +64,6 @@ def locked(video, evidence):
 def checks(video):
     v = version()
     return {"cut-plan": (v, lambda evidence: judge(video, evidence, False)),
+            "paper-read": (v, paper_read.judge),
             "overlay-plan": (v, lambda evidence: judge(video, evidence, True)),
             "locked-cut": (v, lambda evidence: locked(video, evidence))}

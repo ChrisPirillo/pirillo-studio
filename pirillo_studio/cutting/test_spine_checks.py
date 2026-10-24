@@ -1,10 +1,14 @@
 """Cutting's checks run through the real spine engine (docs/cutting.md section 2); the host switch is seam 3b."""
+import json
 import threading
 
 from pirillo_studio.cutting import checks, settle, spine_checks
 from pirillo_studio.cutting.test_cutting import Fixture
 from pirillo_studio.spine import engine
 from pirillo_studio.spine.test_host import Host
+
+LANDS = {"lands": True, "landing_fact": {"fact": "the price", "earlier": []}, "gag_setups": [],
+         "button": {"line": "none"}, "each_point_once": [], "open_loops": [], "pace": [], "look": []}
 
 
 class Bound(Fixture):
@@ -30,6 +34,10 @@ class Bound(Fixture):
             return fn(evidence)
         return judged
 
+    def mark(self):  # the plan a paper read names: the engine's judged digest of paper and plan
+        return engine.judged({p: {"sha256": engine.filehash(self.v.folder / p)}
+                              for p in ("records/paper.md", "records/cut_plan2.json")}, [])
+
     def stage(self, sid, make=lambda: None):
         engine.run(self.e, sid)
         make()
@@ -44,7 +52,7 @@ class Bound(Fixture):
 
     def to_overlays(self):
         self.assertTrue(self.to_plan()["ok"])
-        self.stage("paper", lambda: self.put("records/story_review.json", {"read": "lands"}))
+        self.stage("paper", lambda: self.put("records/story_review.json", dict(LANDS, plan=self.mark())))
         key = self.get("records/cut_plan2.json")["key"]
 
         def overlays():
@@ -128,3 +136,64 @@ class Bound(Fixture):
         answer = self.to_plan()
         self.assertEqual(answer["state"], "blocked", answer)
         self.assertIn("reads records/voice.json: neither", answer["detail"]["words"][0])
+
+
+class PaperRead(Bound):
+    """guard: a paper read passes only on a complete story_review.json that lands over its own evidence, bound to the
+    plan it read; never a manual QC row (queue item 37 seam 3c)."""
+
+    def paper(self, review, plan=True):  # written as a maker would: json.dumps lets Infinity through, canon refuses it
+        self.assertTrue(self.to_plan()["ok"])
+        return self.stage("paper", lambda: (self.v.folder / "records/story_review.json").write_text(json.dumps(
+            dict(review, plan=self.mark()) if plan else review)))
+
+    def test_a_complete_read_that_lands_passes(self):
+        self.assertEqual(self.paper(LANDS)["state"], "pass")
+        self.assertIn("records/cut_plan2.json", self.seen["paper-read"][-1])
+
+    def test_lands_over_a_point_told_twice_fails_naming_it(self):
+        answer = self.paper(dict(LANDS, each_point_once=[{"point": "it is cheap", "tellings": ["0:05", "1:10"]}]))
+        self.assertEqual(answer["state"], "fail", answer)
+        self.assertIn("told 2 times (it is cheap)", answer["detail"]["words"][0])
+
+    def test_a_missing_read_and_a_non_finite_gap_fail_with_every_problem(self):
+        review = {k: v for k, v in LANDS.items() if k != "pace"}
+        review["open_loops"] = [{"promise": "a reveal at 0:10", "paid": "2:00", "gap_s": float("inf")}]
+        answer = self.paper(review)
+        self.assertEqual(answer["state"], "fail", answer)
+        self.assertEqual(sum("it names no" in w for w in answer["detail"]["words"]), 2, answer)
+
+    def test_misshapen_nested_evidence_fails(self):
+        review = dict(LANDS, landing_fact={"fact": "the price"}, each_point_once=[{"point": "p", "tellings": [None]}],
+                      open_loops=[{"promise": "a reveal", "paid": "2:00", "gap_s": 110, "tease": 123}])
+        words = self.paper(review)["detail"]["words"]
+        self.assertEqual(sum("it names no" in w for w in words), 2, words)
+        self.assertTrue(any("left open (a reveal: paid 110 s later with no tease" in w for w in words), words)
+
+    def test_an_old_review_fails_a_changed_plan_naming_the_new_one(self):
+        self.assertEqual(self.paper(LANDS)["state"], "pass")
+        old = (self.v.folder / "records/story_review.json").read_text()
+        (self.v.folder / "records/paper.md").write_text("an edited paper")
+        engine.run(self.e, "plan", rerun=True)
+        self.assertTrue(engine.check(self.e, "plan")["ok"])
+        engine.hand_off(self.e, "plan")
+        engine.run(self.e, "paper", rerun=True)
+        (self.v.folder / "records/story_review.json").write_text(old)
+        answer = engine.check(self.e, "paper")
+        self.assertEqual(answer["state"], "fail", answer)
+        self.assertIn(self.mark(), answer["detail"]["words"][0])
+
+    def test_a_read_that_does_not_land_fails_for_a_new_plan(self):
+        answer = self.paper(dict(LANDS, lands=False))
+        self.assertEqual(answer["state"], "fail", answer)
+        self.assertIn("does not land", answer["detail"]["words"][-1])
+
+    def test_unreadable_or_moved_review_is_blocked(self):
+        self.paper(LANDS)
+        paper = engine.find(self.e.recipe()[1], "paper")
+        judge = spine_checks.checks(self.v)["paper-read"][1]
+        evidence = engine.evidence(self.e, paper, "paper-read")
+        (self.v.folder / "records/story_review.json").write_text("{not json")
+        self.assertEqual(judge(evidence)["state"], "blocked")
+        evidence = engine.evidence(self.e, paper, "paper-read")
+        self.assertEqual(judge(evidence)["state"], "blocked")
