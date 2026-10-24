@@ -37,7 +37,7 @@ profile is `unavailable` naming it):
 - map: {"long"|"vertical"|"short"|"text": [platform, ...]}: where each output kind (and the text post) goes.
 - platforms: {platform: {"max_chars": n, "hashtags": {"min": n, "max": n}}}; length: {"long_url": text} (a link
   of the length posting fills `{long_url}` with, counted in its place).
-- his_words: {"max_skip": n}; do_not_say: [phrase]; literals: [text]; own_urls: [url prefix];
+- his_words: {"max_skip": n}; do_not_say: [phrase]; literals: [text]; own_urls: {"videos": [id], "playlists": [id]};
   topic: {"platforms": [platform], "max_chars": n, "fresh_days": n}; cover: {"words": {"min": n, "max": n}, "none":
   [regex]} (a short's cover: one line, as host cover_text_problem, its why matching titles.why_evidence; or no
   text and a why matching a `none` pattern, a recorded none); titles: {"count": n, "min_chars": n, "max_chars": n, "min_score": n, "research_days": n,

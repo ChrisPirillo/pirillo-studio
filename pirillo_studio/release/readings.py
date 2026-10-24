@@ -5,6 +5,7 @@ release.search-phrase only warns (host qc.copy.search-phrase is a warn per qc.ru
 import datetime as dt
 import math
 import re
+from urllib.parse import parse_qs, urlsplit
 
 from .inputs import CUES, PUBLISH, Unavailable, field, setting
 from .rows import disclosures, kind, seconds, words as row_words
@@ -13,6 +14,34 @@ SKIP = re.compile(r"(#\w+|@[\w.]+|https?://\S+|\{long_url\}|^Topic:.*$)", re.M) 
 HASHTAG = re.compile(r"(?<![\w&])#\w+")
 TOPIC = re.compile(r"^[ \t]*Topic:[ \t]*([^\n]*)$", re.M | re.I)  # host wordcopy.py TOPIC_ANY_RE
 BREAK = re.compile(r"[.?!][\"'”’]?\s+\S")  # host qc.py run_chapters: a sentence break inside the cue
+
+
+HOSTS = {"youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtube-nocookie.com",
+         "www.youtube-nocookie.com"}
+
+
+def link_id(link, kind):
+    """A video or playlist id read only from a YouTube link, in every form the host reads as his; else None."""
+    try:
+        url = urlsplit(link if "//" in link else "https://" + link)
+        if url.scheme not in ("http", "https"):
+            return None
+        host, parts, query = url.hostname, [p for p in url.path.split("/") if p], parse_qs(url.query)
+        if host == "youtu.be" and kind == "video":
+            ids = parts[:1]
+        elif host in HOSTS and kind == "playlist" and parts == ["playlist"]:
+            ids = query.get("list", [])
+        elif host in HOSTS and kind == "video" and parts == ["watch"]:
+            ids = query.get("v", [])
+        elif host in HOSTS and kind == "video" and len(parts) > 1 and parts[0] in ("shorts", "embed"):
+            ids = parts[1:2]
+        else:
+            return None
+        ids = set(ids)  # a repeated v= is one id; two different ids name no one video
+        pattern = r"[A-Za-z0-9_-]{11}" if kind == "video" else r"[A-Za-z0-9_-]+"
+        return ids.pop() if len(ids) == 1 and re.fullmatch(pattern, next(iter(ids))) else None
+    except ValueError:
+        return None
 
 
 def number(s, name):
@@ -227,9 +256,12 @@ def per_output(video, s, outs, publish, titled, cues, chat, today, pool, said):
             out.append(reading("cover", o["id"], why, "titles.why_evidence" if n else "cover.none", ok, "packager"))
         if o["id"] != "long":
             continue
-        own = setting(s, "own_urls", list)
+        own = {k: setting(s, f"own_urls.{k}s", list) for k in ("video", "playlist")}
+        for k, ids in own.items():
+            if any(not isinstance(i, str) or not i for i in ids):
+                raise Unavailable(f"release.settings own_urls.{k}s: not a list of ids")
         ends = o["fields"]["end_screen"]
-        foreign = [u for u in (ends["video"], ends["playlist"]) if u and not any(u.startswith(x) for x in own)]
+        foreign = [ends[k] for k in own if ends[k] and link_id(ends[k], k) not in own[k]]
         out.append(reading("own-urls", "long", foreign, "own_urls", not foreign, "packager"))
         owed = disclosures(s, publish, chat)
         lacking = [x for x in owed if x not in o["description"]["text"]]

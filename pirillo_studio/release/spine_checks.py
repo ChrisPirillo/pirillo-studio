@@ -18,10 +18,14 @@ from .inputs import (ENVELOPE, PUBLISH, RELEASE, REVIEW, TEXT, TEXT_READ, WORDS,
 HERE = Path(__file__).parent
 
 
-def version():
-    """Changing domain code or bundled settings reopens checks made under the old version."""
-    return digest(b"".join(f.read_bytes() for f in sorted(HERE.iterdir())
+def version(video):
+    """Code, bundled settings and the host profile reopen checks; an unreadable profile still blocks."""
+    code = digest(b"".join(f.read_bytes() for f in sorted(HERE.iterdir())
                            if f.suffix in (".py", ".json") and not f.name.startswith("test_")))
+    try:
+        return digest(canon([code, settings(video)]))
+    except Unavailable as e:  # settings() raises only this for a profile it cannot build; judge blocks naming it
+        return digest(canon([code, f"{type(e).__name__}: {e}"]))
 
 
 def pinned(ins, evidence, pins):
@@ -86,6 +90,7 @@ def judge(video, evidence, name):
         for p in evidence:
             ins.reads[p] = filehash(ins.path(p))
         pinned(ins, evidence, {})
+        settings(video)  # an unbuildable profile blocks before missing maker inputs obscure its cause
         if name == "release":
             failed = release(video, ins, evidence)
         else:
@@ -104,6 +109,6 @@ def judge(video, evidence, name):
 
 
 def checks(video):
-    v = digest(canon([version(), settings(video)]))
+    v = version(video)
     return {name: (v, lambda evidence, name=name: judge(video, evidence, name))
             for name in ("titles", "text-read", "release")}

@@ -63,6 +63,9 @@ list. An edit therefore never stales the packager's copy, the writer's text or t
 - `edits`: the owner's edit record; a row's words are its latest edit, else the packager's or writer's words.
 - `settings`: the named profile in `release.settings` (naming, description parts and footer, per-platform limits and
   hashtag ranges under `platforms.<p>`, the platform map); each number lives there once.
+  `own_urls` is `{"videos": [id], "playlists": [id]}`: end-screen links must name an owned ID of the matching kind.
+  Check versions cover code, bundled settings and this host profile, including newly uploaded video IDs.
+  An unreadable profile gets an error-digest version and blocks the check naming its cause.
 - `outputs[]`: `file` and `sha256` from the manifest; `name` is the lead title through `release.naming`, the name a
   platform or a person is handed (upload file name, download); the delivered files keep rendering's paths. `title` and
   `ab_titles` come from `publish.json` (the lead first); `description` is built from the description parts setting

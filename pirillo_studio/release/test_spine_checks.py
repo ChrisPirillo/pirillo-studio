@@ -126,6 +126,16 @@ class Bound(Fixture):
         self.assertNotEqual(version, spine_checks.checks(self.v)["release"][0])
         self.state("release", "blocked")
 
+    def test_unbuildable_profile_has_a_version_and_blocks(self):
+        before = spine_checks.checks(self.v)["titles"][0]
+        with patch.object(self.v, "settings", side_effect=ValueError("missing own_urls.playlists")):
+            version, check = spine_checks.checks(self.v)["titles"]
+            self.assertNotEqual(before, version)
+            self.assertEqual(version, spine_checks.checks(self.v)["titles"][0])
+            answer = check(self.evidence("titles"))
+            self.assertEqual(answer["state"], "blocked")
+            self.assertIn("missing own_urls.playlists", str(answer["words"]))
+
     def test_engine_passes_only_a_current_release(self):
         # A minimal recipe explicitly supplies the envelope absent from today's bundled recipe.
         stage = copy.deepcopy(next(s for s in self.v.stages["stages"] if s["id"] == "release"))

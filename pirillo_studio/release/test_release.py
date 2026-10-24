@@ -23,7 +23,7 @@ SETTINGS = {
                   "clip": {"max_chars": 150, "hashtags": {"min": 0, "max": 3}},
                   "board": {"max_chars": 3000, "hashtags": {"min": 0, "max": 0}}},
     "his_words": {"max_skip": 3}, "do_not_say": ["forbidden thing"], "literals": ["TODO"],
-    "own_urls": ["https://own.invalid/"], "length": {"long_url": "https://own.invalid/xxxxxxxx"}, "topic": {"platforms": ["chirp"], "max_chars": 20, "fresh_days": 30},
+    "own_urls": {"videos": ["AAAAAAAAAAA"], "playlists": ["PLmadeup"]}, "length": {"long_url": "https://own.invalid/xxxxxxxx"}, "topic": {"platforms": ["chirp"], "max_chars": 20, "fresh_days": 30},
     "cover": {"words": {"min": 2, "max": 4}, "none": [r"none:\s*\S.{7,}"]}, "chapters": {"near_s": 1.0}, "search": {"min_rows": 1}, "text": {"headline_end": "..."},
     "titles": {"count": 3, "min_chars": 10, "max_chars": 60, "min_score": 50, "research_days": 7, "never_open": ["how to"],
                "quote_words": 3, "why_evidence": [r"\bno data\b", r"\bviews\b", "searched for"],
@@ -109,7 +109,7 @@ class Fixture(unittest.TestCase):
         self.publish = {"title": "Gadget: works well", "description_lead": "Subject works well.",
                         "description_body": "Details matter a lot.", "chapters": [["0:00", "Start"], ["0:10", "Details"]],
                         "hashtags": ["#gadget", "#tech", "#review"], "tags": ["gadget"], "pinned_comment": "Shorter is better here.",
-                        "end_screen_video": "https://own.invalid/v1", "end_screen_playlist": "",
+                        "end_screen_video": "https://youtu.be/AAAAAAAAAAA", "end_screen_playlist": "",
                         "end_screen_start_s": 512.0, "category": "Science", "ai_label": False,
                         "thumbnails": ["thumbs/a.jpg"],
                         "ab_titles": [{"title": t, "why": why, "said": said,
@@ -178,6 +178,30 @@ class Fixture(unittest.TestCase):
 class Contracts(Fixture):
     """e2e: records/release.json, Review.md, release_edits.json and the envelope, read back after each call."""
 
+    def test_own_end_screen_ids(self):
+        for key, link, expected in (
+            ("playlist", "https://m.youtube.com/playlist?list=PLmadeup", "built"),
+            ("playlist", "http://www.youtube.com/playlist?list=PLforeign", "refused"),
+            ("playlist", "https://youtu.be/AAAAAAAAAAA", "refused"),
+            ("playlist", "https://foreign.invalid/playlist?list=PLmadeup", "refused"),
+        ):
+            with self.subTest(link=link):
+                self.publish["end_screen_" + key] = link
+                self.sync()
+                self.assertEqual(api.build(self.v)["state"], expected)
+
+    def test_video_link_forms_read_the_id(self):
+        for link in ("https://youtube.com/watch?feature=share&v=AAAAAAAAAAA",
+                     "http://m.youtube.com/shorts/AAAAAAAAAAA", "https://www.youtube.com/embed/AAAAAAAAAAA",
+                     "http://youtu.be/AAAAAAAAAAA", "https://youtu.be/AAAAAAAAAAA/", "youtu.be/AAAAAAAAAAA",
+                     "www.youtube.com/watch?v=AAAAAAAAAAA", "https://youtube.com/watch/?v=AAAAAAAAAAA&v=AAAAAAAAAAA",
+                     "https://music.youtube.com/watch?v=AAAAAAAAAAA", "https://www.youtube.com/shorts/AAAAAAAAAAA/",
+                     "https://www.youtube-nocookie.com/embed/AAAAAAAAAAA"):
+            with self.subTest(link=link):
+                self.publish["end_screen_video"] = link
+                self.sync()
+                self.built()
+
     def test_every_mapped_platform_has_its_row(self):
         rec = self.built()
         self.assertEqual([o["id"] for o in rec["outputs"]], ["long", "vertical", "short-alpha"])
@@ -187,7 +211,7 @@ class Contracts(Fixture):
         self.assertEqual(self.qc("titles")["result"], "pass")
         long = self.get(RELEASE)["outputs"][0]["fields"]
         self.assertEqual((long["category"], long["ai_label"], long["end_screen"]),
-                         ("Science", False, {"start_s": 512.0, "video": "https://own.invalid/v1", "playlist": ""}))
+                         ("Science", False, {"start_s": 512.0, "video": "https://youtu.be/AAAAAAAAAAA", "playlist": ""}))
         self.assertEqual([o["cover"]["at_s"] for o in self.get(RELEASE)["outputs"][1:]], [2.0, 1.5])
         for name, bad in (("category", None), ("ai_label", "no"), ("end_screen_start_s", -1), ("at_s", None)):
             with self.subTest(missing=name):
