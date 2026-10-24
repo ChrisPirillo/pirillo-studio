@@ -255,3 +255,30 @@ and live check. Owner use for a day and an on-Board acknowledgement remain the p
 
 The other item 13 backlog subjects are not established by the inspected Board code/tests; no titles or promised
 fixes are invented here. Their host records must be reconciled by the lead before the rebuild claims the full item.
+
+## 7. Legibility the rebuild fixes
+
+Measured on 2026-10-24 on the legacy Board page, which carries Board C's treatment, in a browser render: computed
+styles read per element and an automated design lint, both against the page's own dark tokens (`--bg` #0b0d10,
+`--rail` #0f1215, `--panel` #13171c), not an assumed white page. The floors are the house design system's: text
+contrast at least WCAG AA 4.5:1, section titles 16px/600 in sentence case, labels 13 to 14px, no text uppercased by
+style. Each row is a defect the new page must not carry over (the owner, 2026-10-24: the rebuild fixes these six).
+Contrast is accessibility and holds unconditionally. Sentence case, larger titles and labels, and a new badge ink
+change the treatment, so under test 8 they are shown side by side with today's page and adopted once the owner
+picks them, never by code alone; the palette roles, type families and placement stay.
+
+| Finding | Measured today | Floor it breaks | The rebuild's target |
+| --- | --- | --- | --- |
+| Faint text token | `--faint` #5c646d is 3.2:1 on page, 3.1:1 on rail, 3.0:1 on panel; it carries visible text such as item counts and the search key hint | AA 4.5:1 | Every token that carries text is at least 4.5:1 on every surface it is drawn on; a token too faint for that is used only for borders and rules |
+| Count badge (`.rail .n`) | white on `--red` #ff453a at 10.5px is 3.4:1 | AA 4.5:1 | Badge text at least 4.5:1 on its fill (`--bg` ink on that red is 5.7:1) and at least 13px |
+| Group headers in caps (`.gh`) | notes of 150 to 240 characters set in 11.5px uppercase; post titles shown in caps | no text uppercased by style | A group header is a short sentence-case title styled as a section title; its note is body text under it; post titles in sentence case |
+| Section titles in caps (`.side h2`, `.insp h3`, `.sech`, `.lat summary`) | 11.5px tracked uppercase over 13px labels, so the title is smaller than what it heads | titles 16px/600 sentence case | Section titles 16px/600 sentence case, larger than every label under them |
+| Kind labels (`.kd`, `.lb`) | the kind tag (Story, Short, Vault and the rest) is 10.5px uppercase, in 183 places on the page | labels 13 to 14px | Kind labels 13 to 14px in sentence case, still in the dim text token (`--dim` #8f98a1, 6.1:1 on panel) |
+| Small meta text (`.legend`, `.pin small`, `.wk small`) | 11.5px in the dim token | labels 13 to 14px | Meta text 13 to 14px; dim colour only where it is at least 4.5:1 |
+
+`test_text_meets_design_floors`: on desktop and phone captures of the new page, every visible, enabled text node's
+contrast against the solid background it is drawn on is at least 4.5:1 (text over an image or gradient is measured
+against its own backing plate, which the page must draw). Once the owner has picked the treatment under test 8, it
+also asserts that treatment: elements the page marks as labels (kind tags, badges, meta lines) are 13 to 14px,
+section titles 16px/600 and never smaller than the labels they head, and no element has an uppercase text
+transform. Like section 5, this names an acceptance test for the rebuild; this document does not ship it.
