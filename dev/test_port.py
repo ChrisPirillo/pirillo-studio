@@ -273,6 +273,34 @@ class Landing(unittest.TestCase):
             self.assertEqual(f.read(), self.before.replace("\n", "\n\n", 1))
         self.assertFalse(os.path.exists(os.path.join(self.repo, "dev/test_meddle.py")))
 
+    def land_core(self, **env):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        shutil.copy(os.path.join(root, "pirillo_studio/host.py"), self.write(self.repo, "pirillo_studio/host.py", ""))
+        env = dict(os.environ, PIRILLO_PRIVATE_PATTERNS=self.patterns, **env)
+        return subprocess.run([sys.executable, "dev/port.py", "land", self.review, self.core, "c"], cwd=self.repo,
+                              capture_output=True, text=True, env=env)
+
+    def test_a_core_only_landing_writes_its_files_live(self):
+        """defect: item 37 seam 3d (core 79bd526, 2026-10-24) landed core-only by a hand script that left two landed
+        files stale on disk."""
+        self.patch("fresh", lambda w: (self.write(w, "dev/fresh.py", "NEW = 1\n"), self.git(w, "rm", "-q", "dev/old.json")))
+        r = self.land_core()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(os.path.exists(os.path.join(self.repo, "dev/fresh.py")))
+        self.assertFalse(os.path.exists(os.path.join(self.repo, "dev/old.json")))
+        self.assertEqual(self.git(self.repo, "status", "--porcelain", "--untracked-files=no"), "")
+        self.assertEqual(self.git(self.d, "--git-dir=core.git", "rev-parse", "main"), self.git(self.repo, "rev-parse", "HEAD"))
+
+    def test_a_core_only_landing_names_and_leaves_a_path_edited_during_the_suite(self):
+        self.patch("meddle", lambda w: self.write(w, "dev/test_meddle.py", MEDDLE))
+        queue = os.path.join(self.repo, "dev/queue.json")
+        r = self.land_core(PORT_MEDDLE=queue)
+        self.assertIn("left as they are: dev/queue.json", r.stderr)
+        with open(queue) as f:
+            self.assertEqual(f.read(), self.before.replace("\n", "\n\n", 1))
+        self.assertTrue(os.path.exists(os.path.join(self.repo, "dev/test_meddle.py")))
+        self.assertEqual(self.git(self.d, "--git-dir=core.git", "rev-parse", "main"), self.git(self.repo, "rev-parse", "HEAD"))
+
     def host_ok(self):
         """A host whose land commit passes only on the new core (dev/fresh.py) while the live core still lacks it."""
         self.write(self.host, "tools/studio.py", f"""import os, subprocess, sys

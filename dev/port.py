@@ -2,6 +2,7 @@
 
 usage: python3 dev/port.py move <host file> <core module> <name> ...
        python3 dev/port.py land <host root> <review> <core patch> <host patch> <host base> "<core message>" "<host message>"
+       python3 dev/port.py land <review> <core patch> "<core message>"   (a core-only landing)
        python3 dev/port.py bind <host root> <host base> <host patch> <core checkout>   (land's step, and its finish command's)
 move: the named top-level functions, constants and classes leave <host file> for <core module> (pirillo_studio/x.py)
       as their exact source, except that each host global becomes s.<name> (added to pirillo_studio/host.py NEEDS),
@@ -13,7 +14,8 @@ land: <core patch> (it must change dev/queue.json) staged index-only and landed 
       and, when the host has tools/package_core.py, its packaged-core fixture rebound to the new core commit,
       its tests importing the new core from an export (PYTHONPATH), which pushes the host half itself; only once the
       live host holds that commit are the core's live files written, so the live host never runs a core whose NEEDS it
-      lacks. Prints both commits and the callback count.
+      lacks. Prints both commits and the callback count. With no host half, the core commit is pushed and each landed
+      path still holding the parent's bytes is written live; a path edited meanwhile is named and left.
 """
 import os, shlex, subprocess, sys, tempfile
 from pirillo_pipes import source_move
@@ -77,8 +79,8 @@ def bind(host_root, base, patch, new):
     return out
 
 
-def land(host_root, review, core, patch, base, core_msg, host_msg):
-    core, patch, q = os.path.abspath(core), os.path.abspath(patch), shlex.quote
+def commit(review, core, core_msg, check=lambda: None):
+    """Land the reviewed core patch through dev/land.py from the index alone; (parent, commit, paths), no file live."""
     if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT).returncode:
         raise SystemExit("land refused: the core's index holds staged work, which would land with this change")
     head = run("git", "rev-parse", "HEAD")
@@ -93,9 +95,7 @@ def land(host_root, review, core, patch, base, core_msg, host_msg):
             raise SystemExit(f"land refused: the live core holds {lag}'s files at a path this patch changes: the landing "
                              f"after it is still in flight (its host half writes them); wait for it" if lag else
                              "land refused: the core has uncommitted work at a path this patch changes")
-        at_base = dict(os.environ, GIT_INDEX_FILE=os.path.join(host_root, run("git", "-C", host_root, "rev-parse", "--git-path", "port-base-index")))
-        run("git", "-C", host_root, "read-tree", base, env=at_base)   # land.py applies it at base; the live files lag and carry others' edits
-        run("git", "-C", host_root, "apply", "--cached", "--check", patch, env=at_base)
+        check()
         print(run(sys.executable, "dev/land.py", "--review", review, core_msg))
     except SystemExit as e:
         now, now_tree = run("git", "rev-parse", "HEAD", "HEAD^{tree}").split("\n")
@@ -103,7 +103,36 @@ def land(host_root, review, core, patch, base, core_msg, host_msg):
             subprocess.run(["git", "reset", "-q"], cwd=ROOT)  # the index back to HEAD, as checked; no working file changed
             raise SystemExit(f"{e}\nNothing is live: the core's and the host's working files are unchanged.")
         print(f"{e}\ndev/land.py committed the reviewed tree; only its push failed, which is retried below.")
-    sha = run("git", "rev-parse", "HEAD")
+    return head, run("git", "rev-parse", "HEAD"), paths
+
+
+def land_core(review, core, core_msg):
+    """A core-only landing: commit, push, then write live each landed path still holding the parent's bytes."""
+    head, sha, paths = commit(review, os.path.abspath(core), core_msg)
+    run("git", "push", "-q", "origin", "main")  # up to date unless dev/land.py's own push failed
+    held = [p for p in paths if changed(head, [p])]  # edited live during the suite: someone's work, left as it is
+    for p in paths:
+        if p in held:
+            continue
+        if run("git", "ls-tree", "--name-only", sha, "--", p):
+            run("git", "checkout", sha, "--", p)  # the index already holds sha, so only the file changes
+        elif os.path.lexists(os.path.join(ROOT, p)):
+            os.remove(os.path.join(ROOT, p))
+    print(f"core {sha}\ncallbacks {callbacks(read_needs()[2])}")
+    if held:
+        raise SystemExit(f"The core landed at {sha} and is pushed, but these live paths changed during the suite and "
+                         f"were left as they are: {', '.join(held)}. Resolve each, then make it {sha}'s: git checkout {sha} -- <path>, "
+                         f"or remove it where {sha} deletes it")
+
+
+def land(host_root, review, core, patch, base, core_msg, host_msg):
+    core, patch, q = os.path.abspath(core), os.path.abspath(patch), shlex.quote
+
+    def at_base():  # land.py applies it at base; the live files lag and carry others' edits
+        env = dict(os.environ, GIT_INDEX_FILE=os.path.join(host_root, run("git", "-C", host_root, "rev-parse", "--git-path", "port-base-index")))
+        run("git", "-C", host_root, "read-tree", base, env=env)
+        run("git", "-C", host_root, "apply", "--cached", "--check", patch, env=env)
+    head, sha, paths = commit(review, core, core_msg, at_base)
     if changed(head, paths):
         raise SystemExit("land refused: a landed path changed in the live core during the suite\n"
                          f"The core landed at {sha}, but its live files and the host are unchanged: nothing is live.")
@@ -153,6 +182,8 @@ if __name__ == "__main__":
         move(a[1], a[2], a[3:])
     elif a[:1] == ["land"] and len(a) == 8:
         land(*a[1:])
+    elif a[:1] == ["land"] and len(a) == 4:
+        land_core(*a[1:])
     else:
         print(__doc__.strip())
         sys.exit(0 if "-h" in a or "--help" in a else 2)
