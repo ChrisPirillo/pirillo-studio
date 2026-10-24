@@ -37,11 +37,11 @@ def move(host, target, names):
     return source_move.move(host, target, names, ROOT, HOST_PY, DEBT, "dev/port.py")
 
 
-def run(*cmd, cwd=ROOT, env=None):
+def run(*cmd, cwd=ROOT, env=None, raw=False):
     r = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True)
     if r.returncode:
         raise SystemExit(f"land refused at `{' '.join(cmd[:4])}`:\n{r.stdout}{r.stderr}".rstrip())
-    return r.stdout.strip()
+    return r.stdout if raw else r.stdout.strip()  # raw for a patch: it can end on a blank line's context " "
 
 
 def changed(rev, paths):
@@ -66,12 +66,12 @@ def bind(host_root, base, patch, new):
             run("git", "apply", patch, cwd=h)
             run(sys.executable, "package_core.py", new, cwd=os.path.join(h, "tools"))
             run("git", "add", "-A", cwd=h)
-            diff = run("git", "diff", "--cached", "--binary", base, cwd=h)
+            diff = run("git", "diff", "--cached", "--binary", base, cwd=h, raw=True)
             if sha not in diff:  # the base's package_core.py may predate the fixture it binds, and exit 0 having bound nothing
                 raise SystemExit(f"bind refused: tools/package_core.py at host {base[:9]} bound nothing to core {sha[:9]}; "
                                  "re-make the host patch on a host commit whose package_core.py binds its fixture")
             with open(out, "w") as f:
-                f.write(diff + "\n")
+                f.write(diff)
         finally:
             run("git", "-C", host_root, "worktree", "remove", "--force", h)
     return out

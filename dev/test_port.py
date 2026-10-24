@@ -210,6 +210,20 @@ class Landing(unittest.TestCase):
             self.assertIn(f"+{sha}", f.read())
         self.assertEqual(self.git(self.host, "status", "--porcelain"), "")
 
+    def test_a_host_patch_ending_on_a_blank_context_line_binds_whole(self):
+        """defect: item 15 seam 3's host half (Working 2026-10-24) was refused as a corrupt patch: bind stripped the
+        diff, and its last hunk's final line was a blank line's context \" \"."""
+        self.write(self.host, "tools/package_core.py", "import subprocess, sys\nopen('fixture', 'w').write(subprocess.run("
+                   "['git', '-C', sys.argv[1], 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout)\n")
+        self.write(self.host, "y", "a\n\n")
+        self.git(self.host, "add", "-A")
+        self.git(self.host, "commit", "-qm", "fixture")
+        base = self.git(self.host, "rev-parse", "HEAD")
+        self.write(self.d, "host.patch", "diff --git a/y b/y\n--- a/y\n+++ b/y\n@@ -1,2 +1,2 @@\n-a\n+b\n \n")
+        b = subprocess.run([sys.executable, "dev/port.py", "bind", self.host, base, self.hostp, self.repo], cwd=self.repo,
+                           capture_output=True, text=True, check=True)
+        subprocess.run(["git", "-C", self.host, "apply", "--check", b.stdout.strip()], check=True)
+
     def test_a_base_whose_package_core_binds_nothing_is_refused(self):
         """defect: item 5 seam 2's host half (Working 2026-10-22) was diffed from a host commit whose package_core.py had
         no fixture binder; it exited 0, and bind sent the host half to verify with its fixture unbound."""
