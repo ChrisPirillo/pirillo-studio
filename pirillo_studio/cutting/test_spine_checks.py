@@ -8,7 +8,8 @@ from pirillo_studio.spine import engine
 from pirillo_studio.spine.test_host import Host
 
 LANDS = {"lands": True, "landing_fact": {"fact": "the price", "earlier": []}, "gag_setups": [],
-         "button": {"line": "none"}, "each_point_once": [], "open_loops": [], "pace": [], "look": []}
+         "button": {"line": "none"}, "each_point_once": [], "open_loops": [], "pace": [], "look": [],
+         "closing": {"line": "and it still costs a dollar (9:58)", "kind": "punch", "offer": "none"}}
 
 
 class Bound(Fixture):
@@ -197,3 +198,23 @@ class PaperRead(Bound):
         self.assertEqual(judge(evidence)["state"], "blocked")
         evidence = engine.evidence(self.e, paper, "paper-read")
         self.assertEqual(judge(evidence)["state"], "blocked")
+
+    def test_lands_over_a_moral_close_fails_naming_it(self):
+        moral = dict(LANDS, closing={"line": "the lesson is to wait (9:58)", "kind": "moral", "offer": "none"})
+        self.assertIn("closing line is a moral", " ".join(self.paper(moral)["detail"]["words"]))
+
+    def test_an_offered_closing_instruction_fails_naming_it(self):
+        offer = dict(LANDS, closing={"line": "x (9:58)", "kind": "punch", "offer": "So decide for yourself."})
+        self.assertIn("tells the viewer what to do", " ".join(self.paper(offer)["detail"]["words"]))
+
+    def test_an_offered_closing_with_no_words_fails_as_empty(self):
+        offer = dict(LANDS, closing={"line": "x (9:58)", "kind": "punch", "offer": "—"})
+        self.assertIn("does not land: it is empty", " ".join(self.paper(offer)["detail"]["words"]))
+
+    def test_a_note_owner_outside_the_catalog_roles_fails_naming_its_place(self):
+        review = dict(LANDS, pace=[{"at": "1:00", "what": "a long hold", "owner": "the editor, maybe"}])
+        self.assertIn('pace[0] "owner": "the editor, maybe"', " ".join(self.paper(review)["detail"]["words"]))
+
+    def test_a_note_owned_by_a_catalog_role_passes(self):
+        review = dict(LANDS, pace=[{"at": "1:00", "what": "a hold", "owner": "editor"}])
+        self.assertEqual(self.paper(review)["state"], "pass")
