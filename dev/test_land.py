@@ -84,6 +84,16 @@ class Landing(unittest.TestCase):
         self.git("config", "filter.hide.smudge", "sed s/self.fail..//")
         self.assertIn("dev tests failed", self.land(None).stderr)
 
+    def test_package_tests_import_as_a_makers_run_does(self):  # defect: core 6b289e9's first landing refused
+        for n, text in (("__init__.py", ""), ("a/__init__.py", ""), ("b/__init__.py", "x = 1\n"),
+                        ("a/test_rel.py", "import unittest\nfrom ..b import x\nclass R(unittest.TestCase):\n"
+                                          "    def test(self):\n        self.assertEqual(x, 1)\n")):
+            os.makedirs(os.path.dirname(os.path.join(self.repo, "pirillo_studio", n)), exist_ok=True)
+            with open(os.path.join(self.repo, "pirillo_studio", n), "w") as f:
+                f.write(text)
+        r = self.land(None)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
     def test_checks_cannot_rewrite_the_reviewed_export(self):
         with open(os.path.join(self.repo, "dev/test_mutation.py"), "w") as f:
             f.write("from pathlib import Path\nimport unittest\nclass Mutation(unittest.TestCase):\n"

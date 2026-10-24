@@ -39,7 +39,8 @@ def suite(tree_dir, budget):
     for d in ("dev", "pirillo_studio"):
         if os.path.isdir(os.path.join(tree_dir, d)):
             try:
-                r = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", d], cwd=tree_dir,
+                r = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", d, "-t",  # the package's
+                                    "." if d == "pirillo_studio" else d], cwd=tree_dir,  # tests import as a maker's do
                                    timeout=HANG * budget)
             except subprocess.TimeoutExpired:
                 raise SystemExit(f"land refused: {d} tests hung past {HANG * budget} s") from None
