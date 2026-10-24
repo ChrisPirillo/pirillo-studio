@@ -270,6 +270,21 @@ if sys.argv[2] == 'commit':
         self.assertEqual(self.git(self.d, "--git-dir=core.git", "rev-parse", "main"), self.git(self.repo, "rev-parse", "HEAD"))
         self.assertEqual(self.git(self.d, "--git-dir=host.git", "rev-parse", "main"), self.git(self.host, "rev-parse", "HEAD"))
 
+    def test_a_queue_only_core_is_linked_as_core_queue(self):
+        """defect: item 5 seam 5's host half (Working, 2026-10-23) was refused: its core commit c4794cc changed only
+        dev/queue.json, and the host refuses a Core-change sha that changes no core code."""
+        self.write(self.host, "tools/studio.py", "import subprocess, sys\nprint('export STUDIO_LAND_TOKEN=t')\n"
+                   "if sys.argv[2] == 'commit':\n    g = ['git', '-c', 'user.email=t@t', '-c', 'user.name=t']\n"
+                   "    subprocess.run(g + ['apply', '--index', sys.argv[5]], check=True)\n"
+                   "    subprocess.run(g + ['commit', '-qm', sys.argv[3]], check=True)\n")
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        shutil.copy(os.path.join(root, "pirillo_studio/host.py"), self.write(self.repo, "pirillo_studio/host.py", ""))
+        r = self.land(self.patterns)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        body = self.git(self.host, "log", "-1", "--format=%B")
+        self.assertIn("Core-queue: " + self.git(self.repo, "rev-parse", "HEAD"), body)
+        self.assertNotIn("Core-change:", body)
+
     def test_a_refused_host_leaves_the_core_live_files_and_never_pushes(self):
         self.patch("fresh", lambda w: self.write(w, "dev/fresh.py", "NEW = 1\n"))
         self.git(self.repo, "remote", "set-url", "origin", os.path.join(self.d, "missing.git"))

@@ -9,8 +9,8 @@ move: the named top-level functions, constants and classes leave <host file> for
       core(). Anything it cannot resolve statically is refused, every case listed, and nothing is written.
 land: <core patch> (it must change dev/queue.json) staged index-only and landed through dev/land.py; then <host patch>
       landed in <host root> through `studio.py land begin <who>` and `land commit --patch --base <host base>` (the host
-      commit the patch was diffed from) with a Core-change line and, when the host has tools/package_core.py, its
-      packaged-core fixture rebound to the new core commit,
+      commit the patch was diffed from) with a Core-change line (Core-queue when the core patch changes no core code)
+      and, when the host has tools/package_core.py, its packaged-core fixture rebound to the new core commit,
       its tests importing the new core from an export (PYTHONPATH); only then are the core's live files written, and
       both pushed. Nothing goes live before both commits exist, so the live host never runs a core whose NEEDS it
       lacks. Prints both commits and the callback count.
@@ -107,7 +107,9 @@ def land(host_root, who, review, core, patch, base, core_msg, host_msg):
                          f"The core landed at {sha}, but its live files and the host are unchanged: nothing is live.")
     studio = [sys.executable, os.path.join(host_root, "tools", "studio.py"), "land"]
     body, sep, trailers = host_msg.rstrip().partition("\n\nCo-Authored-By:")
-    msg, env = f"{body}\n\nCore-change: {sha}{sep}{trailers}", dict(os.environ)
+    code = any(p.startswith(("pirillo_studio/", "dev/")) and p.endswith(".py") and not os.path.basename(p).startswith("test_") for p in paths)
+    link = f"Core-{'change' if code else 'queue'}: {sha}"  # the host proves a Core-change sha changed core code (workflow_rules)
+    msg, env = f"{body}\n\n{link}{sep}{trailers}", dict(os.environ)
     live = f"git -C {q(ROOT)} apply --reverse --check {q(core)} 2>/dev/null || git -C {q(ROOT)} apply {q(core)}"
     with tempfile.TemporaryDirectory() as tmp:
         new = os.path.join(tmp, "core")  # a detached worktree, not an archive: the host's Core-change check proves sha from its git
@@ -123,7 +125,7 @@ def land(host_root, who, review, core, patch, base, core_msg, host_msg):
             raise SystemExit(f"{e}\nThe core landed at {sha}; neither its live files nor the host half are live. Finish "
                              f"with this command (safe to run twice: it skips a host commit that already names the core "
                              f"and live files already written):\ngit -C {q(ROOT)} push origin main && cd {q(host_root)} && "
-                             f"{{ git log -F --grep {q('Core-change: ' + sha)} --format=%h | grep -q . || {{ d=\"$(mktemp -d)/core\" "
+                             f"{{ git log -F --grep {q(link)} --format=%h | grep -q . || {{ d=\"$(mktemp -d)/core\" "
                              f"&& git -C {q(ROOT)} worktree add -q --detach \"$d\" {sha} && p=\"$({port} {q(host_root)} {q(base)} {q(patch)} \"$d\")\" && t=\"$({cli} begin {q(who)} | grep "
                              f"'^export STUDIO_LAND_TOKEN=')\" && eval \"$t\" && PYTHONPATH=\"$d\" {cli} commit {q(msg)} "
                              f"--patch \"$p\" --base {q(base)}; r=$?; PYTHONPATH=\"$d\" {cli} end; e=$?; git -C {q(ROOT)} worktree remove --force \"$d\"; [ $r = 0 ] && [ $e = 0 ]; }}; }} "
