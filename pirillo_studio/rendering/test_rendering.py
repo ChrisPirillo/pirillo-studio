@@ -1,8 +1,5 @@
-"""Rendering seam 2a lifecycle contracts inspect real media and committed records.
-
-Contracts 1, 2, 4-7, 10 and 12 belong to seam 2b's decoded semantic measurements;
-contract 13 belongs to the host switch (seam 3). Decode here exercises the adapter
-boundary, not picture, sound, caption or profile acceptance for seam 2b.
+"""Lifecycle contracts exercise the adapter boundary; decoded acceptance lives in test_measure.
+Renderer correspondence and host switch proofs remain later seams.
 """
 import copy
 import json
@@ -54,6 +51,9 @@ class Fixture(unittest.TestCase):
         self.encodes = 0
         self.states = []
         self.settings = load(Path(request.__file__).parent, 'settings.json')
+        self.settings['shared']['verification'].update(checks=['decode'], render_checks=[])
+        for profile in self.settings['profiles'].values():
+            profile['render_checks'] = []  # this fixture tests the lifecycle adapter, not decoded acceptance
         self.v = Video(self.folder, 'arc', settings=self.settings,
                        versions={'encoder': 'fixture-mpeg4-1', 'measure': 'fixture-probe-1'},
                        preflight={'ok': True, 'state': 'ready',

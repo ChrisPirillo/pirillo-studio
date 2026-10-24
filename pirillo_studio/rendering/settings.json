@@ -4,12 +4,22 @@
       "note": "delivery_spec.json common.video; job.py FPS. Generic delivery format; hosts inject their complete settings.",
       "codec": "h264",
       "pix_fmt": "yuv420p",
-      "fps": "30/1"
+      "fps": "30/1",
+      "sample_aspect_ratio": "1:1",
+      "color_range": "tv",
+      "color_space": "bt709",
+      "color_primaries": "bt709",
+      "color_transfer": "bt709",
+      "sizes": {"wide": [1920, 1080], "tall": [1080, 1920]},
+      "max_bytes": 8589934592
     },
     "audio": {
       "note": "delivery_spec.json common.audio: codec and sample_rate.",
       "codec": "aac",
-      "sample_rate": 48000
+      "sample_rate": 48000,
+      "loudness_min_lufs": -16,
+      "loudness_max_lufs": -12,
+      "true_peak_max_dbtp": -1
     },
     "encoder": {
       "note": "encoder.py CODEC and X264: explicit portable engine and quality, never runtime fallback.",
@@ -18,15 +28,31 @@
       "preset": "veryfast"
     },
     "verification": {
-      "note": "delivery_spec.json common.streams and preflight.py decoded-file checks. Seam 2a requires file decoding; quantitative policy belongs to seam 2b.",
-      "checks": ["decode"]
+      "note": "Decode the finished media; unavailable required measurements refuse. Render correspondence is required separately until its renderer exists.",
+      "tools": ["ffmpeg", "ffprobe"],
+      "complete_decode": true,
+      "streams": {"video": 1, "audio": 1},
+      "checks": ["decode", "count", "fps", "clock", "size", "codec", "color", "file_cap", "sample_rate", "loudness_lufs", "true_peak_dbtp", "av", "held_tail", "flash", "silence"],
+      "render_checks": ["frame-map", "cards", "captions", "bed"]
+    },
+    "measurement": {
+      "grid_tolerance_s": 1e-05,
+      "start_tolerance_s": 0.001,
+      "av_tolerance_s": 0.05,
+      "gap_tolerance_s": 0.001,
+      "held_difference": 0,
+      "held_tail_max_s": 0.5,
+      "flash_delta": 80,
+      "flash_return_delta": 10,
+      "silence_db": -50,
+      "silence_min_s": 0.2
     }
   },
   "profiles": {
-    "arc": {"note": "draft.py arc output profile.", "groups": ["video", "audio", "encoder", "verification"]},
-    "draft": {"note": "delivery_spec.json kinds.draft.", "groups": ["video", "audio", "encoder", "verification"]},
-    "long": {"note": "delivery_spec.json kinds.long.", "groups": ["video", "audio", "encoder", "verification"]},
-    "vertical": {"note": "delivery_spec.json kinds.vertical.", "groups": ["video", "audio", "encoder", "verification"]},
-    "short": {"note": "delivery_spec.json kinds.short.", "groups": ["video", "audio", "encoder", "verification"]}
+    "arc": {"note": "draft.py arc output profile.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
+    "draft": {"note": "delivery_spec.json kinds.draft.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": []},
+    "long": {"note": "delivery_spec.json kinds.long.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "wide", "render_checks": ["draft-match"]},
+    "vertical": {"note": "delivery_spec.json kinds.vertical.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "tall", "render_checks": ["subject"]},
+    "short": {"note": "delivery_spec.json kinds.short.", "groups": ["video", "audio", "encoder", "verification", "measurement"], "shape": "tall", "render_checks": ["subject", "context", "word-ends"]}
   }
 }

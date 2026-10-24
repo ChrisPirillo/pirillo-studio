@@ -1,4 +1,4 @@
-"""Render lifecycle (docs/rendering.md section 3); the host owns encode and measurement effects."""
+"""Render lifecycle (docs/rendering.md section 3); the host owns encoding; decoded measurement is the default."""
 import shutil
 from fractions import Fraction
 from pathlib import Path
@@ -14,12 +14,20 @@ class Video:
     encode(request, sibling_path) writes and closes media. measure(request, path) returns
     file_sha256, key, duration_s, fps, loudness_lufs, true_peak_dbtp, frame_checks and checks.
     Each required check has an explicit boolean ok, value, setting reference and evidence.
-    Seam 2b implements decoded acceptance; an absent reading never counts as a pass here.
+    The decoded adapter supplies acceptance; an absent reading never counts as a pass here.
     """
 
-    def __init__(self, folder, stage, *, versions, preflight, encode, measure, settings=None):
+    def __init__(self, folder, stage, *, versions, preflight, encode, measure=None, settings=None):
         self.folder, self.stage = Path(folder), stage
         self.versions, self.preflight = versions, preflight
+        if measure is None:
+            from . import decoded, measure as readings
+            actual = decoded.tools()
+            for tool, version in actual.items():
+                if tool in versions and versions[tool] != version:
+                    raise SpineError(f'{tool}: declared version is stale')
+            self.versions = {**versions, **actual}
+            measure = lambda req, path: readings.measure(self, req, path)
         self.encode, self.measure = encode, measure
         self.settings = request.settings() if settings is None else settings
 
@@ -57,12 +65,15 @@ def measured(video, req, name):
             setting = f'rendering.settings#checks.{reading}'
             check = value['checks'][reading]
             plan.text(check['setting'], f'{reading} setting')
+            setting = check['setting']
             plan.text(check['evidence'], f'{reading} evidence')
             canon(check['value'])
             if check['value'] is None or check['ok'] is not True:
-                raise SpineError(f'{reading}: reading missing or outside {check["setting"]}')
+                raise SpineError(f'{reading}: measured {check["value"]!r}; missing or outside {check["setting"]}')
         canon(value)
         return {**value, 'settings': req['settings'], 'tools': req['tools']}
+    except MeasurementRefused:
+        raise
     except Exception as error:
         raise MeasurementRefused(reading, setting, error) from None
 

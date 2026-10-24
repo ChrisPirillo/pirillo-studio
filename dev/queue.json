@@ -221,7 +221,7 @@
    1136
   ],
   "seams": [
-   "1 the rendering spec: render requests and records as data, one API, the host's render steps and checks mapped (docs/rendering.md), for the owner to read: spec drafted; 2a records and render lifecycle built; 2b the decoded measurements (contracts 1, 2, 4-7, 10, 12; r1's note: a cached no-op copies the whole accepted file to a backup); 3 the host switched behind one setting; 4 the host's rendering code, tests and settings deleted"
+   "1 the rendering spec: render requests and records as data, one API, the host's render steps and checks mapped (docs/rendering.md), for the owner to read: spec drafted; 2a records and render lifecycle built; 2b decoded measurements built: contracts 4-5 profile/clock/mix checks, byte-bound readings, and r1 cached no-op without a media backup; 2c next: renderer-bound frame map, opaque covers and draft correspondence (1-2), every-frame subject coverage (6), mapped opening/end words (7), actual stem/speech-band/tacet alignment (10), sidecars and decoded card/context/caption edges and safe bounds (4/12); these need the renderer's resolved assets/frame map and caption bindings, and missing coverage refuses; 3 the host switched behind one setting; 4 the host's rendering code, tests and settings deleted"
   ]
  },
  {

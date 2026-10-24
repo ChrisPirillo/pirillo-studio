@@ -8,7 +8,7 @@ from ..cutting import checks, plan as cutting
 from ..spine.files import SpineError, canon, digest, inside, load, safe
 from . import records
 
-RENDERER_VERSION = "rendering-2a-1"
+RENDERER_VERSION = "rendering-2b-1"
 _OUTPUTS = {"arc": ("arc", "Draft/arc.mp4"), "draft": ("draft", "Draft/draft.mp4"),
             "long": ("masters", "YouTube/main.mp4"), "vertical": ("masters", "Vertical/main.mp4")}
 _PATH_FIELDS = {"file", "path", "record", "asset", "stem", "audio", "image", "font", "lut", "source"}
@@ -233,6 +233,8 @@ def _resolve(video, stage, output):
         cutting.text(key, "tool name")
         cutting.text(value, f"tool version {key}")
     profile = _profile(video, kind, inputs)
+    if not imported:
+        profile["checks"] = profile["checks"] + profile["verification"]["render_checks"] + profile["render_checks"]
     result = {"output": output, "output_id": output_id, "stage": stage,
               "mode": "measure_existing" if imported else "render", "source": source,
               "source_sha256": source_hash, "file": destination, "plan_sha256": None,

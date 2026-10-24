@@ -130,7 +130,8 @@ def preserve(video, request, previous):
     if destination.exists():
         if filehash(destination) != sha:
             raise SpineError(f"{backup}: backup hash changed")
-    else:
+    elif previous['key'] != request['key']:
+        # Re-measurement leaves accepted media in place; only replacement needs a byte backup.
         temporary = work(video, request)
         try:
             write(video, name(request), {'output': request['output'], 'state': 'rendering',
