@@ -364,11 +364,11 @@ def check(v, sid):
             r["decided"] = inside(v.folder, st["outputs"][0]).read_text()
         r.update(state=result["state"], words=result["words"], outputs=hashes(v, judged_files(st, v)),
                  checks=versions(v, st), by=result.get("by", actor(st)))
-        if st["check"] == ["decision"]:
-            reopen(rec, recipe, st, result, was)
+        back = reopen(rec, recipe, st, result, was) if st["check"] == ["decision"] or result.get("reopen") else []
         save(v, rec, sid, "check")
         state = result["state"]
-        step = {"pass": f"hand off to {st['next_actor']}", "posted": None, "fail": f"{r['maker']} repairs and reruns",
+        step = {"pass": f"hand off to {st['next_actor']}", "posted": None,
+                "fail": f"{' and '.join(back) or r['maker']} repairs and reruns",
                 "running": "check again when the work finishes", "waiting_owner": "the owner decides on the Board" if r["by"] == "owner"
                 else f"{r['by']} answers the owner: " + "; ".join(result["words"]),
                 "blocked": f"{r['by']} resolves: " + "; ".join(result["words"])}[state]
@@ -394,23 +394,25 @@ def verdict(v, st, r, recipe):
                   or p in made and token.encode() not in (v.folder / p).read_bytes()]
         if absent:
             checker = v.catalog["checks"][c]["checker"]
-            seen.append(("running", [f"{c}: waiting on {checker} for {', '.join(absent)} naming {token}"], checker)
+            seen.append(("running", [f"{c}: waiting on {checker} for {', '.join(absent)} naming {token}"], checker, 0)
                         if set(absent) <= set(made) else ("blocked", [f"{c}: evidence missing: {', '.join(absent)}"],
-                                                          actor(st)))
+                                                          actor(st), 0))
             continue
         try:
             out = v.checks[c][1](ev)
             if out["state"] not in VERDICTS + (("posted",) if c == "posted" else ()) \
-                    or not isinstance(out.get("words", []), list):
+                    or not isinstance(out.get("words", []), list) \
+                    or not (out.get("reopen", False) is False or out["reopen"] is True and out["state"] == "fail"):
                 raise ValueError(f"answered {out!r}")
-            seen.append((out["state"], [f"{c}: {w}" for w in out.get("words", [])], None))
+            seen.append((out["state"], [f"{c}: {w}" for w in out.get("words", [])], None, out.get("reopen") is True))
         except Exception as e:  # a check tool error never becomes a pass
-            seen.append(("blocked", [f"{c}: check error {type(e).__name__}: {e}"], v.catalog["checks"][c]["checker"]))
+            seen.append(("blocked", [f"{c}: check error {type(e).__name__}: {e}"], v.catalog["checks"][c]["checker"], 0))
     for state in ("blocked", "fail", "waiting_owner", "running", "posted", "pass"):  # the first present wins
         won = [x for x in seen if x[0] == state]
-        if won:
-            by = [b for _, _, b in won if b]
-            return {"state": state, "words": [w for _, ws, _ in won for w in ws], "by": by[0] if by else actor(st)}
+        if won:  # a fail reopens the judged inputs' producers only when every failing check says it is theirs
+            by = [b for _, _, b, _ in won if b]
+            return {"state": state, "words": [w for _, ws, _, _ in won for w in ws], "by": by[0] if by else actor(st),
+                    "reopen": state == "fail" and all(x[3] for x in won)}
     raise SpineError(f"stage {st['id']}: no check ran")
 
 
@@ -433,9 +435,10 @@ def too_late(v, rec, recipe, st, was):
 
 
 def reopen(rec, recipe, st, result, was):
-    """An owner send-back fails the producers of the judged content with the owner's words, in the same write as the
-    decision; undoing it while no producer has started again restores each producer's pass."""
-    makers = {p: s for s in recipe["stages"] for p in s["outputs"]}
+    """An owner send-back, or a check answering a fail with reopen (its judged inputs fail, not its maker's work),
+    fails the producers of the judged content with those words, in the same write as the verdict; undoing a
+    send-back while no producer has started again restores each producer's pass. Returns the reopened makers."""
+    makers, back = {p: s for s in recipe["stages"] for p in s["outputs"]}, []
     for pid in dict.fromkeys(makers[p]["id"] for p in st["inputs"] if p in makers):
         r = rec["stages"][pid]
         judged = all((r.get("outputs") or {}).get(p) == rec["stages"][st["id"]]["inputs"][p]  # the attempt judged,
@@ -445,9 +448,11 @@ def reopen(rec, recipe, st, result, was):
                                   reopened={k: x for k, x in r.items() if k != "reopened"})
             rec["stages"][pid].pop("handoff", None)  # its handoff told of the bytes the owner sent back
             note(rec, pid, f"reopened by {st['id']}")
+            back.append(r["maker"])
         elif result.get("undo") and was == "fail" and r.get("reopened", {}).get("op") == r.get("op"):
             rec["stages"][pid] = r["reopened"]
             note(rec, pid, f"send-back undone by {st['id']}")
+    return list(dict.fromkeys(back))
 
 
 def hand_off(v, sid):

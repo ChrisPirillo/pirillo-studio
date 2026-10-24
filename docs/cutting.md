@@ -188,7 +188,8 @@ one home each, never restated in this spec:
   why), or it fails naming the first open one; an answer to no current prompt is ignored. Its `plan` is the engine's
   judged digest of paper, prompts and plan (the host's paper.py mark): a review of another plan fails naming the
   digest to read. Reads paper, prompts, plan and story review; blocked when the review or the prompts are not the
-  bytes the engine hashed; no manual QC row.
+  bytes the engine hashed; no manual QC row. A complete read whose only problem is `lands: false` answers its fail
+  with `reopen` (seam 3f): the plan is the editor's to repair, so `plan` reopens for the editor, never the story editor.
 - `locked-cut` (the spine's check on `locked`): the lock names the current plan, check key, reads and decision.
 
 Never: writes, moves or re-encodes the source or any owner file; reads the recipe name; turns an unreadable plan,

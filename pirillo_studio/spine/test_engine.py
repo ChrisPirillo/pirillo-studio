@@ -234,6 +234,29 @@ class Contract(unittest.TestCase):
             spine.check(v, "arc-choice")
         self.assertEqual(record(v)["stages"]["arc"], before)
 
+    def test_a_fail_with_reopen_returns_to_the_judged_producer(self):
+        w = self.video("plain", "w")  # guard: reopen is only a fail's, and only true
+        for bad in ({"state": "pass", "words": [], "reopen": True}, {"state": "fail", "words": [], "reopen": 1}):
+            self.host.verdicts["cut-plan"] = bad
+            drive(w, self.host, until="plan")
+            spine.run(w, "plan", rerun=True)
+            make(w, spine.find(w.recipe()[1], "plan"))
+            self.assertIn("check error", spine.check(w, "plan")["detail"]["words"][0])
+        del self.host.verdicts["cut-plan"]
+        v = self.video("plain")
+        drive(v, self.host, until="paper")
+        self.host.verdicts["paper-read"] = {"state": "fail", "words": ["does not land"], "reopen": True}
+        spine.run(v, "paper")
+        make(v, spine.find(v.recipe()[1], "paper"))
+        a = spine.check(v, "paper")
+        self.assertEqual((a["state"], a["next_action"]), ("fail", "editor repairs and reruns"))
+        self.assertEqual([spine.next(v)[k] for k in ("stage", "actor", "why", "state")],
+                         ["plan", "editor", "paper-read: does not land", "fail"])
+        self.assertNotIn("handoff", record(v)["stages"]["plan"])
+        del self.host.verdicts["paper-read"]
+        self.assertEqual(drive(v, self.host, until="overlays")["stage"], "overlays")
+        self.assertEqual([record(v)["stages"][s]["attempt"] for s in ("plan", "paper")], [2, 2])
+
     def test_new_recipe_needs_no_engine_code(self):
         recipes = spine.data("recipes.json")
         third = copy.deepcopy(recipes["shorts-only"])

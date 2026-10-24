@@ -7,7 +7,8 @@ naming the digest to read, so an unchanged old review cannot pass a new plan.
 judge(evidence) -> {"state", "words"}: blocked when the review or the prompts cannot be read as the engine hashed
 them; fail with every problem named when a read is missing, misshapen, or says it lands over its own evidence, a note's "owner" is
 not one catalog role (or "none"), a measured prompt in records/paper_prompts.json has no answer (seam 3e, from the
-host's paper_prompts_problem), or it says it does not land; else pass (seam 3d: the closing read and the note owners,
+host's paper_prompts_problem), or it says it does not land (alone, answered with reopen: the plan is the editor's to
+repair, seam 3f); else pass (seam 3d: the closing read and the note owners,
 from the host's closing_problem, closing_line_problem and note_owner_problem).
 """
 import json
@@ -19,6 +20,8 @@ from ..spine.files import digest
 from .prompts import OPEN_LOOP_S
 REVIEW, PROMPTS = "records/story_review.json", "records/paper_prompts.json"
 ANSWERS = ("kept", "changed")
+NOT_LANDING = ("the story editor's read says the plan does not land: the editor re-plans (records/cut_plan2.json, "
+               "records/paper.md and its prompts), which reopens plan and paper")
 SHAPES = {
     "landing_fact": '"landing_fact": {"fact": the fact or claim the closing line lands on, "earlier": [each earlier '
                     'telling of it in the cut]}',
@@ -175,8 +178,7 @@ def problems(d, plan, prompts):
         'name that "plan"']
     found += [f for f in [*map(lambda k: field(k, d), SHAPES), unanswered(d, prompts)] if f] + owners(d)
     if d["lands"] is False:
-        found.append("the story editor's read says the plan does not land: the editor re-plans "
-                     "(records/cut_plan2.json, records/paper.md and its prompts), which reopens plan and paper")
+        found.append(NOT_LANDING)
     return found
 
 
@@ -199,5 +201,8 @@ def judge(evidence):
             raise ValueError('"prompts" is not a list of {"id", "what"}')
     except (OSError, ValueError, KeyError, TypeError) as e:
         return {"state": "blocked", "words": [f"{PROMPTS}: {e}"]}
-    words = [f"{REVIEW}: {p}" for p in problems(d, judged(evidence, [REVIEW]), prompts)]
-    return {"state": "fail" if words else "pass", "words": words}
+    found = problems(d, judged(evidence, [REVIEW]), prompts)
+    # a complete read that does not land is the plan's to repair, so it reopens plan (seam 3f); any other problem is
+    # the read's own and stays with the story editor
+    return {"state": "fail" if found else "pass", "words": [f"{REVIEW}: {p}" for p in found],
+            **({"reopen": True} if found == [NOT_LANDING] else {})}

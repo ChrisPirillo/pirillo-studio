@@ -184,10 +184,16 @@ class PaperRead(Bound):
         self.assertEqual(answer["state"], "fail", answer)
         self.assertIn(self.mark(), answer["detail"]["words"][0])
 
-    def test_a_read_that_does_not_land_fails_for_a_new_plan(self):
+    def test_a_read_that_does_not_land_reopens_the_plan_for_the_editor(self):
         answer = self.paper(dict(LANDS, lands=False))
-        self.assertEqual(answer["state"], "fail", answer)
+        self.assertEqual((answer["state"], answer["next_action"]), ("fail", "editor repairs and reruns"), answer)
         self.assertIn("does not land", answer["detail"]["words"][-1])
+        self.assertEqual([engine.next(self.e)[k] for k in ("stage", "actor", "state")], ["plan", "editor", "fail"])
+
+    def test_a_misshapen_read_that_does_not_land_stays_with_the_story_editor(self):
+        answer = self.paper(dict(LANDS, lands=False, pace=None))
+        self.assertEqual((answer["state"], answer["next_action"]), ("fail", "story-editor repairs and reruns"), answer)
+        self.assertEqual([engine.next(self.e)[k] for k in ("stage", "actor")], ["paper", "story-editor"])
 
     def test_unreadable_or_moved_review_is_blocked(self):
         self.paper(LANDS)
