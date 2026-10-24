@@ -37,13 +37,10 @@ def split(req, pieces):
                 raise SpineError(f'patch: {sid}: opaque cover required')
         if a < 0 or b <= a:
             raise SpineError('frame-map: source interval collapses on the output grid')
-        row = {'span': sid, 'src': [float(a / fps), float(b / fps)],
-               'out': [float(end / fps), float((end + b - a) / fps)],
-               'frames': [end, end + b - a], 'source_frames': [a, b]}
+        row = {'span': sid, 'frames': [end, end + b - a], 'source_frames': [a, b]}
         voice.append({**row, 'asset': copy.deepcopy(asset)})
         visual = copy.deepcopy(row)
         if 'patch' in span:
-            visual['src'] = [float(v / fps) for v in tape]
             visual['source_frames'] = tape
         if span['enter'] == 'jcut':
             lead = round(Fraction(str(plan.number(span['lead_s'], 'J-cut lead'))) * fps)
@@ -56,13 +53,12 @@ def split(req, pieces):
                     or lead <= 0 or lead >= b - a):
                 raise SpineError(f'J-cut: {sid}: unsupported outgoing picture or partial selection')
             picture[-1]['source_frames'][1] += lead
-            picture[-1]['src'][1] = float(Fraction(picture[-1]['source_frames'][1]) / fps)
             picture[-1]['frames'][1] += lead
-            picture[-1]['out'][1] = float(Fraction(picture[-1]['frames'][1]) / fps)
             visual['source_frames'][0] += lead
-            visual['src'][0] = float(Fraction(visual['source_frames'][0]) / fps)
             visual['frames'][0] += lead
-            visual['out'][0] = float(Fraction(visual['frames'][0]) / fps)
         picture.append(visual)
         end += b - a
+    for row in voice + picture:
+        row['src'] = [float(frame / fps) for frame in row['source_frames']]
+        row['out'] = [float(frame / fps) for frame in row['frames']]
     return voice, picture

@@ -57,7 +57,7 @@ def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=Fa
     return [integer(streams[0][key], key, 1) for key in ('width', 'height')]
 
 
-def frames(path, size, *, reference, row, output_seek, source_seek):
+def frames(path, size, *, reference, row, output_seek, source_seek, raster=None):
     """Yield one span's absolute RGB differences; only a declared cover may repeat."""
     width, height = [integer(value, 'pixel size', 1) for value in size]
     executable = shutil.which('ffmpeg')
@@ -80,27 +80,37 @@ def frames(path, size, *, reference, row, output_seek, source_seek):
     graph = [f'[0:v:0]trim=end_frame={count},{rgb},{clock}[actual]',
              '[1:v:0]' + ','.join(filters + [clock]) + '[reference]',
              '[actual][reference]blend=all_mode=difference:shortest=1:repeatlast=0[diff]']
+    if raster is not None:
+        args += ['-i', str(raster)]
+        start, end = row['frames']
+        graph[-1:] = [f'[2:v:0]trim=start_frame={start}:end_frame={end},{clock}[caption]',
+                      '[reference][caption]overlay=format=rgb:shortest=1:repeatlast=0,format=gbrp[burned]',
+                      '[actual][burned]blend=all_mode=difference:shortest=1:repeatlast=0[diff]']
     args += ['-filter_complex', ';'.join(graph), '-map', '[diff]', '-an', '-fps_mode', 'passthrough',
              '-f', 'rawvideo', '-pix_fmt', 'gbrp', 'pipe:1']
+    yield from read_frames(args, width * height * 3, 'frame-map')
+
+
+def read_frames(args, length, reading):
+    """Stream fixed-size decoded frames and fail on partial output or decoder errors."""
     with tempfile.TemporaryFile() as errors:
         try:
             process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=errors)
         except OSError as error:
-            decoded.refuse('frame-map', 'verification.tools', error)
+            decoded.refuse(reading, 'verification.tools', error)
         try:
-            length = width * height * 3
             while True:
                 frame = process.stdout.read(length)
                 if not frame:
                     break
                 if len(frame) != length:
-                    decoded.refuse('frame-map', 'verification.complete_decode', 'partial RGB frame')
+                    decoded.refuse(reading, 'verification.complete_decode', 'partial decoded frame')
                 yield frame
             result = process.wait()
             errors.seek(0)
             error = errors.read().decode('utf-8', errors='replace').strip()
             if result or error:
-                decoded.refuse('frame-map', 'verification.complete_decode', f'ffmpeg decode: {error}')
+                decoded.refuse(reading, 'verification.complete_decode', f'ffmpeg decode: {error}')
         finally:
             process.stdout.close()
             if process.poll() is None:
@@ -130,15 +140,15 @@ def _asset(video, req, row, verified):
     return path
 
 
-def compare(video, req, output_path):
+def compare(video, req, output_path, *, raster=None):
     """Return checks and per-frame evidence; the caller independently binds rows to the plan."""
     try:
-        return _compare(video, req, output_path)
+        return _compare(video, req, output_path, raster=raster)
     except (KeyError, TypeError, IndexError) as error:
         decoded.refuse('frame-map', 'measurement', f'missing or invalid frame binding: {error}')
 
 
-def _compare(video, req, output_path):
+def _compare(video, req, output_path, *, raster=None):
     setting = req['settings']
     policy = setting['measurement']
     limits = {}
@@ -179,7 +189,8 @@ def _compare(video, req, output_path):
         name = row['asset']['file']
         source_seek = verified[(name, row['kind'])]['seeks'][source_start]
         with contextlib.closing(frames(output, size, reference=assets[name]['path'], row=row,
-                                       output_seek=seeks[start], source_seek=source_seek)) as differences:
+                                       output_seek=seeks[start], source_seek=source_seek,
+                                       **({'raster': raster} if raster is not None else {}))) as differences:
             for index in range(start, end):
                 delta = next(differences, None)
                 if delta is None:

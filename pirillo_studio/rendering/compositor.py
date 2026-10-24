@@ -4,6 +4,7 @@ import os
 import tempfile
 import wave
 from pathlib import Path
+from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
@@ -23,16 +24,14 @@ def caption_identity(video):
 
 
 def names(req):
-    output = req['output_id']
-    return [f'records/render/{output}-voice.wav', f'records/captions/{output}.json',
-            cues._srt_name(output)]
+    return cues.artifact_names(req['output_id'])
 
 
 def prepare(video, req):
     if req['stage'] not in ('arc', 'draft') or req['settings']['shape'] != 'wide':
-        raise SpineError('compositor: native masters/tall and caption burns unsupported (seam 2e)')
+        raise SpineError('compositor: native masters/tall and caption burns unsupported (seam 2f)')
     if 'grade' in req['settings']:
-        raise SpineError('compositor: grades unsupported (seam 2e)')
+        raise SpineError('compositor: grades unsupported (seam 2f)')
     if any(c['kind'] != 'cover' for c in req['cards_data']['cards']):
         raise SpineError('compositor: non-cover card raster coverage unsupported')
     voice, picture = clocks.split(req, mapping.pieces(req))
@@ -50,7 +49,7 @@ def prepare(video, req):
         path = records.path(video, name)
         stream = decoded.probe(path, ['-select_streams', 'v:0', '-show_streams'])['streams'][0]
         if stream.get('color_space') != req['settings']['video']['color_space']:
-            raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2e)')
+            raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2f)')
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
         row['crop'] = [0, 0, *size]
     return {'frame_map': voice, 'picture_map': picture, 'elements': []}
@@ -71,6 +70,7 @@ def voice(video, req):
     target.parent.mkdir(parents=True, exist_ok=True)
     args, graph, joined = [], [], []
     rate = req['settings']['audio']['sample_rate']
+    samples_per_frame = rate / Fraction(req['settings']['video']['fps'])
     for i, row in enumerate(req['frame_map']):
         source = records.path(video, row['asset']['file'])
         if filehash(source) != row['asset']['sha256']:
@@ -83,9 +83,10 @@ def voice(video, req):
                     or sum(f['nb_samples'] for f in probe['frames']) != patch['sample_count']):
                 raise SpineError('patch: actual audio sample count/rate differs from record')
         args += ['-i', str(source)]
-        a, b = row['src']
-        graph.append(f'[{i}:a:0]atrim=start={a}:end={b},asetpts=PTS-STARTPTS,'
-                     f'aresample={rate}[a{i}]')
+        a = round(row['source_frames'][0] * samples_per_frame)
+        count = round(row['frames'][1] * samples_per_frame) - round(row['frames'][0] * samples_per_frame)
+        graph.append(f'[{i}:a:0]aresample={rate}:async=1:first_pts=0,atrim=start_sample={a}:end_sample={a + count},'
+                     f'asetpts=PTS-STARTPTS[a{i}]')
         joined.append(f'[a{i}]')
     graph.append(''.join(joined) + f'concat=n={len(joined)}:v=0:a=1[voice]')
     with tempfile.TemporaryDirectory(prefix='.voice-', dir=target.parent) as temporary:
@@ -93,7 +94,7 @@ def voice(video, req):
         decoded.run('ffmpeg', ['-v', 'error', '-y', *args, '-filter_complex', ';'.join(graph),
                     '-map', '[voice]', '-c:a', 'pcm_s16le', str(work)], 'voice')
         with wave.open(str(work)) as pcm:
-            if pcm.getnframes() != round(req['frame_map'][-1]['out'][1] * rate):
+            if pcm.getnframes() != round(req['frame_map'][-1]['frames'][1] * samples_per_frame):
                 raise SpineError('voice: incomplete prepared audio samples')
         with work.open('rb') as handle:
             os.fsync(handle.fileno())
@@ -115,7 +116,7 @@ def encode(video, req, path):
     if caption['state'] != 'captioned':
         raise SpineError(f"captions: {caption['state']}: {caption['refusals'] or caption['missing']}")
     if caption['burn'] is not None:
-        raise SpineError('captions: decoded burn raster coverage unsupported (seam 2e)')
+        raise SpineError('captions: decoded burn raster coverage unsupported (seam 2f)')
     cues.sidecar(video.captioner, req['output_id'])
     bind(req, {p: filehash(records.path(video, p)) for p in names(req)})
     args, graph, joined = [], [], []

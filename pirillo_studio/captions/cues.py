@@ -89,7 +89,7 @@ def _inputs(video, output):
         raise SpineError(f"{output!r}: not an output id")
     short, s = match.group(1), settings()
     name = "tall" if output == "vertical" or short else "wide"
-    at, voice = f"records/render/{output}.json", f"records/render/{output}-voice.wav"
+    at, voice = f"records/render/{output}.json", artifact_names(output)[0]
     reads = io.hashes(video, [at])
     render = io.read(video, at)
     mode = _field(render, "mode", at)
@@ -258,11 +258,19 @@ def _make(video, c):
 
 
 def _name(output):
-    return f"records/captions/{output}.json"
+    return artifact_names(output)[1]
 
 
 def _srt_name(output):
-    return output.replace("short-", "Shorts/", 1) + ".srt" if output.startswith("short-") else SIDECARS[output]
+    return artifact_names(output)[2]
+
+
+def artifact_names(output):
+    """Canonical prepared voice, caption record and SRT names for one output."""
+    if not isinstance(output, str) or OUTPUT.fullmatch(output) is None:
+        raise SpineError(f"{output!r}: not an output id")
+    sidecar = output.replace("short-", "Shorts/", 1) + ".srt" if output.startswith("short-") else SIDECARS[output]
+    return [f"records/render/{output}-voice.wav", f"records/captions/{output}.json", sidecar]
 
 
 def _current(video, record):

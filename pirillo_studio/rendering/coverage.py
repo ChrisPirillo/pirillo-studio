@@ -4,7 +4,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError, canon, digest, filehash
-from . import decoded, mapping, pixels, records, sound
+from . import decoded, mapping, pixels, raster, records, sound
 
 
 def entry(req, name, value, ok, evidence, frames):
@@ -67,7 +67,7 @@ def draft(video, req, path, pixels_ok):
     if record is None:
         raise SpineError('draft-match: approved draft record missing')
     if 'picture_map' in req or 'picture_map' in record:
-        raise SpineError('draft-match: split-clock master correspondence unsupported (seam 2e)')
+        raise SpineError('draft-match: split-clock master correspondence unsupported (seam 2f)')
     asset = {'file': record['file'], 'sha256': record['file_sha256']}
     if filehash(records.path(video, asset['file'])) != asset['sha256']:
         raise SpineError('draft-match: viewed draft bytes changed')
@@ -149,9 +149,12 @@ def captions(video, req, duration):
         end = b
     if filehash(path) != binding['sha256']:
         raise SpineError('captions: changed while measuring')
+    value = {'sidecar_sha256': sidecar['sha256'], 'edges_s': edges}
     if record['burn'] is not None:
-        return entry(req, 'captions', None, False, 'decoded caption glyph edges and safe bounds unavailable', 0)
-    return entry(req, 'captions', {'sidecar_sha256': sidecar['sha256'], 'edges_s': edges}, True,
+        value['raster'] = raster.inspect(video, req, record)
+    elif 'raster' in binding:
+        raise SpineError('captions: raster without a bound burn')
+    return entry(req, 'captions', value, True,
                  'actual sidecar bytes, cue edges, voice and frame-map identity', req['frame_map'][-1]['frames'][1])
 
 
@@ -161,8 +164,16 @@ def measure(video, req, path, result):
         return
     label = 'frame-map'
     try:
+        caption = None
+        if 'caption_binding' in req:
+            label = 'captions'
+            caption = captions(video, req, result['duration_s'])
+            result['checks'][label] = caption
+        label = 'frame-map'
         mapping.validate(req)
-        compared = pixels.compare(video, req, path)
+        burned = caption is not None and 'raster' in caption['value']
+        options = {'raster': records.path(video, req['caption_binding']['raster']['file'])} if burned else {}
+        compared = pixels.compare(video, req, path, **options)
         result['checks'].update(compared['checks'])
         result['mapped_frames'] = compared['frame_checks']
         ok = compared['checks']['frame-map']['ok']
@@ -189,9 +200,12 @@ def measure(video, req, path, result):
         if 'audio_binding' in req:
             label = 'bed'
             result['checks'].update(sound.measure(video, req, path))
-        if 'caption_binding' in req:
-            label = 'captions'
-            result['checks'][label] = captions(video, req, result['duration_s'])
+        if burned:
+            caption['ok'] = ok
+            caption['result'] = 'pass' if ok else 'fail'
+            caption['evidence'] += '; every delivered frame compared with bound source plus caption raster'
+            if filehash(options['raster']) != req['caption_binding']['raster']['sha256']:
+                decoded.refuse('captions', 'verification.render_checks', 'raster changed during comparison')
     except (KeyError, TypeError, IndexError, ValueError, SpineError) as error:
         from .render import MeasurementRefused
         if isinstance(error, MeasurementRefused):
