@@ -343,7 +343,10 @@ building that command and its evidence-based assertions before claiming C1, not 
 
 The single host setting is `studio.json` `spine`, a boolean, initially false. Behind it the host's video next,
 dispatch, stage completion and holds all use the four core answers and the same persisted state. Off preserves the
-legacy path byte for byte; on cannot fall back to legacy on any error. The host registry/Board/posting adapters
+legacy path byte for byte; on cannot fall back to legacy on any error. The switch is made per video: on, a video is
+the engine's once the host's `adopt` marks its job record (`engine` is `spine`, beside its id), and every other video
+stays on the legacy path; a video the host has logged a stage for is refused adoption until its receipts are
+reconciled. Off is the owner's rollback: every video answers from the host again, its engine record left untouched. The host registry/Board/posting adapters
 transport data and effects; they do not answer next again. The public core gets merged configuration as data.
 
 Before enabling it for the two C1 recipes, compare owner-visible next/hold/Board behavior side by side, implement
