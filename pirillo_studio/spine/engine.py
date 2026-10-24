@@ -2,7 +2,8 @@
 
 A video is a folder; `records/job.json` names its recipe and `records/spine.json` is its one stage record. The host
 supplies every effect through `Video`: starting a maker, filing an owner task, telling the next actor, serving a
-judged file and the domain checks. A check is called with its declared evidence only, never a recipe name.
+judged file, the domain checks and the media preflight of a stage that declares tools. A check is called with its
+declared evidence only, never a recipe name.
 """
 import contextlib
 import datetime as dt
@@ -13,6 +14,7 @@ import tempfile
 from pathlib import Path, PurePosixPath
 
 from .files import SpineError, canon, digest, filehash, fold, hashes, inside, load, safe  # noqa: F401, filehash is API
+from .recipe import actor, validate  # noqa: F401, validate is API
 
 HERE = Path(__file__).parent
 ENGINE = "spine:1"  # the version of the checks built in here (decision); a change invalidates their passes
@@ -20,82 +22,10 @@ VERDICTS = ("pass", "fail", "running", "blocked")  # a domain check's answers; p
 VERBS = ("approve", "reject", "redo", "not-this", "try-again", "cant", "undo")
 KINDS = {".mp4": "video", ".mov": "video", ".png": "image", ".jpg": "image", ".md": "words", ".json": "words",
          ".srt": "words"}
-RESERVED = ("records/spine.json", "records/spine.lock", "records/holds.json")
 
 
 def data(name):
     return json.loads((HERE / name).read_text())
-
-
-def actor(st):
-    return st["run"]["role"] if "role" in st["run"] else st["run"]["command"][0]
-
-
-def claim(made, p, by, at):
-    """Record that stage `by` (None: the job) makes p: never an engine record nor a second spelling of one file."""
-    safe(p, at)
-    if fold(p) in RESERVED:
-        raise SpineError(f"{at}: output {p} is the engine's own record")
-    twin = [q for q in made if fold(q) == fold(p)]
-    if twin:
-        raise SpineError(f"{at}: output {p} is already made by {made[twin[0]] or 'the job'}")
-    made[p] = by
-
-
-def validate(recipes, catalog):
-    """Refuse, naming the place, anything next could not answer from: shape, ids, roles, checks, paths, order."""
-    roles, tools, checks = set(catalog["roles"]), set(catalog["tools"]), catalog["checks"]
-    if not isinstance(recipes, dict) or not recipes:
-        raise SpineError("recipes: expected a non-empty object of recipe name to recipe")
-    for name, r in recipes.items():
-        if not isinstance(r, dict) or not isinstance(r.get("stages"), list) or not r["stages"] \
-                or not isinstance(r.get("external"), list):
-            raise SpineError(f"recipe {name}: needs external (list) and stages (non-empty list)")
-        made, seen = {}, set()
-        for p in r["external"]:
-            claim(made, p, None, f"recipe {name} external")
-        later = {p for st in r["stages"] if isinstance(st, dict) for p in st.get("outputs") or ()}
-        for i, st in enumerate(r["stages"]):
-            at = f"recipe {name} stage {i}"
-            if not isinstance(st, dict) or not all(isinstance(st.get(k), list) for k in ("inputs", "check", "outputs")) \
-                    or not isinstance(st.get("id"), str) or not isinstance(st.get("run"), dict):
-                raise SpineError(f"{at}: needs id, inputs, run, check, outputs and next_actor")
-            at = f"recipe {name} stage {st['id']}"
-            if st["id"] in seen:
-                raise SpineError(f"{at}: duplicate id")
-            seen.add(st["id"])
-            run = st["run"]
-            if not (set(run) == {"role"} and run["role"] in roles
-                    or set(run) == {"command"} and isinstance(run["command"], list) and run["command"]
-                    and run["command"][0] in tools and all(isinstance(a, str) for a in run["command"])):
-                raise SpineError(f"{at}: run {run!r} is neither a registered role nor a registered tool command")
-            for p in st["inputs"]:
-                safe(p, at)
-                if p not in made:
-                    raise SpineError(f"{at}: input {p} is " + ("made by a later stage" if p in later else
-                                     "made by no stage and not external"))
-            if actor(st) == "owner" and not any(made[p] for p in st["inputs"]):
-                raise SpineError(f"{at}: an owner stage judges no stage's output")
-            if not st["check"] or not st["outputs"]:
-                raise SpineError(f"{at}: no check or no output")
-            if ("decision" in st["check"]) != (actor(st) == "owner") or actor(st) == "owner" and st["check"] != ["decision"]:
-                raise SpineError(f"{at}: the decision check is an owner stage's only check, and only theirs")
-            for c in st["check"]:
-                if c not in checks:
-                    raise SpineError(f"{at}: unknown check {c}")
-                for p in checks[c]["reads"]:
-                    if p not in ("@inputs", "@outputs") and p not in st["inputs"] + st["outputs"]:
-                        raise SpineError(f"{at}: check {c} reads {p}, which the stage does not declare")
-                if checks[c]["checker"] == actor(st) or not set(checks[c]["produces"]) <= set(st["outputs"]) or \
-                        "@outputs" not in checks[c]["reads"] and not set(checks[c]["produces"]) <= set(checks[c]["reads"]):
-                    raise SpineError(f"{at}: check {c}'s checker is its maker, or it writes what the stage does not declare "
-                                     "or it does not read")
-            for p in st["outputs"]:
-                claim(made, p, st["id"], at)
-            following = r["stages"][i + 1] if i + 1 < len(r["stages"]) else st
-            if st.get("next_actor") != actor(following):
-                raise SpineError(f"{at}: next_actor {st.get('next_actor')!r} is not {actor(following)!r}, "
-                                 "who runs the next stage")
 
 
 class Video:
@@ -103,10 +33,12 @@ class Video:
 
     start(actor, run, folder, stage, key) -> receipt starts a maker; ask(task) -> receipt files an owner task in the
     Board's shape; tell(actor, key, handoff) -> receipt delivers a handoff; href(path) -> the served URL of a judged
-    file; checks {check id: (version, fn(evidence) -> {"state", "words"})}. Each adapter reconciles by its key, so a
-    retry after a crash never repeats an effect. recipes and catalog default to this package's data."""
+    file; checks {check id: (version, fn(evidence) -> {"state", "words"})}; preflight(stage, passed, recipe_revision)
+    -> {"state", "detail", "next_action", "key"} (docs/preflight.md; required when a stage declares tools). Each
+    adapter reconciles by its key, so a retry after a crash never repeats an effect. recipes and catalog default to
+    this package's data."""
 
-    def __init__(self, folder, *, start, ask, tell, href, checks, recipes=None, catalog=None):
+    def __init__(self, folder, *, start, ask, tell, href, checks, recipes=None, catalog=None, preflight=None):
         self.folder, self.start, self.ask, self.tell, self.href = Path(folder), start, ask, tell, href
         self.checks = checks
         self.recipes = data("recipes.json") if recipes is None else recipes
@@ -115,6 +47,10 @@ class Video:
         absent = {c for r in self.recipes.values() for st in r["stages"] for c in st["check"]} - set(checks) - {"decision"}
         if absent:
             raise SpineError(f"checks: no implementation for {sorted(absent)}")
+        self.preflight = preflight
+        tooled = [f"{n} {st['id']}" for n, r in self.recipes.items() for st in r["stages"] if "tools" in st]
+        if tooled and preflight is None:
+            raise SpineError(f"preflight: no adapter for the stages that declare tools: {tooled}")
 
     def job(self):
         """(video id, recipe name, recipe) from records/job.json; the id, not the folder, keys every effect."""
@@ -237,7 +173,8 @@ def decide(v):
         if r and uncertain(st, r):
             return answer(sid, "clock", f"send {r['op']} uncertain: run reconciles its receipt before a new attempt",
                           "blocked"), st, rec
-        if r is None or r["state"] == "blocked" and "op" not in r:  # a block seen at run is looked at again
+        if r is None or r["state"] == "blocked" and "op" not in r and "preflight" not in r:  # looked at again; a
+            # preflight's block stands, naming its fix, until its inputs change or its actor runs the stage again
             return answer(sid, actor(st), "ready", "ready"), st, rec
         if not current(v, st, r, r["state"] in ("pass", "posted")):
             return answer(sid, actor(st), f"inputs, outputs or checks changed since attempt {r['attempt']}",
@@ -295,26 +232,53 @@ def run(v, sid, rerun=False):
         missing = [p for p, h in inputs.items() if h is None]
         held, bad = holds(v, set(ids))
         why = bad or held.get(sid, {}).get("why") or ("missing inputs" if missing else None)
-        if why:
-            b = {"attempt": r["attempt"] if r else 0, "state": "blocked", "def": defn(v, st), "inputs": inputs,
-                 "words": [why] + missing, "by": "owner" if bad else held.get(sid, {}).get("by") or ans["actor"]}
-            if not (r and "op" in r):  # a started attempt keeps its key and receipt; the block is its history
-                rec["stages"][sid] = b
-            save(v, rec, sid, "blocked at run", b)
+        def stop(state, words, by, note, mine=False, **more):
+            b = {"attempt": r["attempt"] if r else 0, "state": state, "def": defn(v, st), "inputs": inputs,
+                 "words": words, "by": by, **more}
+            if mine and r and "op" in r and r["receipt"] is None and current(v, st, r, False):  # unstarted: resumes
+                b.update(op=r["op"], maker=r["maker"], receipt=None)
+            if mine or not (r and "op" in r):  # a started attempt keeps its key and receipt; a hold or missing input
+                rec["stages"][sid] = b  # is its history (next reads those live); a preflight block only stands here
+            save(v, rec, sid, note, b)
             return b
+        if why:
+            return stop("blocked", [why] + missing, "owner" if bad else held.get(sid, {}).get("by") or ans["actor"],
+                        "blocked at run")
         resume = r and (uncertain(st, r) or not rerun and "op" in r and r["state"] in ("running", "waiting_owner",
                                                                                         "blocked") and current(v, st, r, False))
+        started = resume and (uncertain(st, r) or r["receipt"] is not None)
+        pf = None if started or "tools" not in st else ready(v, recipe, st)  # an unstarted resume asks again
+        if pf and pf["state"] != "ready":  # nothing expensive starts unless ready (docs/preflight.md section 3)
+            out = "blocked" if pf["state"] == "blocked" else "waiting_owner"
+            return stop(out, [pf["detail"], pf["next_action"]], actor(st) if out == "blocked" else "owner",
+                        f"preflight {pf['state']}", mine=True, preflight=pf["state"])
         if not resume:
             r = rec["stages"][sid] = {"attempt": (r["attempt"] + 1) if r else 1, "def": defn(v, st),
                                       "inputs": inputs, "maker": actor(st), "receipt": None, "words": [],
-                                      "state": "waiting_owner" if actor(st) == "owner" else "running"}
+                                      "state": "waiting_owner" if actor(st) == "owner" else "running",
+                                      **({"preflight": pf["key"]} if pf else {})}
             r["op"] = opkey(v, st, r["attempt"], inputs)
             save(v, rec, sid, "rerun" if rerun else "run")
+        elif pf:
+            r.update(state="waiting_owner" if actor(st) == "owner" else "running", words=[], preflight=pf["key"])
         if r["receipt"] is None:
             r["receipt"] = v.ask(task(v, recipe, st, r)) if actor(st) == "owner" else \
                 v.start(actor(st), st["run"], v.folder, sid, r["op"])
             save(v, rec, sid, "receipt")
         return r
+
+
+def ready(v, recipe, st):
+    """The stage's preflight answer: its outputs with their size rows, each input's producer (freshness is the
+    engine's own, so no hash is passed) and the stage's definition as the recipe revision."""
+    made = {p: s["id"] for s in recipe["stages"] for p in s["outputs"]}
+    view = dict(st, outputs=[{"path": p, "size": st["size"][p]} if p in st.get("size", {}) else p for p in st["outputs"]])
+    pf = v.preflight(view, {p: {"by": made.get(p, "the job"), "sha256": None} for p in st["inputs"]}, defn(v, st))
+    if not isinstance(pf, dict) or pf.get("state") not in ("ready", "blocked", "broken", "waiting_owner") \
+            or pf["state"] == "ready" and not (isinstance(pf.get("key"), str) and pf["key"]):
+        raise SpineError(f"stage {st['id']}: preflight answered {pf!r}, not ready with its key, blocked, broken "
+                         "or waiting_owner")
+    return pf
 
 
 def task(v, recipe, st, r):

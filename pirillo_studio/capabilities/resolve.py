@@ -187,7 +187,7 @@ def probe(host, e, resolved, work):
     """Run the declared probe once under the time limit: (ok, words). A timeout or an OS error is a failed probe."""
     name = e["qualify"]
     if name == "present":
-        return True, "present, keyed by its content" if e["kind"] == "guide" else "key present inside its token life"
+        return True, {"account": "key present inside its token life"}.get(e["kind"], "present, keyed by its content")
     limit = number(host, "capabilities.probe_seconds")
     deadline = time.monotonic() + limit
     left = lambda: max(deadline - time.monotonic(), 0.001)

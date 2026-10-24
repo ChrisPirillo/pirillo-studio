@@ -63,6 +63,13 @@ checks read those members too. Check and role names below are proposed domain in
   independent checker and required before pass. A maker's message is not proof.
 - `next_actor`: the role, `owner` or `clock` receiving the successful handoff; it must agree with the next stage's
   `run` actor. The terminal clock observes posted receipts; it does not send again.
+- `tools`, `size`, `scratch_gb` (the preflight extension, preflight.md section 2; `pirillo_studio/spine/recipes.json`
+  carries them, the example above omits them): a non-owner stage reading or writing media (any path whose suffix is not
+  in `preflight.probe.DATA`) names its capability ids in `tools`, maps each media output to `{"bytes_per_s": n}` in
+  `size` and states `scratch_gb`; an owner stage declares none. `run` asks the host's preflight first and starts no
+  maker unless it answers ready, recording its key on the attempt; a block stands in `next`, naming its fix, until
+  the stage's inputs change or its actor runs it again. Today's sizes and scratch are placeholders item 14
+  replaces with its encoder's bound; no ASR capability is named, since a core recipe cannot name a host's model (item 5).
 
 Checks declare only the evidence they use. For these examples: `media` reads source, probe, words and faces;
 `cut-plan` reads words, both cut plans and paper; `paper-read` reads paper, cut and story review; `overlay-plan`

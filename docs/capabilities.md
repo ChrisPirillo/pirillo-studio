@@ -54,7 +54,8 @@ The declaration, recipe data beside the stages (spine.md section 1), validated b
 - `find`, `runtime`, `package`, `weights`, `routes`: what to resolve, on the one search path the host passes in.
 - `needs`: capabilities that must be qualified first; an encoder needs its ffmpeg.
 - `version.min`: the lowest version accepted; under it is `missing`, never a warning.
-- `qualify`: the one named probe that proves the capability works here; probes are core code, versioned.
+- `qualify`: the one named probe that proves the capability works here; probes are core code, versioned. An
+  executable that only reads (`ffprobe`) qualifies `present`: resolving it already ran its version call.
 - `get`: one line a person acts on when it is missing. The product never installs or downloads.
 - An `account` is presence and token life only: its key is present and younger than the platform's token life,
   the setting `platforms.<platform>.token_days` (item 12). Whether posting works is posting's receipt (item 11),

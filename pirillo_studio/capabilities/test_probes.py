@@ -8,11 +8,12 @@ import json
 import os
 import threading
 import unittest
+from pathlib import Path
 from unittest import mock
 
 from pirillo_studio.capabilities import answers
 from pirillo_studio.capabilities.answers import capability, qualify, requalify
-from pirillo_studio.capabilities.test_capabilities import DECL, Case, record, tools_probe
+from pirillo_studio.capabilities.test_capabilities import DECL, FFMPEG, Case, record, tools_probe
 from pirillo_studio.spine.files import SpineError
 
 TTS, ASR = "tts:engine/model", "asr:engine/model"
@@ -63,6 +64,23 @@ class ModelProbes(Case):
                     with self.assertRaises(SpineError):
                         ask(h, ASR)
                 self.assertEqual((record(h, ASR), len([c for c in h.calls() if c.startswith("hear ")])), (kept, 1))
+
+
+
+class ReadOnlyExecutable(Case):
+    """guard: an executable that only reads (the package's ffprobe) qualifies `present` on its version call alone:
+    no encode is asked of it, and under its minimum it is missing."""
+
+    def test_present_runs_only_the_version_call(self):
+        h = self.h
+        shipped = json.loads((Path(answers.__file__).parent / "capabilities.json").read_text())["capabilities"]
+        h.declare(dict(DECL, capabilities=dict(DECL["capabilities"], ffprobe=shipped["ffprobe"])))
+        h.tool("ffprobe", FFMPEG.format(log=h.log, root=h.root))
+        rec = tools_probe(h, "ffprobe")
+        self.assertEqual((rec["ok"], rec["probe"]["name"], record(h, "ffprobe")), (True, "present", rec))
+        self.assertEqual(set(h.calls()), {"-version"})
+        h.put("version", "6.1")
+        self.assertEqual(capability(h, "ffprobe")["state"], "missing")
 
 
 class Empty(Case):

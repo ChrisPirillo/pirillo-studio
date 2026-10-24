@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..spine.files import SpineError, load, safe
 
-PROBES = {"executable": ("encode-sample",), "encoder": ("encode-sample",),
+PROBES = {"executable": ("encode-sample", "present"), "encoder": ("encode-sample",),
           "model": ("transcribe-fixture", "speak-fixture"), "guide": ("present",), "account": ("present",)}
 FIELDS = {"executable": ("find", "version"), "encoder": ("needs", "codec"), "model": ("runtime", "package", "weights", "run"),
           "guide": ("find",), "account": ("routes",)}

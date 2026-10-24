@@ -51,7 +51,7 @@ class Host:
     def video(self, folder, version="1", **kw):
         catalog = kw.pop("catalog", spine.data("catalog.json"))
         return spine.Video(folder, start=self.start, ask=self.ask, tell=self.tell, href=lambda p: "/served/" + p,
-                           checks={c: (version, self.check(c)) for c in catalog["checks"]}, catalog=catalog, **kw)
+                           checks={c: (version, self.check(c)) for c in catalog["checks"]}, catalog=catalog, **{"preflight": lambda *a: {"state": "ready", "key": "sha256:ready"}, **kw})
 
 
 def new_video(root, recipe, name="v"):

@@ -97,11 +97,11 @@ Reads:
 - the margin: the host's one setting `studio.json` `disk.render_floor_gb`, passed in as configuration;
 - the tools the stage's registered run declares (executables, the transcription engine and model).
 
-**Required spec extension** (spine.md section 1's stage schema has neither field today): each stage gains `tools`,
-the executables and models its run needs (`["ffmpeg", "ffprobe", "asr:<engine>/<model>"]`), and each declared media
-output gains `size`, `{"bytes_per_s": <n>}` of the probed duration plus a stage `scratch_gb`. The spine's recipe
-validator (spine seam 2) owns both fields and refuses a recipe whose stage writes media without them; the rendering
-domain (item 14) owns the numbers. The owner reviews this extension with spine.md before either is built.
+**Spec extension** (built by item 6 seam 3a; spine.md section 1): each non-owner stage that reads or writes media
+gains `tools`, the capability ids its run needs (`["ffmpeg", "ffprobe"]`; an `asr:<engine>/<model>` id waits on item 5),
+`size`, a map from each media output path to `{"bytes_per_s": <n>}` of the probed duration, and `scratch_gb`. The
+engine passes the stage here with each sized output as `{"path", "size"}`. The spine's recipe validator owns the fields
+and refuses a stage writing media without them; the rendering domain (item 14) owns the numbers.
 
 Writes one record, `records/ready/<stage>.json`, keyed by `key`, atomically (temp file and rename) under the
 video's single writer, and the spine's `records/spine.json` references it by hash as the stage attempt's evidence. The host's
@@ -148,7 +148,10 @@ file is broken), `why` (the probe's words: which stream, which value, where the 
 pointing at `records/ready/<stage>.json`, a served `judge` of the file's probe detail, actions to replace the file or
 drop the video (each undoable until the stage runs), `cant.words` and `cant.goes_to`. The same key never files a
 second task. Blocked is the spine's blocked state with its resolver named in `next_action` (the producing stage
-for a missing input, the host for a tool or the disk); it files no owner task.
+for a missing input, the host for a tool or the disk); it files no owner task. Either becomes the stage's current
+record, so `next` names it, even over an earlier failed attempt; an attempt recorded but not yet started (a crash
+before its maker began) asks preflight again on resume and keeps its operation key, and only a started attempt
+skips it.
 
 ## 4. The host's checks and their replacements
 
