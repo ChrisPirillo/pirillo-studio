@@ -200,7 +200,7 @@ class Contracts(Case):
                 tools_probe(h, "ffmpeg")
                 n = len(self.encodes())
                 h.put("mode", mode if mode != "raise" else "ok")
-                h.settings["capabilities.probe_seconds"] = 0.5 if mode == "slow" else 5
+                h.settings["capabilities.probe_seconds"] = 2 if mode == "slow" else 5  # under the fixture's 5 s sleep, over a loaded Mac's start-up
                 real = resolve.run
                 boom = lambda host, argv, limit: (_ for _ in ()).throw(RuntimeError("probe broke")) \
                     if "lavfi" in argv else real(host, argv, limit)
