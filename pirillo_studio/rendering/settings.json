@@ -1,0 +1,32 @@
+{
+  "shared": {
+    "video": {
+      "note": "delivery_spec.json common.video; job.py FPS. Generic delivery format; hosts inject their complete settings.",
+      "codec": "h264",
+      "pix_fmt": "yuv420p",
+      "fps": "30/1"
+    },
+    "audio": {
+      "note": "delivery_spec.json common.audio: codec and sample_rate.",
+      "codec": "aac",
+      "sample_rate": 48000
+    },
+    "encoder": {
+      "note": "encoder.py CODEC and X264: explicit portable engine and quality, never runtime fallback.",
+      "engine": "libx264",
+      "crf": 20,
+      "preset": "veryfast"
+    },
+    "verification": {
+      "note": "delivery_spec.json common.streams and preflight.py decoded-file checks. Seam 2a requires file decoding; quantitative policy belongs to seam 2b.",
+      "checks": ["decode"]
+    }
+  },
+  "profiles": {
+    "arc": {"note": "draft.py arc output profile.", "groups": ["video", "audio", "encoder", "verification"]},
+    "draft": {"note": "delivery_spec.json kinds.draft.", "groups": ["video", "audio", "encoder", "verification"]},
+    "long": {"note": "delivery_spec.json kinds.long.", "groups": ["video", "audio", "encoder", "verification"]},
+    "vertical": {"note": "delivery_spec.json kinds.vertical.", "groups": ["video", "audio", "encoder", "verification"]},
+    "short": {"note": "delivery_spec.json kinds.short.", "groups": ["video", "audio", "encoder", "verification"]}
+  }
+}
