@@ -109,9 +109,14 @@ def approval(video, req):
 def fresh(video, req, acceptance):
     current = request.resolve(video, req['stage'], req['output'])
     generated = req.get('generated', {})
+    if any(filehash(records.path(video, p)) != h for p, h in generated.items()):
+        raise SpineError('generated inputs changed before publication')
     original = {p: h for p, h in req['inputs'].items() if p not in generated}
-    if (current['key'] != req['key'] or current['inputs'] != original
-            or any(filehash(records.path(video, p)) != h for p, h in generated.items())):
+    if video.native and generated:
+        from . import compositor
+        compositor.bind(video, current, generated)
+        original = req['inputs']
+    if current['key'] != req['key'] or current['inputs'] != original:
         raise SpineError('render inputs changed before publication')
     if acceptance is not None:
         approved, _, hashes, _ = approval(video, req)
@@ -166,7 +171,10 @@ def _render(video, req):
         accepted = records.recover(video, req, old)
         if accepted is not None and not target.exists():
             accepted = None  # no accepted bytes are left to protect: render again
-        previous = records.preserve(video, req, accepted)
+        cached = accepted is not None and accepted['key'] == req['key']
+        if cached and video.native and req['mode'] == 'render':
+            cached = compositor.reuse(video, req, accepted)
+        previous = records.preserve(video, req, accepted, replacing=not cached)
     except SpineError as error:
         refused = {**base, 'state': 'render_failed', 'step': 'verify', 'error': str(error), 'found_sha256': found,
                    'refused': old}
@@ -181,9 +189,6 @@ def _render(video, req):
                        'previous': previous}
             records.write(video, name, waiting)
             return waiting
-    cached = accepted is not None and accepted['key'] == req['key']
-    if cached and video.native and req['mode'] == 'render':
-        cached = compositor.reuse(video, req, accepted)
     temporary, step, candidate_sha = None, 'prepare', None
     try:
         if cached:
@@ -234,8 +239,11 @@ def _render(video, req):
             records.publish(video, req, temporary)
         # A crash here leaves measuring, never a delivered record for uncommitted bytes.
         step = 'record'
-        records.write(video, name, result)
+        committed = {**result, 'retiring': previous} if previous is not None else result
+        records.write(video, name, committed)
     except Exception as error:
+        if step == 'record' and records.read(video, name) == committed:
+            raise  # A completed record is committed even if its writer then reports failure.
         records.restore(video, req, previous)
         failure = {**base, 'state': 'render_failed', 'step': step, 'error': str(error), 'previous': previous}
         if previous is None and candidate_sha is not None:
@@ -248,4 +256,6 @@ def _render(video, req):
         if temporary is not None:
             records.remove_work(video, req, temporary)
     records.retire(video, req, previous)
+    if previous is not None:
+        records.write(video, name, result)
     return result

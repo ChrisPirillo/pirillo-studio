@@ -107,7 +107,7 @@ def backup_name(request, sha):
     return (target.parent / f".render-{request['output_id']}-accepted-{sha[7:]}{target.suffix}").as_posix()
 
 
-def preserve(video, request, previous):
+def preserve(video, request, previous, *, replacing=True):
     """An accepted file stays under its content identity throughout replacement."""
     if previous is None:
         if path(video, request['file']).exists():
@@ -130,13 +130,16 @@ def preserve(video, request, previous):
     saved = {'record': previous, 'backup': backup, 'readings': readings}
     generated = previous.get('request', {}).get('generated', {})
     if generated:
-        if set(generated) != set(cues.artifact_names(request['output_id'])):
-            raise SpineError('previous generated artifacts: wrong output names')
-        saved['artifacts'] = {n: filehash(path(video, n, writable=True)) for n in generated}
+        saved['artifacts'] = dict(generated)
+        saved['current'] = {n: filehash(path(video, n, writable=True))
+                            for n in cues.artifact_names(request['output_id'])}
+    current = artifact_identities(request, saved)
+    if not replacing:
+        return saved
     if destination.exists():
         if filehash(destination) != sha:
             raise SpineError(f"{backup}: backup hash changed")
-    elif previous['key'] != request['key'] or generated:
+    else:
         # Missing generated artifacts can force replacement even when the request key matches.
         temporary = work(video, request)
         try:
@@ -149,7 +152,7 @@ def preserve(video, request, previous):
             os.replace(path(video, temporary), destination)
         finally:
             remove_work(video, request, temporary)
-    for artifact, sha in saved.get('artifacts', {}).items():
+    for artifact, sha in current.items():
         if sha is None:
             continue
         artifact_req = {**request, 'file': artifact}
@@ -174,8 +177,7 @@ def restore(video, request, previous):
     if previous is None:
         return
     accepted = previous['record']
-    if accepted['file'] != request['file'] or accepted['output'] != request['output']:
-        raise SpineError('previous record: wrong output')
+    artifacts = artifact_identities(request, previous)
     sha = accepted['file_sha256']
     if previous['backup'] != backup_name(request, sha):
         raise SpineError('previous backup: wrong content identity')
@@ -193,20 +195,42 @@ def restore(video, request, previous):
     if filehash(path(video, accepted['readings'])) != accepted['readings_sha256']:
         write(video, accepted['readings'], readings)
 
+    # Captions and rollback share the existing video writer across the check and rename.
+    with cues.writer(video):
+        for artifact, sha in artifacts.items():
+            target = path(video, artifact, writable=True)
+            if filehash(target) == sha:
+                continue
+            if sha is None:
+                target.unlink()
+                continue
+            backup = path(video, backup_name({**request, 'file': artifact}, sha), writable=True)
+            if filehash(backup) != sha:
+                raise SpineError(f'{artifact}: missing or changed attempt-start backup')
+            os.replace(backup, target)
+
+
+def artifact_identities(request, previous):
+    """Keep accepted identities; roll back to the separately saved attempt-start bytes."""
+    record = previous['record']
+    if record['file'] != request['file'] or record['output'] != request['output']:
+        raise SpineError('previous record: wrong output')
     artifacts = previous.get('artifacts', {})
-    if artifacts and set(artifacts) != set(cues.artifact_names(request['output_id'])):
-        raise SpineError('previous generated artifacts: wrong output names')
-    for artifact, sha in artifacts.items():
-        target = path(video, artifact, writable=True)
-        if filehash(target) == sha:
-            continue
-        if sha is None:
-            target.unlink()
-            continue
-        backup = path(video, backup_name({**request, 'file': artifact}, sha), writable=True)
-        if filehash(backup) != sha:
-            raise SpineError(f'{artifact}: missing or changed accepted backup')
-        os.replace(backup, target)
+    accepted = record.get('request', {}).get('generated', {})
+    names = cues.artifact_names(request['output_id'])
+    # Seam 2e recorded voice, caption JSON and SRT, before burn became a generated artifact.
+    if (not isinstance(artifacts, dict) or artifacts != accepted
+            or artifacts and set(artifacts) not in (set(names), set(names[:3]))):
+        raise SpineError('previous generated artifacts: wrong accepted identities or output names')
+    current = previous.get('current', {})
+    if (not isinstance(current, dict) or set(current) != (set(names) if artifacts else set())
+            or previous.get('unavailable')):
+        raise SpineError('previous current artifacts: missing identities or wrong output names')
+    for identities in (artifacts, current):
+        for artifact, sha in identities.items():
+            if sha is not None:
+                backup_name({**request, 'file': artifact}, sha)
+    return current
 
 
 def recover(video, request, record):
@@ -215,9 +239,16 @@ def recover(video, request, record):
     if record['output'] != request['output']:
         raise SpineError(f"{name(request)}: wrong output identity")
     if record['state'] in {'delivered', 'waiting_owner'} and 'file_sha256' in record:
+        if 'retiring' in record:
+            retire(video, request, record['retiring'])
+            record = {k: v for k, v in record.items() if k != 'retiring'}
+            write(video, name(request), record)
         return record
     previous = record.get('previous')
-    restore(video, request, previous)
+    if record['state'] in {'render_failed', 'measure_refused'}:
+        retire(video, request, previous)  # restored before this record was written; again would undo a provider's fix
+    else:
+        restore(video, request, previous)
     if 'artifact_work' in record:
         artifact, temporary = record['artifact_work']
         if artifact not in cues.artifact_names(request['output_id']):
@@ -249,13 +280,12 @@ def publish(video, request, temporary):
 
 def retire(video, request, previous):
     if previous is not None:
+        artifacts = artifact_identities(request, previous)
         backup = previous['backup']
         if backup != backup_name(request, previous['record']['file_sha256']):
             raise SpineError('previous backup: wrong content identity')
         remove_work(video, request, backup)
-        for artifact, sha in previous.get('artifacts', {}).items():
-            if artifact not in cues.artifact_names(request['output_id']):
-                raise SpineError('previous generated artifact: wrong output name')
+        for artifact, sha in artifacts.items():
             if sha is not None:
                 artifact_req = {**request, 'file': artifact}
                 remove_work(video, artifact_req, backup_name(artifact_req, sha))

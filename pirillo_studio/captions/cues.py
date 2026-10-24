@@ -253,7 +253,7 @@ def _make(video, c):
     sidecar = _srt_name(c["output"])
     record = _record(c, "captioned", cues, held=held, readings=readings, sidecar={
         "file": sidecar, "sha256": digest(layout.srt(cues))}, burn=burn and {
-        "file": f"records/captions/{c['output']}.ass", "sha256": digest(burn.encode())})
+        "file": artifact_names(c["output"])[3], "sha256": digest(burn.encode())})
     return record, burn
 
 
@@ -266,11 +266,12 @@ def _srt_name(output):
 
 
 def artifact_names(output):
-    """Canonical prepared voice, caption record and SRT names for one output."""
+    """Canonical voice, caption record, SRT and optional burn names for one output."""
     if not isinstance(output, str) or OUTPUT.fullmatch(output) is None:
         raise SpineError(f"{output!r}: not an output id")
     sidecar = output.replace("short-", "Shorts/", 1) + ".srt" if output.startswith("short-") else SIDECARS[output]
-    return [f"records/render/{output}-voice.wav", f"records/captions/{output}.json", sidecar]
+    return [f"records/render/{output}-voice.wav", f"records/captions/{output}.json", sidecar,
+            f"records/captions/{output}.ass"]
 
 
 def _current(video, record):

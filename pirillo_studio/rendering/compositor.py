@@ -8,7 +8,7 @@ from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, decoded, mapping, pixels, records
+from . import clocks, decoded, mapping, pixels, raster, records
 
 
 def caption_identity(video):
@@ -29,9 +29,9 @@ def names(req):
 
 def prepare(video, req):
     if req['stage'] not in ('arc', 'draft') or req['settings']['shape'] != 'wide':
-        raise SpineError('compositor: native masters/tall and caption burns unsupported (seam 2f)')
+        raise SpineError('compositor: native masters/tall unsupported (seam 2g)')
     if 'grade' in req['settings']:
-        raise SpineError('compositor: grades unsupported (seam 2f)')
+        raise SpineError('compositor: grades unsupported (seam 2g)')
     if any(c['kind'] != 'cover' for c in req['cards_data']['cards']):
         raise SpineError('compositor: non-cover card raster coverage unsupported')
     voice, picture = clocks.split(req, mapping.pieces(req))
@@ -49,7 +49,7 @@ def prepare(video, req):
         path = records.path(video, name)
         stream = decoded.probe(path, ['-select_streams', 'v:0', '-show_streams'])['streams'][0]
         if stream.get('color_space') != req['settings']['video']['color_space']:
-            raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2f)')
+            raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2g)')
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
         row['crop'] = [0, 0, *size]
     return {'frame_map': voice, 'picture_map': picture, 'elements': []}
@@ -61,7 +61,12 @@ def reuse(video, req, accepted):
     if set(prior.get('generated', {})) != set(names(req)) or any(filehash(records.path(video, p)) != h
                                       for p, h in prior['generated'].items()):
         return False
-    bind(req, copy.deepcopy(prior['generated']))
+    candidate = copy.deepcopy(req)
+    try:
+        bind(video, candidate, copy.deepcopy(prior['generated']))
+    except SpineError:
+        return False
+    req.update(candidate)
     return True
 
 
@@ -102,11 +107,24 @@ def voice(video, req):
         os.replace(work, target)
 
 
-def bind(req, generated):
+def bind(video, req, generated):
     req['generated'] = generated
-    req['inputs'].update(generated)
+    req['inputs'].update({p: h for p, h in generated.items() if h is not None})
     req['voice_binding'] = {'file': names(req)[0], 'sha256': generated[names(req)[0]]}
     req['caption_binding'] = {'record': names(req)[1], 'sha256': generated[names(req)[1]]}
+    caption = records.read(video, names(req)[1])
+    if caption['burn'] is not None:
+        supplied = caption.get('raster')
+        if not isinstance(supplied, dict):
+            raise SpineError('captions: burn requires supplied raster coverage')
+        req['caption_binding']['raster'] = copy.deepcopy(supplied)
+        for asset in (caption['burn'], supplied):
+            if not isinstance(asset.get('file'), str) or not asset.get('sha256'):
+                raise SpineError('captions: raster/burn missing file or content hash')
+            req['inputs'][asset['file']] = asset['sha256']
+        raster.binding(video, req, caption)
+    elif 'raster' in caption:
+        raise SpineError('captions: raster without a bound burn')
 
 
 def encode(video, req, path):
@@ -115,10 +133,10 @@ def encode(video, req, path):
     caption = cues.cues(video.captioner, req['output_id'])
     if caption['state'] != 'captioned':
         raise SpineError(f"captions: {caption['state']}: {caption['refusals'] or caption['missing']}")
-    if caption['burn'] is not None:
-        raise SpineError('captions: decoded burn raster coverage unsupported (seam 2f)')
     cues.sidecar(video.captioner, req['output_id'])
-    bind(req, {p: filehash(records.path(video, p)) for p in names(req)})
+    bind(video, req, {p: filehash(records.path(video, p)) for p in names(req)})
+    if caption['burn'] is not None:
+        raster.inspect(video, req, caption)
     args, graph, joined = [], [], []
     settings = req['settings']
     width, height = settings['video']['sizes'][settings['shape']]
@@ -136,6 +154,12 @@ def encode(video, req, path):
         joined.append(f'[v{i}]')
     graph.append(''.join(joined) + f'concat=n={len(joined)}:v=1:a=0[picture]')
     args += ['-i', str(records.path(video, names(req)[0]))]
+    picture = '[picture]'
+    if caption['burn'] is not None:
+        args += ['-i', str(records.path(video, req['caption_binding']['raster']['file']))]
+        graph.append(f'[picture]format=gbrp[base];[base][{len(joined) + 1}:v:0]'
+                     'overlay=format=rgb:shortest=1:repeatlast=0[burned]')
+        picture = '[burned]'
     encoder = settings['encoder']
     video_args = ['-c:v', encoder['engine'], '-crf', str(encoder['crf']), '-preset', encoder['preset'],
                   '-pix_fmt', settings['video']['pix_fmt'], '-r', settings['video']['fps']]
@@ -143,5 +167,5 @@ def encode(video, req, path):
         option = {'color_space': 'colorspace', 'color_transfer': 'color_trc'}.get(key, key)
         video_args += ['-' + option, settings['video'][key]]
     decoded.run('ffmpeg', ['-v', 'error', '-y', *args, '-filter_complex', ';'.join(graph),
-                '-map', '[picture]', '-map', f'{len(joined)}:a:0', *video_args,
+                '-map', picture, '-map', f'{len(joined)}:a:0', *video_args,
                 '-c:a', settings['audio']['codec'], '-ar', str(settings['audio']['sample_rate']), str(path)], 'encode')

@@ -67,7 +67,7 @@ def draft(video, req, path, pixels_ok):
     if record is None:
         raise SpineError('draft-match: approved draft record missing')
     if 'picture_map' in req or 'picture_map' in record:
-        raise SpineError('draft-match: split-clock master correspondence unsupported (seam 2f)')
+        raise SpineError('draft-match: split-clock master correspondence unsupported (seam 2g)')
     asset = {'file': record['file'], 'sha256': record['file_sha256']}
     if filehash(records.path(video, asset['file'])) != asset['sha256']:
         raise SpineError('draft-match: viewed draft bytes changed')

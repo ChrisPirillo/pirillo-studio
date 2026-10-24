@@ -10,6 +10,14 @@ from pirillo_studio.spine.files import SpineError
 class Boundaries(Fixture):
     """guard: a non-finite number, a symlinked path or a stale identity never yields a passing record."""
 
+    def test_generated_artifacts_include_written_burn(self):
+        """defect: queue 14 seam 2f; recovery omitted the caption record's generated ASS."""
+        self.build()
+        record = self.made()
+        names = cues.artifact_names("vertical")
+        self.assertIn(record["burn"]["file"], names)
+        self.assertEqual((self.v.folder / record["burn"]["file"]).is_file(), True)
+
     def test_non_finite_numbers_refuse(self):
         self.build()
         words = (self.v.folder / "records/words.json").read_text().replace('"start":1.0', '"start":NaN', 1)

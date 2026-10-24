@@ -2,24 +2,35 @@
 import contextlib
 import math
 import shutil
+from fractions import Fraction
 
 from ..spine.files import SpineError, filehash
 from . import decoded, mapping, pixels, records
 
 
-def inspect(video, req, caption):
-    """Decode every alpha pixel, requiring cue-clock visibility inside an explicit safe area."""
+def binding(video, req, caption):
+    """Require current raster and burn bytes bound into this request."""
     binding = req['caption_binding'].get('raster')
     if not isinstance(binding, dict):
         raise SpineError('captions: ASS-only burn; bound caption raster required')
     burn = caption['burn']
+    if not isinstance(burn, dict):
+        raise SpineError('captions: raster without a bound burn')
     for asset in (burn, binding):
-        name = asset['file']
-        if (not asset['sha256'] or req['inputs'].get(name) != asset['sha256']
+        name = asset.get('file')
+        if not isinstance(name, str) or not asset.get('sha256'):
+            raise SpineError('captions: raster/burn missing file or content hash')
+        if (req['inputs'].get(name) != asset['sha256']
                 or filehash(records.path(video, name)) != asset['sha256']):
             raise SpineError(f'captions: stale or unbound raster/burn: {name}')
-    if binding['burn_sha256'] != burn['sha256']:
+    if binding.get('burn_sha256') != burn['sha256']:
         raise SpineError('captions: raster does not bind the current burn')
+    return binding
+
+
+def inspect(video, req, caption):
+    """Decode every alpha pixel, retaining contiguous intervals of equal bounds."""
+    asset = binding(video, req, caption)
     setting = req['settings']
     width, height = setting['video']['sizes'][setting['shape']]
     safe = setting.get('caption_safe')
@@ -29,7 +40,7 @@ def inspect(video, req, caption):
     if x + w > width or y + h > height:
         raise SpineError('captions: safe area exceeds output bounds')
     count = req['frame_map'][-1]['frames'][1]
-    path = records.path(video, binding['file'])
+    path = records.path(video, asset['file'])
     from .render import MeasurementRefused
     try:
         size = pixels.dimensions(path, setting['video']['fps'], setting['measurement']['grid_tolerance_s'],
@@ -39,13 +50,22 @@ def inspect(video, req, caption):
     if size != [width, height]:
         raise SpineError('captions: raster dimensions differ from output')
     rate = decoded.fraction(setting['video']['fps'], 'captions', 'video.fps')
-    edges = [(math.ceil(decoded.fraction(str(c['start_s']), 'captions', 'video.fps') * rate),
-              math.ceil(decoded.fraction(str(c['end_s']), 'captions', 'video.fps') * rate))
-             for c in caption['cues']]
+    edges = []
+    for cue in caption['cues']:
+        edge = []
+        for field in ('start_s', 'end_s'):
+            try:
+                value = Fraction(str(cue.get(field)))
+                if value < 0:
+                    raise ValueError('negative time')
+            except (ValueError, ZeroDivisionError):
+                decoded.refuse('captions', 'captions.cue_times.' + field, f'captions: invalid cue {field}')
+            edge.append(math.ceil(value * rate))
+        edges.append(edge)
     args = [shutil.which('ffmpeg'), '-nostdin', '-v', 'error', '-err_detect', 'explode', '-i', str(path),
             '-vf', 'alphaextract', '-an', '-fps_mode', 'passthrough', '-f', 'rawvideo',
             '-pix_fmt', 'gray', 'pipe:1']
-    bounds = []
+    bounds, decoded_count = [], 0
     with contextlib.closing(pixels.read_frames(args, width * height, 'captions')) as frames:
         for index, frame in enumerate(frames):
             left, top, right, bottom = width, height, 0, 0
@@ -61,7 +81,11 @@ def inspect(video, req, caption):
                 raise SpineError(f'captions: raster cue edge differs at frame {index}')
             if box and not (x <= left and y <= top and right <= x + w and bottom <= y + h):
                 raise SpineError(f'captions: raster outside safe area at frame {index}')
-            bounds.append(box)
-    if len(bounds) != count or filehash(path) != binding['sha256']:
+            if bounds and bounds[-1]['box'] == box:
+                bounds[-1]['frames'][1] = index + 1
+            else:
+                bounds.append({'frames': [index, index + 1], 'box': box})
+            decoded_count += 1
+    if decoded_count != count or filehash(path) != asset['sha256']:
         raise SpineError('captions: raster changed or incomplete while decoding')
-    return {'sha256': binding['sha256'], 'safe': safe, 'bounds': bounds}
+    return {'sha256': asset['sha256'], 'safe': safe, 'bounds': bounds}

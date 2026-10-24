@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from ..spine.files import filehash
-from . import coverage, request, test_coverage
+from . import coverage, raster, request, test_coverage
 from .render import MeasurementRefused, measured, render
 
 
@@ -67,8 +67,12 @@ class CaptionRaster(unittest.TestCase):
         reading = c.get(accepted['readings'])['checks']['captions']
         self.assertTrue(reading['ok'], reading)
         raster = reading['value']['raster']
-        self.assertEqual(raster['bounds'][3:27], [[20, 20, 10, 10]] * 24)
-        self.assertEqual(raster['bounds'][:3] + raster['bounds'][27:], [None] * 6)
+        self.assertEqual(raster['bounds'], [
+            {'frames': [0, 3], 'box': None},
+            {'frames': [3, 27], 'box': [20, 20, 10, 10]},
+            {'frames': [27, 30], 'box': None}])
+        expanded = [row['box'] for row in raster['bounds'] for _ in range(*row['frames'])]
+        self.assertEqual(expanded, [None] * 3 + [[20, 20, 10, 10]] * 24 + [None] * 3)
         # A valid bound raster cannot excuse a missing burn in the delivered video.
         c.v.versions['encoder'] = 'omitted-burn'
         c.v.encode = c.encode_map
@@ -125,3 +129,23 @@ class CaptionRaster(unittest.TestCase):
         with patch.object(coverage.pixels, 'compare', side_effect=mutate):
             with self.assertRaises(MeasurementRefused):
                 measured(c.v, req, 'Draft/draft.mp4')
+
+    def test_invalid_cue_times_name_cue_time_not_video_rate(self):
+        c = self.case
+        req = request.resolve(c.v, 'draft', 'draft')
+        original = c.get('records/captions/draft.json')
+        for field in ('start_s', 'end_s'):
+            for value in (float('nan'), float('inf'), -float('inf'), -1, True):
+                with self.subTest(field=field, value=value):
+                    caption = copy.deepcopy(original)
+                    caption['cues'][0][field] = value
+                    with self.assertRaises(MeasurementRefused) as caught:
+                        raster.inspect(c.v, req, caption)
+                    self.assertEqual(caught.exception.reading, 'captions')
+                    self.assertIn('cue', caught.exception.setting)
+                    self.assertIn(field, str(caught.exception))
+                    self.assertNotIn('video.fps', caught.exception.setting)
+        self.make_raster(start=0)
+        req = request.resolve(c.v, 'draft', 'draft')
+        original['cues'][0]['start_s'] = 0
+        self.assertEqual(raster.inspect(c.v, req, original)['bounds'][0]['frames'], [0, 27])
