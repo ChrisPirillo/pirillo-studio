@@ -10,7 +10,7 @@
   "arc-read": {"reads": ["Draft/arc.mp4", "records/arc_review.json"], "checker": "checker-plans", "produces": ["records/arc_review.json"]},
   "locked-cut": {"reads": ["records/arc_decision.json", "records/cut_plan2.json", "records/story_map.json"], "checker": "checker-plans", "produces": []},
   "draft-read": {"reads": ["Draft/draft.mp4", "records/draft_review.json"], "checker": "checker-renders", "produces": ["records/draft_review.json"]},
-  "delivered-media": {"reads": ["records/final_manifest.json", "records/cut_plan2.json", "records/shorts_spec.json", "records/vplan.json", "records/hear.json"], "checker": "checker-renders", "produces": []},
+  "delivered-media": {"reads": ["records/final_manifest.json", "records/cut_plan2.json", "records/shorts_spec.json", "records/vplan.json", "records/hear/long.json", "records/hear/vertical.json"], "checker": "checker-renders", "produces": []},
   "short-media": {"reads": ["source.mp4", "records/final_manifest.json", "records/words.json", "records/publish.json"], "checker": "checker-renders", "produces": []},
   "titles": {"reads": ["records/words.json", "records/publish.json", "records/final_manifest.json"], "checker": "checker-copy", "produces": []},
   "captions-read": {"reads": ["records/words.json", "records/final_manifest.json", "records/copy.json", "records/copy_review.md"], "checker": "story-editor", "produces": ["records/copy_review.md"]},

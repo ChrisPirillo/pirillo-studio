@@ -95,6 +95,11 @@ def catalog(stage):
                 binds.add(r['bind'])
             if not binds:
                 raise SpineError(f'{name}: no reads')
+            if ('each' in e or 'always' in e) and not (
+                    'manifest' in binds and isinstance(e.get('each'), list) and e['each']
+                    and set(e['each']) <= set(evaluators.EACH) and len(set(e['each'])) == len(e['each'])
+                    and isinstance(e.get('always', []), list) and set(e.get('always', [])) <= {'long', 'vertical'}):
+                raise SpineError(f'{name}: each needs the manifest read and known kinds; always only long or vertical')
             setting = e.get('setting')
             if setting and evaluators.SETTINGS.get(setting['name']) != setting['owner']:
                 raise SpineError(f"{name}: unknown setting {setting['name']}")
@@ -130,14 +135,26 @@ def _read(video, path):
 
 def _snapshot(video, entry, started):
     reads, hashes, paths, errors = {}, {}, {}, []
-    for binding in entry['reads']:
-        name, path = binding['bind'], binding['record']
+
+    def take(name, path):
         try:
             reads[name], hashes[name] = _read(video, path)
             paths[path] = hashes[name]
         except Exception as exc:
             hashes[name] = None
             errors.append(f'{name} ({path}): {exc}')
+    for binding in entry['reads']:
+        take(binding['bind'], binding['record'])
+    # A per-output entry reads one record of each kind for every output its manifest names (evaluators.outputs).
+    reads['__outputs__'] = []
+    if entry.get('each') and 'manifest' in reads:
+        try:
+            reads['__outputs__'] = evaluators.outputs(entry, reads['manifest'])
+            for output in reads['__outputs__']:
+                for name, path in evaluators.each(entry, output).items():
+                    take(name, path)
+        except Exception as exc:
+            errors.append(f'outputs: {exc}')
     # Owner records declare the inputs that their check certified. These hashes are
     # part of this check's key, so unchanged owner JSON cannot hide a changed file.
     for record in list(reads.values()):
@@ -184,7 +201,7 @@ def _snapshot(video, entry, started):
     except Exception as exc:
         errors.append(f"qc.rules {entry['rule']}: {exc}")
         rule_mode = None
-    key = digest(canon({'version': entry['version'], 'read': hashes, 'paths': paths,
+    key = digest(canon({'version': entry['version'], 'outputs': reads['__outputs__'], 'read': hashes, 'paths': paths,
                         'members': members, 'setting': setting, 'rule_mode': rule_mode, 'errors': errors}))
     reads['__hashes__'], reads['__paths__'], reads['__members__'] = hashes, paths, members
     return {'key': key, 'reads': reads, 'setting': setting, 'rule_mode': rule_mode, 'errors': errors}
@@ -204,8 +221,8 @@ def _key(rows):
 
 def _row(entry, snap):
     row = {k: entry[k] for k in ('id', 'owner', 'fixer')}
-    row.update(key=snap['key'], read=[{'bind': r['bind'], 'sha256': snap['reads']['__hashes__'][r['bind']]}
-                                    for r in entry['reads']], rule_mode=snap['rule_mode'], by='qc')
+    row.update(key=snap['key'], read=[{'bind': b, 'sha256': h} for b, h in snap['reads']['__hashes__'].items()],
+               rule_mode=snap['rule_mode'], by='qc')
     if entry.get('setting'):
         row['setting'] = entry['setting']
     try:

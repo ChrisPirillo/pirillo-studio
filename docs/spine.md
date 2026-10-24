@@ -27,7 +27,7 @@ checks read those members too. Check and role names below are proposed domain in
       {"id":"locked","inputs":["records/arc_decision.json","records/cut_plan2.json"],"run":{"role":"editor"},"check":["locked-cut"],"outputs":["records/story_map.json"],"next_actor":"finisher"},
       {"id":"draft","inputs":["source.mp4","records/cut_plan2.json","records/story_map.json","records/overlay_plan.json","records/bed.json","records/faces.json","records/callouts_plan.json"],"run":{"role":"finisher"},"check":["draft-read"],"outputs":["Draft/draft.mp4","records/draft_review.json","records/vplan.json"],"next_actor":"owner"},
       {"id":"draft-choice","inputs":["Draft/draft.mp4","records/draft_review.json"],"run":{"role":"owner"},"check":["decision"],"outputs":["records/draft_decision.json"],"next_actor":"finisher"},
-      {"id":"masters","inputs":["records/draft_decision.json","records/cut_plan2.json","records/shorts_spec.json","records/faces.json","source.mp4","records/story_map.json","records/overlay_plan.json","records/callouts_plan.json","records/bed.json","records/vplan.json"],"run":{"role":"finisher"},"check":["delivered-media"],"outputs":["YouTube/main.mp4","YouTube/main.srt","Vertical/main.mp4","Shorts/short.mp4","Shorts/short.srt","records/final_manifest.json","records/hear.json"],"next_actor":"packager"},
+      {"id":"masters","inputs":["records/draft_decision.json","records/cut_plan2.json","records/shorts_spec.json","records/faces.json","source.mp4","records/story_map.json","records/overlay_plan.json","records/callouts_plan.json","records/bed.json","records/vplan.json"],"run":{"role":"finisher"},"check":["delivered-media"],"outputs":["YouTube/main.mp4","YouTube/main.srt","Vertical/main.mp4","Shorts/short.mp4","Shorts/short.srt","records/final_manifest.json","records/hear/long.json","records/hear/vertical.json"],"next_actor":"packager"},
       {"id":"titles","inputs":["records/words.json","records/final_manifest.json"],"run":{"role":"packager"},"check":["titles"],"outputs":["records/publish.json"],"next_actor":"packager"},
       {"id":"copy","inputs":["records/final_manifest.json","records/publish.json","records/words.json"],"run":{"role":"packager"},"check":["captions-read"],"outputs":["records/copy.json","records/copy_review.md"],"next_actor":"story-editor"},
       {"id":"text-plan","inputs":["records/words.json","records/final_manifest.json"],"run":{"role":"story-editor"},"check":["text-plan"],"outputs":["records/text_plan.md"],"next_actor":"writer"},
@@ -39,7 +39,7 @@ checks read those members too. Check and role names below are proposed domain in
   },
   "shorts-only": {
     "stages": [
-      {"id":"short","inputs":["source.mp4","records/job.json"],"run":{"role":"finisher"},"check":["short-media"],"outputs":["Shorts/short.mp4","Shorts/short.srt","records/words.json","records/final_manifest.json","records/publish.json"],"next_actor":"packager"},
+      {"id":"short","inputs":["source.mp4","records/job.json"],"run":{"role":"finisher"},"check":["short-media"],"outputs":["Shorts/short.mp4","Shorts/short.srt","records/words.json","records/final_manifest.json","records/publish.json","records/heard_named.json"],"next_actor":"packager"},
       {"id":"copy","inputs":["records/final_manifest.json","records/publish.json","records/words.json"],"run":{"role":"packager"},"check":["captions-read"],"outputs":["records/copy.json","records/copy_review.md"],"next_actor":"packager"},
       {"id":"release","inputs":["records/final_manifest.json","records/copy.json","records/copy_review.md","records/publish.json"],"run":{"role":"packager"},"check":["release"],"outputs":["records/release.json","Review.md"],"next_actor":"owner"},
       {"id":"release-choice","inputs":["records/release.json","Review.md"],"run":{"role":"owner"},"check":["decision"],"outputs":["records/release_decision.json"],"next_actor":"clock"},
@@ -68,7 +68,8 @@ Checks declare only the evidence they use. For these examples: `media` reads sou
 `cut-plan` reads words, both cut plans and paper; `paper-read` reads paper, cut and story review; `overlay-plan`
 reads cut, callouts, overlay, shorts and bed plans; `arc-read` reads the arc and its independent story/craft review;
 `locked-cut` reads the approved arc decision, cut and story map; `draft-read` reads draft and independent sound/frame
-review; `delivered-media` reads final manifest and members, cut, shorts/vertical plans and hear report; `short-media` reads source,
+review; `delivered-media` reads final manifest and members, cut, shorts/vertical plans and the long and vertical hear records
+(`records/hear/<output-id>.json`; each short's is reached through its manifest member, as QC's `heard` reads it); `short-media` reads source,
 short manifest and members, words and short publish metadata. `titles` reads words, publish and delivered media;
 `captions-read` reads words, manifest members, copy and its independent read. `text-plan` reads words and plan;
 `text-read` reads words, text and its independent read. `release` reads release, its declared assets and copy, and any

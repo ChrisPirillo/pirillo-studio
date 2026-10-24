@@ -5,10 +5,15 @@ The host stores check envelopes with key = digest(canon({reads, settings}));
 QC verifies that identity and artifact hashes, never invokes the owner's checker.
 
 Record shapes these read, each taken from its owning spec:
-- records/hear.json (qc.md section 1, "Required spine.md extension"): {"file", "file_sha256", "engine",
-  "model" (sha256 of the model loaded), "words": [{"text", "start_s", "end_s"}]} on the delivered file's clock.
+- records/hear/<output-id>.json (qc.md section 1, "Required spine.md extension"), one per delivered output:
+  {"file", "file_sha256", "engine", "model" (sha256 of the model loaded), "words": [{"text", "start_s", "end_s"}]}
+  on that file's clock. A catalog entry's `each` reads one record per output (EACH), the outputs being its `always`
+  IDs and one short-<id> per Shorts/<id>.mp4 manifest member (rendering.md section 1).
+- records/heard_named.json (shorts-only's `short` stage): {"named": [...]}, the plan's named shape plus "output"
+  (short-<id>), at_src on that supplied file's own clock (records/words-<id>.json).
 - the cue record (captions.md section 1): "aligner" {"model", "version"} and "cues" [{"words", "lit"}], one lit
-  interval per shown word ID, on the output clock rendering's frame map gave; heard never remaps a word itself.
+  interval per shown word ID, on the output clock rendering's frame map gave; heard remaps only a removed range's bounding kept words,
+  through the output render record's frame_map [{span, src, out}].
 - records/words.json (cutting/plan.py words): [{"id", "text", "start", "end"}].
 - records/cut_plan2.json (cutting.md section 1): "spans" (a splice is each speech span's first and last word),
   "removed" (dropped word IDs) and "named", the one place a flag is excused: rule "heard.<kind>", an at_src inside
@@ -17,9 +22,10 @@ Record shapes these read, each taken from its owning spec:
   section 1) "file", "file_sha256", "state" ("delivered" passes); cue records' "sidecar" {"file", "sha256"} and
   "state" ("captioned" passes). A member's name is the path its own record gives (rendering's paths;
   release.md: delivered files are never renamed).
-- qc.heard, resolved by the host: {"match_s", "onset_s", "clip_s"}: how far a heard word may sit from its
-  caption and still be that word, how far its onset may sit from the caption, and how much shorter than its
-  source a splice word may sound.
+- qc.heard, resolved by the host: {"match_s", "onset_s", "clip_s", "removed_run"}: how far a heard word may sit
+  from its caption (or removed tape from a kept word that bounds it) and still be that word, how far its onset may
+  sit from the caption, how much shorter than its source a splice word may sound, and how many of a removed range's
+  words, heard in order, make it heard again.
 """
 import json
 import math
@@ -44,7 +50,7 @@ BINDINGS = {
     'words': 'records/words.json', 'source': 'source.mp4', 'paper': 'records/paper.md',
     'story-review': 'records/story_review.json', 'overlay': 'records/overlay_plan.json',
     'shorts': 'records/shorts_spec.json', 'manifest': 'records/final_manifest.json',
-    'hear': 'records/hear.json', 'file:long': 'YouTube/main.mp4', 'file:short': 'Shorts/short.mp4',
+    'heard-named': 'records/heard_named.json', 'file:long': 'YouTube/main.mp4', 'file:short': 'Shorts/short.mp4',
     'file:arc': 'Draft/arc.mp4', 'file:draft': 'Draft/draft.mp4',
     'publish': 'records/publish.json', 'copy': 'records/copy.json',
     'copy-review': 'records/copy_review.md', 'text-plan': 'records/text_plan.md',
@@ -58,6 +64,10 @@ for _output in ('arc', 'draft', 'long', 'vertical', 'short'):
                      f'render:{_output}-check': f'records/checks/render-{_output}.json',
                      f'captions:{_output}': f'records/captions/{_output}.json',
                      f'captions:{_output}-check': f'records/checks/captions-{_output}.json'})
+EACH = {'render': 'records/render/{output}.json', 'captions': 'records/captions/{output}.json',
+        'hear': 'records/hear/{output}.json', 'words': 'records/words-{short}.json'}
+_FILES = {'long': 'YouTube/main.mp4', 'vertical': 'Vertical/main.mp4'}  # rendering.md section 1; shorts below
+_SHORT = re.compile(r'Shorts/([a-z0-9][a-z0-9_-]*)\.mp4')
 _HASH = re.compile(r'(?:sha256:)?[0-9a-f]{64}\Z')
 
 
@@ -179,84 +189,165 @@ def _said(text):
     return ''.join(c for c in text.casefold() if c.isalnum())
 
 
-def heard(entry, reads, setting):
-    """Captions against the words an independent engine heard in the delivered file (qc.md contract 14)."""
-    bind = {r['bind'].split(':')[0]: r for r in entry['reads']}
-    match, onset, clip = (_time((setting or {}).get(k), f'qc.heard {k}') for k in ('match_s', 'onset_s', 'clip_s'))
-    hear, cues, file = reads['hear'], reads[bind['captions']['bind']], bind['file']
-    current = reads['__hashes__'][file['bind']]
-    if hear.get('file') != file['record'] or not _equal(hear.get('file_sha256'), current):
-        return unavailable(f"Hear record is stale: it heard {hear.get('file')} {hear.get('file_sha256')}, "
-                           f"not {file['record']} {current}.")
+def outputs(entry, manifest):
+    """The output IDs a per-output check judges: its `always` ones, then short-<id> per Shorts/<id>.mp4 member."""
+    members = manifest.get('members') if isinstance(manifest, dict) else None
+    if not isinstance(members, list) or not members:
+        raise SpineError('final manifest lists no members')
+    shorts = []
+    for member in members:
+        path = member.get('path') if isinstance(member, dict) else None
+        if isinstance(path, str) and path.startswith('Shorts/') and path.endswith('.mp4'):
+            match = _SHORT.fullmatch(path)
+            if match is None:
+                raise SpineError(f'{path}: not a Shorts/<id>.mp4 short (rendering.md section 1)')
+            shorts.append(f'short-{match.group(1)}')
+    found = list(dict.fromkeys(entry.get('always', []) + shorts))
+    if not found:  # nothing compared is never a pass
+        raise SpineError('final manifest lists no output to judge')
+    return found
+
+
+def each(entry, output):
+    """bind -> record path for one output, from the entry's `each` kinds."""
+    short = output.removeprefix('short-') if output.startswith('short-') else None
+    if 'words' in entry['each'] and short is None:
+        raise SpineError(f'{output}: only a supplied short has its own words record')
+    return {f'{kind}:{output}': EACH[kind].format(output=output, short=short) for kind in entry['each']}
+
+
+def _out(render, word, at):
+    """Every output interval the frame map gives one source word (a cold open gives a word two)."""
+    pieces = render.get('frame_map') if isinstance(render, dict) else None
+    if not isinstance(pieces, list) or not pieces:
+        raise SpineError(f'{at}: frame_map must list pieces')
+    found, mid = [], (word['start'] + word['end']) / 2
+    for i, piece in enumerate(pieces):
+        a, b = cut.interval(piece.get('src') if isinstance(piece, dict) else None, f'{at} frame_map[{i}] src')
+        c, _ = cut.interval(piece['out'], f'{at} frame_map[{i}] out')
+        if a <= mid < b:
+            found.append((c + word['start'] - a, c + word['end'] - a))
+    return found
+
+
+def _heard(output, reads, plan, match, onset, clip, run):
+    """One output's flags as (kind, output, source words, words), or the words that make heard unavailable."""
+    render, cues, hear = (reads[f'{kind}:{output}'] for kind in ('render', 'captions', 'hear'))
+    file, at = render.get('file'), f'records/captions/{output}.json'
+    own = _FILES.get(output) or f"Shorts/{output.removeprefix('short-')}.mp4"
+    if file != own:  # a record filed under another output never stands in for this one's file
+        return f'{output}: its render record names {file}, not {own}.'
+    current = reads['__members__'].get(str(file), {}).get('sha256')
+    if current is None:
+        return f'{output}: its file {file} is not a present member of the final manifest.'
+    if hear.get('file') != file or not _equal(hear.get('file_sha256'), current):
+        return (f"{output}: hear record is stale: it heard {hear.get('file')} {hear.get('file_sha256')}, "
+                f"not {file} {current}.")
     aligner = cues.get('aligner')
     if not isinstance(aligner, dict) or not all(_HASH.fullmatch(str(x)) for x in (aligner.get('version'), hear.get('model'))):
-        raise SpineError('hear model or captions aligner version is not a content hash')
+        raise SpineError(f'{output}: hear model or captions aligner version is not a content hash')
     if _equal(hear['model'], aligner['version']):
-        return unavailable(f"Hear engine {hear.get('engine')} {hear['model']} is the captions aligner "
-                           f"{aligner.get('model')} {aligner['version']}; heard needs an independent engine.")
-    rows = cut.words(reads['words'])
+        return (f"{output}: hear engine {hear.get('engine')} {hear['model']} is the captions aligner "
+                f"{aligner.get('model')} {aligner['version']}; heard needs an independent engine.")
+    rows = cut.words(reads['words'] if plan else reads[f'words:{output}'])
     source = {w['id']: w for w in rows}
-    said = [(_said(w['text']), _time(w['start_s'], f'hear word {i}'), _time(w['end_s'], f'hear word {i}'))
+    said = [(_said(w['text']), _time(w['start_s'], f'{output} hear word {i}'), _time(w['end_s'], f'{output} hear word {i}'))
             for i, w in enumerate(hear['words'])]
     if any(end < start for _, start, end in said):
-        raise SpineError('hear word ends before it starts')
-    edges, removed, named = set(), {}, []
-    if 'plan' in bind:
-        plan = reads['plan:clock']
-        edges = {wid for span in plan['spans'] for wid in span['words']}
-        for cut_words in (r['words'] for r in plan['removed']):
-            for w in cut.selected(rows, cut_words) if len(cut_words) == 2 else [source[i] for i in cut_words]:
-                removed.setdefault(_said(w['text']), []).append(w)
-        named = plan['named']
-    flags, used = [], set()
+        raise SpineError(f'{output}: hear word ends before it starts')
     if not any(cue['words'] for cue in cues['cues']):  # nothing compared is never a pass
-        raise SpineError(f"{bind['captions']['record']}: no cues to hear")
+        raise SpineError(f'{at}: no cues to hear')
+    edges = {wid for span in plan['spans'] for wid in span['words']} if plan else set()
+    flags, used = [], set()
     for cue in cues['cues']:
         if len(cue['words']) != len(cue['lit']):
-            raise SpineError(f"cue {cue.get('id')}: one lit interval per shown word")
+            raise SpineError(f"{output} cue {cue.get('id')}: one lit interval per shown word")
         for wid, lit in zip(cue['words'], cue['lit']):
-            w, at = source[wid], _time(lit[0], f'cue {wid}')
+            w, t = source[wid], _time(lit[0], f'{output} cue {wid}')
             kind = 'clipped' if wid in edges else 'caption-off'
-            near = sorted((abs(h[1] - at), i) for i, h in enumerate(said) if h[0] == _said(w['text']) and abs(h[1] - at) <= match)
+            near = sorted((abs(h[1] - t), i) for i, h in enumerate(said) if h[0] == _said(w['text']) and abs(h[1] - t) <= match)
             if not near:
-                flags.append((kind, [w], f"{wid} '{w['text']}' captioned at {at}s is not heard there"))
+                flags.append((kind, output, [w], f"{output}: {wid} '{w['text']}' captioned at {t}s is not heard there"))
                 continue
             used.add(near[0][1])
             _, start, end = said[near[0][1]]
             if wid in edges and end - start < w['end'] - w['start'] - clip:
-                flags.append(('clipped', [w], f"{wid} '{w['text']}' at a splice is heard for {end - start:.2f}s "
-                                             f"of its {w['end'] - w['start']:.2f}s"))
-            if abs(start - at) > onset:
-                flags.append(('caption-off', [w], f"{wid} '{w['text']}' is captioned at {at}s, heard at {start}s"))
-    flags += [('removed', removed[h[0]], f"removed '{h[0]}' is heard again at {h[1]}s")
-              for i, h in enumerate(said) if i not in used and h[0] in removed]
+                flags.append(('clipped', output, [w], f"{output}: {wid} '{w['text']}' at a splice is heard for "
+                                             f"{end - start:.2f}s of its {w['end'] - w['start']:.2f}s"))
+            if abs(start - t) > onset:
+                flags.append(('caption-off', output, [w], f"{output}: {wid} '{w['text']}' is captioned at {t}s, heard at {start}s"))
+    if plan:  # removed tape heard again: a run of its words beside a kept word that bounds it (qc.md section 1)
+        index = {w['id']: i for i, w in enumerate(rows)}
+        kept = {w['id'] for span in plan['spans'] for w in cut.selected(rows, span['words'])}
+        for removed in plan['removed']:
+            gone = cut.selected(rows, removed['words']) if len(removed['words']) == 2 else [source[i] for i in removed['words']]
+            if not gone:
+                continue
+            lo, hi = index[gone[0]['id']], index[gone[-1]['id']]
+            sides = [w for w in (next((w for w in reversed(rows[:lo]) if w['id'] in kept), None),
+                                 next((w for w in rows[hi + 1:] if w['id'] in kept), None)) if w]
+            near = [t for w in sides for t in _out(render, w, f'records/render/{output}.json')]
+            texts, n = [_said(w['text']) for w in gone], min(run, len(gone))
+            for j in range(len(said) - n + 1):
+                heard_run = said[j:j + n]
+                if (any(i in used for i in range(j, j + n))
+                        or not any([h[0] for h in heard_run] == texts[k:k + n] for k in range(len(texts) - n + 1))
+                        or not any(max(0, heard_run[0][1] - b, a - heard_run[-1][2]) <= match for a, b in near)):
+                    continue
+                flags.append(('removed', output, gone, f"{output}: removed '{' '.join(h[0] for h in heard_run)}' "
+                                               f"is heard again at {heard_run[0][1]}s"))
+                break
+    return flags
 
-    def why(kind, words):
+
+def heard(entry, reads, setting):
+    """Every delivered output's captions against the words an independent engine heard in that file (qc.md
+    contract 14): long, vertical and each short on the plan clock through the output's frame map, or a supplied
+    short on its own transcript, excused only by the plan's named or the short's records/heard_named.json."""
+    values = setting or {}
+    match, onset, clip = (_time(values.get(k), f'qc.heard {k}') for k in ('match_s', 'onset_s', 'clip_s'))
+    run = values.get('removed_run')
+    if isinstance(run, bool) or not isinstance(run, int) or run < 1:
+        raise SpineError('qc.heard removed_run: not a whole number of words')
+    plan = reads.get('plan:clock')
+    named = plan['named'] if plan else reads['heard-named']['named']
+    flags, missing = [], []
+    for output in reads['__outputs__']:
+        found = _heard(output, reads, plan, match, onset, clip, run)
+        if isinstance(found, str):
+            missing.append(found)
+        else:
+            flags += found
+    if missing:
+        return unavailable(' '.join(missing))
+
+    def why(kind, output, words):  # a supplied short's at_src is on its own clock, so its entry names the output
         return next((n['why'] for n in named if n['rule'] == f'heard.{kind}' and isinstance(n.get('why'), str)
-                     and n['why'].strip() and any(w['start'] <= n['at_src'] <= w['end'] for w in words)), None)
-    open_flags = [f'{kind}: {say}' for kind, words, say in flags if why(kind, words) is None]
-    excused = [f'{kind}: {say} (named: {why(kind, words)})' for kind, words, say in flags if why(kind, words)]
+                     and n['why'].strip() and (plan or n.get('output') == output)
+                     and any(w['start'] <= n['at_src'] <= w['end'] for w in words)), None)
+    open_flags = [f'{flag[0]}: {flag[3]}' for flag in flags if why(*flag[:3]) is None]
+    excused = [f'{flag[0]}: {flag[3]} (named: {why(*flag[:3])})' for flag in flags if why(*flag[:3])]
     if open_flags:
-        return {'result': 'fail', 'words': 'Fix each heard flag or name it in the plan with a why: '
+        return {'result': 'fail', 'words': 'Fix each heard flag or name it with a why: '
                 + '; '.join(open_flags + excused)}
     if excused:
         return {'result': 'manual-pending', 'words': f"{entry['checker']} judges each named heard flag: "
                 + '; '.join(excused)}
-    return {'result': 'pass', 'words': 'Every captioned word is heard where its caption shows it.'}
+    return {'result': 'pass', 'words': f"Every captioned word is heard where its caption shows it, in "
+                                       f"{len(reads['__outputs__'])} outputs."}
 
 
 def delivered(entry, reads, setting):
-    """Every manifest member present, named and passed by its own record, and isolated (qc.md contract 15)."""
+    """Every manifest member present, named and passed by its own output's record, and isolated (qc.md
+    contract 15); the outputs are long, vertical and one short per Shorts/<id>.mp4 member."""
     members, facts, owned = reads['manifest'].get('members'), reads['__members__'], {}
     if not isinstance(members, list) or not members:
         raise SpineError('final manifest lists no members')
-    for r in entry['reads']:
-        record = reads[r['bind']]
-        if r['bind'].startswith('render:'):
-            owned[record['file']] = (r['bind'], record['state'] == 'delivered', record['file_sha256'])
-        elif r['bind'].startswith('captions:'):
-            sidecar = record['sidecar']
-            owned[sidecar['file']] = (r['bind'], record['state'] == 'captioned', sidecar['sha256'])
+    for output in reads['__outputs__']:
+        render, cues = reads[f'render:{output}'], reads[f'captions:{output}']
+        owned[render['file']] = (f'render:{output}', render['state'] == 'delivered', render['file_sha256'])
+        sidecar = cues['sidecar']
+        owned[sidecar['file']] = (f'captions:{output}', cues['state'] == 'captioned', sidecar['sha256'])
     problems, listed = [], set()
     for member in members:
         path = member['path']

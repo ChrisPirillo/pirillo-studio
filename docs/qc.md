@@ -42,6 +42,10 @@ an unknown stage, owner domain, checker seat, read binding or setting refuses th
 - `result`: `measure` (a value against a setting), `record` (another domain's `check` result), or `judgment`.
 - `reads`: every binding the check consumes, a stage input, output, manifest member or another domain's record.
   The verdict key is built from these alone; a check cannot read the recipe name, the job or a file it did not declare.
+- `each`, `always`: a per-output check (`heard`, `delivered`) reads, besides `reads`, one record of each kind named
+  (`render`, `captions`, `hear`: `records/<kind>/<output-id>.json`; `words`: a supplied short's
+  `records/words-<id>.json`) for every output: the `always` IDs (`long`, `vertical`) and one `short-<id>` per
+  `Shorts/<id>.mp4` member of the manifest it reads. Their hashes key it like any read.
 - `setting`: the one setting that holds its threshold and that setting's owner; the catalog never holds a number.
 - `rule`: the dated-rule ID whose mode decides warn or refuse (section 1, "Dated rules"); absent means always refuse.
 - `may_lower`: whether a manual row may record a lower result than the evaluator gave, and only with its why.
@@ -76,7 +80,7 @@ A verdict is one record per video and stage judged, at `records/qc/<stage>.json`
       "id": "heard",
       "owner": "qc",
       "key": "sha256:<...>",
-      "read": [{"bind": "file:long", "sha256": "<hex>"}, {"bind": "hear", "sha256": "<hex>"},
+      "read": [{"bind": "manifest", "sha256": "<hex>"}, {"bind": "hear:long", "sha256": "<hex>"},
                {"bind": "plan:clock", "sha256": "<hex>"}],
       "result": "manual-pending",
       "judge": "checker-renders",
@@ -130,37 +134,39 @@ the stage list holds none; there is no plan clock, so `heard` compares captions 
 **Required spine.md extension** (its section 1 stage data), reviewed by the owner with spine.md before either is
 built: `masters` checks `["delivered-media", "delivered", "heard"]`; `short` checks `["short-media", "captions",
 "heard"]` (`captions` is item 18's check of the sidecar); `overlays` checks `["overlay-plan", "attention"]`.
-`heard` reads a hear record the stage's maker writes, never QC: speech recognition on the delivered file is a step
-of `masters` and `short`, writing `records/hear.json` (the heard words and times, the engine and its model hash,
-bound to the file hash), with the engine declared in the stage's `tools` as `asr:<engine>` (preflight.md section 1).
-The hear engine must be independent of the captions aligner: a hear record whose engine and model hash equal the
-cue record's `aligner` (captions.md section 1) makes `heard` `unavailable` naming both, never a pass.
-`masters` already lists `records/hear.json`; `short` gains it as an output. QC writes only its verdicts.
+`heard` reads hear records the stage's maker writes, never QC: speech recognition on each delivered file is a step
+of `masters` and `short`, writing `records/hear/<output-id>.json` (the heard words and times, the engine and its
+model hash, bound to that file's hash), with the engine declared in the stage's `tools` as `asr:<engine>`
+(preflight.md section 1). The hear engine must be independent of the captions aligner: a hear record whose model
+hash equals its output's cue record `aligner` version (captions.md section 1) makes `heard` `unavailable` naming
+both, never a pass. `masters` lists `records/hear/long.json` and `records/hear/vertical.json` as outputs, and
+`short` lists `records/heard_named.json`; a short's `records/hear/short-<id>.json` is reached through its manifest
+member, never a literal output, as rendering's `Shorts/<id>.mp4` is. QC writes only its verdicts.
 
-**What seam 2b left open** (item 15 seam 2c, for the owner to read; each line is the proposal, built in seam 2d
-once read):
+**What seam 2b left open** (item 15 seam 2c; built in seam 2d, pirillo_studio/qc):
 
 - Names. A delivered file is named by the path its own render or cue record gives (rendering's paths); release.md
   never renames one and its `release.naming` names outputs in the release record only. `delivered` checks that each
-  manifest member is the path its record names, never a name derived from a title.
+  manifest member is the path its record names, never a name derived from a title; `heard` refuses an output whose
+  render record names any path but that output's own (`YouTube/main.mp4`, `Vertical/main.mp4`, `Shorts/<id>.mp4`).
 - One hear record per delivered output. `masters` writes `records/hear/<output-id>.json` for `long`, `vertical`
   and each `short-<id>`, `short` writes `records/hear/short-<id>.json`, each bound to its own file's hash, and
   `heard` judges every output the final manifest lists (long, vertical and each `masters` short on the plan
   clock through rendering's frame map; a shorts-only short on its own transcript). Replaces the single
-  `records/hear.json` above.
+  `records/hear.json`.
 - Shorts by the manifest. `delivered` and `heard` enumerate shorts from the final manifest's members
   (`Shorts/<id>.mp4`, rendering.md section 1), never a fixed `short` binding.
 - Where a heard flag is excused. Plain: the plan's `named` (cutting.md section 1), as built. Shorts-only has no
   plan, so the `short` stage's maker writes `records/heard_named.json`, entries of the same shape (`rule`
-  `heard.<kind>`, `at_src`, `why`; the supplied file is the source, so `at_src` is on its own clock), declared as
-  that stage's output; an excused flag is a manual row for its judge, as on plain.
+  `heard.<kind>`, `at_src`, `why`) plus `output` (`short-<id>`: the supplied file is the source, so `at_src` is on
+  that short's own clock and excuses a flag in it alone), declared as that stage's output as `{"named": [...]}`; an excused flag is a manual row for its judge, as on plain.
 - Removed tape heard again. For each removed range with words, a flag needs a run of the smaller of
   `qc.heard.removed_run` and the range's word count: consecutive heard words, captioned by nothing, equal in order
   to that range's words, and heard within `qc.heard.match_s` of any output time the frame map gives either kept
   word that bounds the range in the source (the last kept word before it, the first after it; the cold open gives
   a word two); a range with no kept word on a side is checked against the side it has, and an output that carries
   neither bounding word has no removed flag for that range. A common word heard anywhere else is never the flag. One setting,
-  QC's own.
+  QC's own: `qc.heard.removed_run`. "Within" is the gap between the run and the kept word's output interval.
 
 ## 2. One API
 
