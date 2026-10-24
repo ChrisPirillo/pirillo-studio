@@ -6,7 +6,7 @@ The review file's first line is `APPROVE <tree> <reviewer>`, where <tree> is `gi
 PIRILLO_PRIVATE_PATTERNS names the owner's private-pattern file (kept outside this repo); without it nothing lands,
 and a message matching it is refused. The commit is made as repo.json `identity`, never the machine's git user.
 """
-import json, os, resource, subprocess, sys, tempfile
+import json, os, subprocess, sys, tempfile
 from check import patterns as private_patterns
 from pirillo_pipes import landing
 
@@ -33,30 +33,18 @@ def export(tree, dest):
 
 
 def suite(tree_dir, budget):
-    """budget is the suite's CPU seconds (user and system, every test process): wall time waits on the machine's
-    load (271 s wall for 28 s of CPU under other landings' verifies), so it only bounds a hang, at HANG times."""
-    start = cpu()
+    """budget is the wall seconds a test process may run before it is refused as hung; it bounds a hang only, never
+    the suite's cost: CPU seconds grow with the machine's load (one tree took 99, 121 and 139), queue item 43."""
     for d in ("dev", "pirillo_studio"):
         if os.path.isdir(os.path.join(tree_dir, d)):
             try:
                 r = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", d, "-t",  # the package's
                                     "." if d == "pirillo_studio" else d], cwd=tree_dir,  # tests import as a maker's do
-                                   timeout=HANG * budget)
+                                   timeout=budget)
             except subprocess.TimeoutExpired:
-                raise SystemExit(f"land refused: {d} tests hung past {HANG * budget} s") from None
+                raise SystemExit(f"land refused: {d} tests hung past {budget} s") from None
             if r.returncode:
                 raise SystemExit(f"land refused: {d} tests failed")
-    took = cpu() - start
-    if took > budget:
-        raise SystemExit(f"land refused: suite took {took:.0f} CPU s, over suite_seconds {budget}")
-
-
-HANG = 10
-
-
-def cpu():
-    used = resource.getrusage(resource.RUSAGE_CHILDREN)
-    return used.ru_utime + used.ru_stime
 
 
 def main(argv):
