@@ -4,6 +4,7 @@ import math
 import os
 import re
 import tempfile
+import threading
 from fractions import Fraction
 from pathlib import Path
 
@@ -112,16 +113,27 @@ def prepare(video, req):
     for name in records.artifact_names(req)[4:]:
         records.path(video, name, writable=True)
     for asset in plan['assets']:
-        source = _source(video, asset)
-        probe = decoded.probe(source, ['-show_streams', '-show_frames'])
-        streams = probe['streams']
-        if len(streams) != 1 or streams[0]['codec_type'] != 'audio':
-            raise SpineError(f"{asset['file']}: bed requires exactly one audio stream")
-        rate = int(streams[0]['sample_rate'])
-        count = sum(int(frame['nb_samples']) for frame in probe['frames'])
+        rate, count = _samples(_source(video, asset), asset)
         if count < math.ceil(_duration(req) * rate):
             raise SpineError(f"{asset['file']}: bed audio does not cover output duration")
     return plan
+
+
+_SAMPLES = {}  # bed sha256 -> (sample rate, samples): a render resolves 3 times, the bed's bytes are probed once
+_PROBING = threading.Lock()  # concurrent renders resolve before their output locks; one probes, the rest read
+
+
+def _samples(source, asset):
+    """_source checked the bytes against asset sha256 first, so the hash names what was probed; refusals are not kept."""
+    with _PROBING:
+        if asset['sha256'] not in _SAMPLES:
+            probe = decoded.probe(source, ['-show_streams', '-show_frames'])
+            streams = probe['streams']
+            if len(streams) != 1 or streams[0]['codec_type'] != 'audio':
+                raise SpineError(f"{asset['file']}: bed requires exactly one audio stream")
+            _SAMPLES[asset['sha256']] = (int(streams[0]['sample_rate']),
+                                         sum(int(frame['nb_samples']) for frame in probe['frames']))
+        return _SAMPLES[asset['sha256']]
 
 
 def _source(video, asset):

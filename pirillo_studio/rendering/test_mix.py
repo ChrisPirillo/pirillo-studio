@@ -96,6 +96,33 @@ class Mix(unittest.TestCase):
         self.assertEqual(processed['voice_binding']['processing_chain'], policy['voice_chain'])
         self.assertEqual(processed['voice_binding']['settings_version'], policy['version'])
 
+    def test_render_probes_each_bed_hash_once(self):
+        from . import mix
+        mix._SAMPLES.clear()
+        probed = []
+        real = decoded.probe
+
+        def probe(path, args, *rest, **kw):
+            probed.append(path) if str(path) == str(self.bed) else None
+            return real(path, args, *rest, **kw)
+        with patch.object(decoded, 'probe', side_effect=probe):
+            render(self.case.v, 'draft')
+        self.assertEqual(len(probed), 1)
+        import threading, time
+        mix._SAMPLES.clear()
+        probed.clear()
+
+        def slow(path, args, *rest, **kw):
+            probed.append(path)
+            time.sleep(.2)  # both threads miss before either stores, unless population is serialized
+            return real(path, args, *rest, **kw)
+        asset = self.brief['assets'][0]
+        with patch.object(decoded, 'probe', side_effect=slow):
+            threads = [threading.Thread(target=mix._samples, args=(self.bed, asset)) for _ in range(2)]
+            [t.start() for t in threads]
+            [t.join() for t in threads]
+        self.assertEqual(len(probed), 1)
+
     def test_no_asset_is_explicit_voice_only(self):
         del self.brief['assets']
         self.save_bed()

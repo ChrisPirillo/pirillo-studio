@@ -24,6 +24,7 @@ flowchart TD
 hash must match. The raw brief hash participates in the request key, including metadata edits.
 Absent or empty assets means `bed_binding.mode: voice_only`. Missing assets, invalid approvals, unknown fields,
 overlapping tacets, inadequate audio coverage and unsupported multiple assets refuse by name.
+Coverage probes a bed's bytes once per process per asset hash (`mix._samples`; a render resolves three times); a refusal is not kept.
 
 `rendering/settings.json` `shared.mix` is the single home for `version`, `voice_chain`, `bed_eq`,
 `bed_loudness_lufs`, `duck` and `pin`. Profiles select this group. `voice_chain` and `bed_eq` are ordered
