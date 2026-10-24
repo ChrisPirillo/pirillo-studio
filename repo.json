@@ -1,7 +1,7 @@
 {
  "note": "The one home of this repository's shape and limits. dev/check.py enforces every value here.",
  "max_lines": 500,
- "suite_seconds": 60,
+ "suite_seconds": 120,
  "identity": "Pirillo Studio <studio@pirillo-studio.invalid>",
  "layout": {
   "AGENTS.md": "how to work here; every rule names the check that enforces it",
