@@ -35,9 +35,9 @@ class Bound(Fixture):
             return fn(evidence)
         return judged
 
-    def mark(self):  # the plan a paper read names: the engine's judged digest of paper and plan
+    def mark(self):  # the plan a paper read names: the engine's judged digest of paper, prompts and plan
         return engine.judged({p: {"sha256": engine.filehash(self.v.folder / p)}
-                              for p in ("records/paper.md", "records/cut_plan2.json")}, [])
+                              for p in ("records/paper.md", "records/paper_prompts.json", "records/cut_plan2.json")}, [])
 
     def stage(self, sid, make=lambda: None):
         engine.run(self.e, sid)
@@ -141,7 +141,7 @@ class Bound(Fixture):
 
 class PaperRead(Bound):
     """guard: a paper read passes only on a complete story_review.json that lands over its own evidence, bound to the
-    plan it read; never a manual QC row (queue item 37 seam 3c)."""
+    plan it read, answering every measured prompt; never a manual QC row (queue item 37 seams 3c and 3e)."""
 
     def paper(self, review, plan=True):  # written as a maker would: json.dumps lets Infinity through, canon refuses it
         self.assertTrue(self.to_plan()["ok"])
@@ -218,3 +218,35 @@ class PaperRead(Bound):
     def test_a_note_owned_by_a_catalog_role_passes(self):
         review = dict(LANDS, pace=[{"at": "1:00", "what": "a hold", "owner": "editor"}])
         self.assertEqual(self.paper(review)["state"], "pass")
+
+
+    def promised(self):  # "Later", whose words never come back: one loop prompt the read answers (seam 3e)
+        self.words[0]["text"] = "Later"
+        self.sync()
+        return spine_checks.checks(self.v)["paper-read"][1]
+
+    def evidence(self):
+        return engine.evidence(self.e, engine.find(self.e.recipe()[1], "paper"), "paper-read")
+
+    def test_a_prompt_left_open_or_answered_without_a_why_fails_and_all_answered_passes(self):
+        judge = self.promised()
+        answer = self.paper(LANDS)
+        self.assertEqual(answer["state"], "fail", answer)
+        self.assertIn("1 of the paper's 1 measured prompts have no answer (first: loop@1.0",
+                      " ".join(answer["detail"]["words"]))
+        for prompts, state in (([{"id": "loop@1.0", "answer": "kept", "why": " "}], "fail"),
+                               ([{"id": "loop@1.0", "answer": "maybe", "why": "it is paid"}], "fail"),
+                               ([{"id": "loop@9.9", "answer": "kept", "why": "no such prompt, ignored"},
+                                 {"id": "loop@1.0", "answer": "changed", "why": "paid in s3"}], "pass")):
+            self.put("records/story_review.json", dict(LANDS, plan=self.mark(), prompts=prompts))
+            self.assertEqual(judge(self.evidence())["state"], state, prompts)
+
+    def test_prompts_changed_after_the_engine_hashed_them_are_blocked(self):
+        judge = self.promised()
+        self.paper(dict(LANDS, prompts=[{"id": "loop@1.0", "answer": "kept", "why": "paid by the title"}]))
+        evidence = self.evidence()
+        self.assertEqual(judge(evidence)["state"], "pass")
+        (self.v.folder / "records/paper_prompts.json").write_text('{"prompts": []}')
+        answer = judge(evidence)
+        self.assertEqual(answer["state"], "blocked", answer)
+        self.assertIn("records/paper_prompts.json changed", answer["words"][0])

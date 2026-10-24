@@ -1,12 +1,13 @@
 """The paper-read catalog check (docs/spine.md section 1; queue item 37 seam 3c), answered from the story editor's
 records/story_review.json with no manual QC row. Ported from the host's check_story_review and check_paper_read.
 
-The review names the plan it read as its "plan": the engine's judged digest of the other evidence (records/paper.md
-and records/cut_plan2.json), the host's paper.py mark; a review of another plan fails naming the digest to read, so an
-unchanged old review cannot pass a new plan.
-judge(evidence) -> {"state", "words"}: blocked when the review cannot be read as the engine hashed it; fail with
-every problem named when a read is missing, misshapen, or says it lands over its own evidence, a note's "owner" is
-not one catalog role (or "none"), or it says it does not land; else pass (seam 3d: the closing read and the note owners,
+The review names the plan it read as its "plan": the engine's judged digest of the other evidence (records/paper.md,
+records/paper_prompts.json and records/cut_plan2.json), the host's paper.py mark; a review of another plan fails
+naming the digest to read, so an unchanged old review cannot pass a new plan.
+judge(evidence) -> {"state", "words"}: blocked when the review or the prompts cannot be read as the engine hashed
+them; fail with every problem named when a read is missing, misshapen, or says it lands over its own evidence, a note's "owner" is
+not one catalog role (or "none"), a measured prompt in records/paper_prompts.json has no answer (seam 3e, from the
+host's paper_prompts_problem), or it says it does not land; else pass (seam 3d: the closing read and the note owners,
 from the host's closing_problem, closing_line_problem and note_owner_problem).
 """
 import json
@@ -15,10 +16,9 @@ from pathlib import Path
 
 from ..spine.engine import data, judged
 from ..spine.files import digest
-REVIEW = "records/story_review.json"
-# A promise on screen is paid or teased within this, or a read cannot say the cut lands. Kept here, not in
-# settings.json, whose whole content keys every settled plan (plan.settle_key): a story threshold re-keys no plan.
-OPEN_LOOP_S = 60.0
+from .prompts import OPEN_LOOP_S
+REVIEW, PROMPTS = "records/story_review.json", "records/paper_prompts.json"
+ANSWERS = ("kept", "changed")
 SHAPES = {
     "landing_fact": '"landing_fact": {"fact": the fact or claim the closing line lands on, "earlier": [each earlier '
                     'telling of it in the cut]}',
@@ -36,6 +36,8 @@ SHAPES = {
     "look": '"look": [{"at", "what"}], each thing only the render can show that the story editor will look at first, '
             '[] when the paper is enough',
 }
+PROMPTS_SHAPE = ('"prompts": [{"id": each measured prompt\'s id in ' + PROMPTS + ', "answer": '
+                 + " or ".join(map(json.dumps, ANSWERS)) + ', "why": why it stays or what changed}]')
 # A closing line ends on a concrete punch or a callback, in about twelve words, one or two short sentences.
 CLOSING_WORDS = 16
 CLOSING_BAD = ("instruction", "moral", "summary")
@@ -156,27 +158,46 @@ def field(key, d):
     return shape if rows(v, *{"pace": ("at", "what"), "look": ("what",)}[key]) is None else None
 
 
-def problems(d, plan):
+def unanswered(d, prompts):
+    """Why the review leaves a measured prompt open, or None. An answer naming no current prompt is ignored."""
+    got = {str(x.get("id")): x for x in d["prompts"] if isinstance(x, dict)} if isinstance(d.get("prompts"), list) else {}
+    open_ = [x for x in prompts if not (got.get(x["id"], {}).get("answer") in ANSWERS and text(got[x["id"]], "why"))]
+    return (f"{len(open_)} of the paper's {len(prompts)} measured prompts have no answer (first: {open_[0]['id']}, "
+            f"{open_[0]['what'][:110]}): it names no {PROMPTS_SHAPE}") if open_ else None
+
+
+def problems(d, plan, prompts):
     """Every reason the review does not stand as a paper read of `plan` that lands; [] when it does."""
     if not isinstance(d, dict) or not isinstance(d.get("lands"), bool):
         return ['it has no "lands": true or false']
     found = [] if d.get("plan") == plan else [
         f'its "plan" is {d.get("plan")!r} and the plan it reads is {plan}: read records/paper.md as it stands and '
         'name that "plan"']
-    found += [f for f in map(lambda k: field(k, d), SHAPES) if f] + owners(d)
+    found += [f for f in [*map(lambda k: field(k, d), SHAPES), unanswered(d, prompts)] if f] + owners(d)
     if d["lands"] is False:
         found.append("the story editor's read says the plan does not land: the editor re-plans "
-                     "(records/cut_plan2.json and records/paper.md), which reopens plan and paper")
+                     "(records/cut_plan2.json, records/paper.md and its prompts), which reopens plan and paper")
     return found
+
+
+def read(evidence, name):
+    """A record as the engine hashed it; raises naming why it cannot be read so."""
+    raw = Path(evidence[name]["path"]).read_bytes()
+    if digest(raw) != evidence[name]["sha256"]:
+        raise ValueError(f"{name} changed since the engine's evidence")
+    return json.loads(raw)
 
 
 def judge(evidence):
     try:
-        raw = Path(evidence[REVIEW]["path"]).read_bytes()
-        if digest(raw) != evidence[REVIEW]["sha256"]:
-            raise ValueError(f"{REVIEW} changed since the engine's evidence")
-        d = json.loads(raw)
+        d = read(evidence, REVIEW)
     except (OSError, ValueError, KeyError) as e:
         return {"state": "blocked", "words": [f"{REVIEW}: {e}"]}
-    words = [f"{REVIEW}: {p}" for p in problems(d, judged(evidence, [REVIEW]))]
+    try:
+        prompts = read(evidence, PROMPTS)["prompts"]
+        if not (isinstance(prompts, list) and all(text(x, "id") and text(x, "what") for x in prompts)):
+            raise ValueError('"prompts" is not a list of {"id", "what"}')
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        return {"state": "blocked", "words": [f"{PROMPTS}: {e}"]}
+    words = [f"{REVIEW}: {p}" for p in problems(d, judged(evidence, [REVIEW]), prompts)]
     return {"state": "fail" if words else "pass", "words": words}

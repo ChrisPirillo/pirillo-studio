@@ -19,8 +19,8 @@ checks read those members too. Check and role names below are proposed domain in
   "plain": {
     "stages": [
       {"id":"media","inputs":["source.mp4","records/job.json"],"run":{"role":"editor"},"check":["media"],"outputs":["records/words.json","records/probe.json","records/faces.json"],"next_actor":"editor"},
-      {"id":"plan","inputs":["records/words.json","records/probe.json"],"run":{"role":"editor"},"check":["cut-plan"],"outputs":["records/cut_plan.json","records/cut_plan2.json","records/paper.md"],"next_actor":"story-editor"},
-      {"id":"paper","inputs":["records/paper.md","records/cut_plan2.json"],"run":{"role":"story-editor"},"check":["paper-read"],"outputs":["records/story_review.json"],"next_actor":"editor"},
+      {"id":"plan","inputs":["records/words.json","records/probe.json"],"run":{"role":"editor"},"check":["cut-plan"],"outputs":["records/cut_plan.json","records/cut_plan2.json","records/paper.md","records/paper_prompts.json"],"next_actor":"story-editor"},
+      {"id":"paper","inputs":["records/paper.md","records/paper_prompts.json","records/cut_plan2.json"],"run":{"role":"story-editor"},"check":["paper-read"],"outputs":["records/story_review.json"],"next_actor":"editor"},
       {"id":"overlays","inputs":["records/cut_plan2.json","records/story_review.json"],"run":{"role":"editor"},"check":["overlay-plan"],"outputs":["records/callouts_plan.json","records/overlay_plan.json","records/shorts_spec.json","records/bed.json"],"next_actor":"editor"},
       {"id":"arc","inputs":["records/cut_plan2.json","records/overlay_plan.json","records/callouts_plan.json","records/bed.json","source.mp4","records/faces.json"],"run":{"role":"editor"},"check":["arc-read"],"outputs":["Draft/arc.mp4","records/arc_review.json"],"next_actor":"owner"},
       {"id":"arc-choice","inputs":["Draft/arc.mp4","records/arc_review.json"],"run":{"role":"owner"},"check":["decision"],"outputs":["records/arc_decision.json"],"next_actor":"editor"},
@@ -72,8 +72,8 @@ checks read those members too. Check and role names below are proposed domain in
   replaces with its encoder's bound; no ASR capability is named, since a core recipe cannot name a host's model (item 5).
 
 Checks declare only the evidence they use. For these examples: `media` reads source, probe, words and faces;
-`cut-plan` reads words, both cut plans and paper; `paper-read` reads paper, cut and story review; `overlay-plan`
-reads cut, callouts, overlay, shorts and bed plans; `arc-read` reads the arc and its independent story/craft review;
+`cut-plan` reads words, both cut plans and paper; `paper-read` reads paper, its measured prompts, cut and story review;
+`overlay-plan` reads cut, callouts, overlay, shorts and bed plans; `arc-read` reads the arc and its independent story/craft review;
 `locked-cut` reads the approved arc decision, cut and story map; `draft-read` reads draft and independent sound/frame
 review; `delivered-media` reads final manifest and members, cut, shorts/vertical plans and the long and vertical hear records
 (`records/hear/<output-id>.json`; each short's is reached through its manifest member, as QC's `heard` reads it); `short-media` reads source,

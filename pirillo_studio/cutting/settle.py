@@ -2,7 +2,7 @@
 from copy import deepcopy
 
 from ..spine.files import SpineError, canon, digest, inside
-from . import plan
+from . import plan, prompts
 
 
 def _quiet(measurements):
@@ -262,9 +262,9 @@ def _run(video, retiming):
             settled["touched"] += [sid for sid in prior if sid not in {span["id"] for span in settled["spans"]}]
             settled["moved"] = [span["id"] for span in settled["spans"]
                                 if span["id"] in prior and prior[span["id"]]["src"] != span["src"]]
-        paper = "\n\n".join(" ".join(word["text"] for word in plan.selected(words, span["words"]))
-                              for span in settled["spans"] if span["words"]) + "\n"
-        outputs = {"records/paper.md": paper}
+        kept = [(span["src"], plan.selected(words, span["words"]) if span["words"] else []) for span in settled["spans"]]
+        paper = "\n\n".join(" ".join(word["text"] for word in said) for _, said in kept if said) + "\n"
+        outputs = {"records/paper.md": paper, "records/paper_prompts.json": {"prompts": prompts.measure(kept)}}
         if shorts is not None:
             outputs["records/shorts_spec.json"] = _shorts(shorts, words, settled, shorts_inputs)
         if retiming:
@@ -288,7 +288,7 @@ def _run(video, retiming):
 
 
 def settle(video):
-    """Write measured plans and the paper, replaying the same transaction on retry."""
+    """Write measured plans, the paper and its measured prompts, replaying the same transaction on retry."""
     return _run(video, False)
 
 

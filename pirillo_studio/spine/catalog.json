@@ -5,7 +5,7 @@
  "checks": {
   "media": {"reads": ["source.mp4", "records/ready/media.json", "records/probe.json", "records/words.json", "records/faces.json"], "checker": "checker-plans", "produces": []},
   "cut-plan": {"reads": ["records/words.json", "records/probe.json", "records/cut_plan.json", "records/cut_plan2.json", "records/paper.md"], "checker": "checker-plans", "produces": []},
-  "paper-read": {"reads": ["records/paper.md", "records/cut_plan2.json", "records/story_review.json"], "checker": "checker-plans", "produces": []},
+  "paper-read": {"reads": ["records/paper.md", "records/paper_prompts.json", "records/cut_plan2.json", "records/story_review.json"], "checker": "checker-plans", "produces": []},
   "overlay-plan": {"reads": ["records/cut_plan2.json", "records/callouts_plan.json", "records/overlay_plan.json", "records/shorts_spec.json", "records/bed.json"], "checker": "story-editor", "produces": []},
   "arc-read": {"reads": ["Draft/arc.mp4", "records/arc_review.json"], "checker": "checker-plans", "produces": ["records/arc_review.json"]},
   "locked-cut": {"reads": ["records/arc_decision.json", "records/cut_plan2.json", "records/story_map.json"], "checker": "checker-plans", "produces": []},

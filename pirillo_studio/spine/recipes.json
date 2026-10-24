@@ -3,8 +3,8 @@
   "external": ["source.mp4", "records/job.json"],
   "stages": [
    {"id": "media", "inputs": ["source.mp4", "records/job.json"], "run": {"role": "editor"}, "check": ["media"], "outputs": ["records/words.json", "records/probe.json", "records/faces.json"], "next_actor": "editor", "tools": ["ffprobe", "ffmpeg"], "scratch_gb": 0.1},
-   {"id": "plan", "inputs": ["records/words.json", "records/probe.json"], "run": {"role": "editor"}, "check": ["cut-plan"], "outputs": ["records/cut_plan.json", "records/cut_plan2.json", "records/paper.md"], "next_actor": "story-editor"},
-   {"id": "paper", "inputs": ["records/paper.md", "records/cut_plan2.json"], "run": {"role": "story-editor"}, "check": ["paper-read"], "outputs": ["records/story_review.json"], "next_actor": "editor"},
+   {"id": "plan", "inputs": ["records/words.json", "records/probe.json"], "run": {"role": "editor"}, "check": ["cut-plan"], "outputs": ["records/cut_plan.json", "records/cut_plan2.json", "records/paper.md", "records/paper_prompts.json"], "next_actor": "story-editor"},
+   {"id": "paper", "inputs": ["records/paper.md", "records/paper_prompts.json", "records/cut_plan2.json"], "run": {"role": "story-editor"}, "check": ["paper-read"], "outputs": ["records/story_review.json"], "next_actor": "editor"},
    {"id": "overlays", "inputs": ["records/cut_plan2.json", "records/story_review.json"], "run": {"role": "editor"}, "check": ["overlay-plan"], "outputs": ["records/callouts_plan.json", "records/overlay_plan.json", "records/shorts_spec.json", "records/bed.json"], "next_actor": "editor"},
    {"id": "arc", "inputs": ["records/cut_plan2.json", "records/overlay_plan.json", "records/callouts_plan.json", "records/bed.json", "source.mp4", "records/faces.json"], "run": {"role": "editor"}, "check": ["arc-read"], "outputs": ["Draft/arc.mp4", "records/arc_review.json"], "next_actor": "owner", "tools": ["ffmpeg", "ffprobe"], "size": {"Draft/arc.mp4": {"bytes_per_s": 2000000}}, "scratch_gb": 1},
    {"id": "arc-choice", "inputs": ["Draft/arc.mp4", "records/arc_review.json"], "run": {"role": "owner"}, "check": ["decision"], "outputs": ["records/arc_decision.json"], "next_actor": "editor"},

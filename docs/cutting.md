@@ -149,7 +149,7 @@ by their content, writes atomically under the video's single writer, and reaches
 | Call | Reads | Writes | Judgment or code |
 |---|---|---|---|
 | maker (the `plan` stage's registered role) | `records/words.json`, `records/probe.json`, the source | `records/cut_plan.json`: spans by word ID, order, `enter`, `shot`, removed with why, named, cold open, end hold | Judgment: an agent picks and orders |
-| `settle(video) -> key` | everything in `made_from`; at `overlays`, also the shorts plan and the words | `records/cut_plan2.json`, `records/paper.md`; `records/shorts_spec.json` when a shorts plan exists | Code: moves each edge into measured quiet, never into a word, a head its lead before his first sound, a tail its air after the last word, never through a breath; measures J-cut leads from motion; writes the kept words in story order for the paper read; settles each short's `pieces` |
+| `settle(video) -> key` | everything in `made_from`; at `overlays`, also the shorts plan and the words | `records/cut_plan2.json`, `records/paper.md`, `records/paper_prompts.json`; `records/shorts_spec.json` when a shorts plan exists | Code: moves each edge into measured quiet, never into a word, a head its lead before his first sound, a tail its air after the last word, never through a breath; measures J-cut leads from motion; writes the kept words in story order for the paper read, and its measured prompts (`prompts.py`); settles each short's `pieces` |
 | `check(video) -> {ok, state, next_action, detail}` | every read each check below declares, as present | `records/checks/cut.json`: `key` over all their hashes and the check settings' revision, `reads`, `state`, one result per check | Code: `state` is `pass`, `fail` (names the span, the rule and the measure) or `blocked` (names the missing or unreadable input, or the check that could not run) |
 | maker (the `overlays` stage) | the settled plan, the story review | `records/overlay_plan.json`, `records/bed.json`, `records/shorts_plan.json` | Judgment: which cards, which bed, which moments stand alone |
 | `request_arc(video)` | the check record, every file it names | nothing of its own; the spine runs `arc` (item 14 renders) | Code: recomputes the check key from the files now on disk; refuses unless it equals the record's, the state is `pass` and the reads cover the arc's cutting-owned inputs (`cut_plan2.json`, `overlay_plan.json`, `bed.json`, the shorts plan); the other arc inputs (the source, `faces.json`, `callouts_plan.json`) are the spine's to keep fresh from the stage's declared inputs (spine.md section 2) |
@@ -182,9 +182,13 @@ one home each, never restated in this spec:
 - `paper-read` (the spine's check on `paper`, `paper_read.py`): the story editor's `records/story_review.json` says
   `lands`, names the fact the close lands on with each earlier telling, and each read (gag setups, button, points told
   more than once, open loops against `OPEN_LOOP_S`, pace, look) in its shape; `lands: true` over its own evidence, or
-  `lands: false`, fails with every problem named. Its `plan` is the engine's judged digest of paper and plan (the host's
-  paper.py mark): a review of another plan fails naming the digest to read. Reads paper, plan and story review; no
-  manual QC row.
+  `lands: false`, fails with every problem named. Every measured prompt `settle` wrote in `records/paper_prompts.json`
+  (`prompts.py`: holds over `LIMITS` `hold_s`, open loops over `OPEN_LOOP_S`, points said twice, the close told
+  earlier; source prompts wait for the overlays stage's cards) is answered in its `prompts` (`kept` or `changed`, with
+  why), or it fails naming the first open one; an answer to no current prompt is ignored. Its `plan` is the engine's
+  judged digest of paper, prompts and plan (the host's paper.py mark): a review of another plan fails naming the
+  digest to read. Reads paper, prompts, plan and story review; blocked when the review or the prompts are not the
+  bytes the engine hashed; no manual QC row.
 - `locked-cut` (the spine's check on `locked`): the lock names the current plan, check key, reads and decision.
 
 Never: writes, moves or re-encodes the source or any owner file; reads the recipe name; turns an unreadable plan,
@@ -277,7 +281,7 @@ inventory is not permission to copy its code. "Here: X" is a check or field in s
 | `tools/plan_check.py return, flash, short, sliver, frame, motion, expression` | Card returns, flashes, slivers, card-cut, motion, expressions; exit 2 on a missing plan; plan, draft | Here: `cards`, `own-words`, `jcuts`, `shots`; frame-level flags are item 14 |
 | `plan_check.py cold_open_flags` | Reframe and stale cold open; plan | Here: `cold-open` |
 | `plan_check.py proof, chat, picture_changes` | Callout proofs, chat drops, picture changes; plan, draft | Out of C1 scope: plain has no chat; callout proof is research; picture changes item 14 |
-| `tools/paper.py plan_name, kept_words, mark, prompts, dropped` | Paper of the kept words; falls back to `cut_plan.json`; a source clock that falls back to 1; plan | Here: `settle` writes `paper.md` from the settled plan; the read is the story editor's |
+| `tools/paper.py plan_name, kept_words, mark, prompts, dropped` | Paper of the kept words; falls back to `cut_plan.json`; a source clock that falls back to 1; plan | Here: `settle` writes `paper.md` and `paper_prompts.json` (`prompts.py`, the host's prompts and limits) from the settled plan; the read is the story editor's |
 | `tools/qc.py _splice, run_splice, run_splice_false_start, run_splice_outtake` | Runs splice_check as QC rows; named flags excluded; arc, draft | Here: `edges`, `takes`; item 15 reads this check's record, not a second run |
 | `qc.py _built, run_heads_built, run_seam_flash, run_seam_frames` | Built-file heads and seams; draft | Item 14 |
 | `qc.py find_picture_changes, run_same_size` | Same-size cuts less `jumps_named`; draft | Here: `shots`. Duplicates `story.py FRAMED` with other snaps (inline literals at `qc.py` lines 694 and 697 against `story.py JUMP_SNAP`) |

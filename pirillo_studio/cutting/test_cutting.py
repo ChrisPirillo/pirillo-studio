@@ -139,6 +139,22 @@ class Fixture(unittest.TestCase):
         return json.dumps(answer)
 
 
+class Prompts(Fixture):
+    """guard: settle writes the paper's measured prompts beside paper.md: a hold for a long silence between kept words
+    and a loop for a promise never paid (queue item 37 seam 3e, the host's paper.py prompts)."""
+
+    def test_a_long_silence_and_an_unpaid_promise_are_prompts(self):
+        self.words[0]["text"] = "Later"
+        self.words[5].update(start=25, end=26.2)
+        self.sync()
+        settle.settle(self.v)
+        got = {p["kind"]: p for p in self.get("records/paper_prompts.json")["prompts"]}
+        self.assertEqual(sorted(got), ["hold", "loop"])
+        self.assertEqual((got["hold"]["id"], got["hold"]["gap_s"]), ("hold@20.0", 3.8))
+        self.assertEqual(got["loop"]["id"], "loop@1.0")
+        self.assertIn("none of its words come back", got["loop"]["what"])
+
+
 class Cutting(Fixture):
     """e2e: records/cut_plan2.json, paper.md, retime.json and story_map.json."""
 
