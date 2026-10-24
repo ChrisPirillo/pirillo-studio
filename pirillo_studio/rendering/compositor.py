@@ -8,7 +8,7 @@ from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, decoded, framing, mapping, mix, pixels, raster, records
+from . import clocks, decoded, framing, mapping, mix, pixels, pushes, raster, records
 
 
 def caption_identity(video):
@@ -35,6 +35,7 @@ def prepare(video, req):
         raise SpineError('compositor: non-cover card raster coverage unsupported')
     voice, picture = clocks.split(req, mapping.pieces(req))
     spans = {s['id']: s for s in req['plan_data']['spans']}
+    resolved = []
     for row in picture:
         if spans[row['span']].get('hide_picture'):
             cards = [c for c in req['cards_data']['cards'] if c.get('covers') == row['span']]
@@ -50,10 +51,15 @@ def prepare(video, req):
         if stream.get('color_space') != req['settings']['video']['color_space']:
             raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2h)')
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
-        row['crop'] = ([0, 0, *size] if row['kind'] == 'cover' else
-                       framing.crop(req, spans[row['span']], row['source_frames'], size))
+        span = spans[row['span']]
+        if span['enter'] == 'push':
+            resolved.extend(pushes.frames(req, span, row, size))
+        else:
+            row['crop'] = ([0, 0, *size] if row['kind'] == 'cover' else
+                           framing.crop(req, span, row['source_frames'], size))
+            resolved.append(row)
     mix.prepare(video, {**req, 'frame_map': voice})
-    return {'frame_map': voice, 'picture_map': picture, 'elements': []}
+    return {'frame_map': voice, 'picture_map': resolved, 'elements': []}
 
 
 def reuse(video, req, accepted):
@@ -159,7 +165,9 @@ def encode(video, req, path):
         filters += f",setsar={settings['video']['sample_aspect_ratio']},settb=AVTB,setpts=N/({settings['video']['fps']}*TB)"
         graph.append(f'[{i}:v:0]{filters}[v{i}]')
         joined.append(f'[v{i}]')
-    graph.append(''.join(joined) + f'concat=n={len(joined)}:v=1:a=0[picture]')
+    # Singleton crop runs have no inferred concat duration; stamp the complete fixed grid.
+    graph.append(''.join(joined) + f"concat=n={len(joined)}:v=1:a=0,settb=AVTB,"
+                 f"setpts=N/({settings['video']['fps']}*TB)[picture]")
     args += ['-i', str(records.path(video, req['mix_binding']['file']))]
     picture = '[picture]'
     if caption['burn'] is not None:

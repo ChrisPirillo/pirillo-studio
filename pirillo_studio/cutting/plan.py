@@ -16,6 +16,23 @@ def number(value, at):
     return value
 
 
+def push(span):
+    """Validate movement evidence at both the plan and renderer boundaries."""
+    at = f"{span['id']}: push"
+    if span['enter'] != 'push':
+        if 'push' in span:
+            raise SpineError(f'{at}: contradicts entry')
+        return None
+    value = span.get('push')
+    if not isinstance(value, dict):
+        raise SpineError(f'{at}: expected object with to and s')
+    if value.get('to') not in ('wide', 'med', 'close', 'face', 'mouth'):
+        raise SpineError(f'{at}.to: missing or unknown shot')
+    if number(value.get('s'), at + '.s') <= 0:
+        raise SpineError(f'{at}.s: duration must be positive')
+    return value
+
+
 def settings():
     return load(Path(__file__).parent, "settings.json")
 
@@ -155,11 +172,7 @@ def validate_plan(plan, rows):
                     selected(rows, span["words"])
                 except SpineError as exc:
                     raise type(exc)(f"{sid}: {exc}") from None
-            if span["enter"] == "push":
-                if span["push"]["to"] not in {"wide", "med", "close", "face", "mouth"}:
-                    raise SpineError(f"{sid}: unknown push size")
-                if number(span["push"]["s"], sid) <= 0:
-                    raise SpineError(f"{sid}: invalid push duration")
+            push(span)
             if "hide_picture" in span and type(span["hide_picture"]) is not bool:
                 raise SpineError(f"{sid}: hide_picture is not boolean")
             if "patch" in span:

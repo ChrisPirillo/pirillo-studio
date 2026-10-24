@@ -2,7 +2,7 @@
 
 prepare(request) supplies frame_map crops/assets, elements, and optional audio/caption bindings.
 The core derives the edit independently; a renderer cannot change source selection or cover identity.
-Separate picture maps support J-cuts and whole patches; moving crops and retiming still refuse.
+Separate picture maps support J-cuts and whole patches; pushes bind per-frame integer crops; retiming still refuses.
 """
 import copy
 
@@ -39,8 +39,8 @@ def timeline(req):
     """Legacy combined map; separate clocks require an explicit picture_map binding."""
     from . import clocks
     selected = pieces(req)
-    if any('patch' in span or span['enter'] == 'jcut' for span, _ in selected):
-        raise SpineError('frame-map: separate picture_map required for J-cut/patch clocks')
+    if any('patch' in span or span['enter'] in ('jcut', 'push') for span, _ in selected):
+        raise SpineError('frame-map: separate picture_map required for J-cut/patch/push clocks')
     voice, _ = clocks.split(req, selected)
     return [{k: v for k, v in row.items() if k != 'asset'} for row in voice]
 
@@ -68,15 +68,30 @@ def validate(req):
     else:
         expected = timeline(req)
     rows = pictures(req)
+    spans = {s['id']: s for s in req['plan_data']['spans']}
+    expanded = []
+    for wanted in expected:
+        span = spans[wanted['span']]
+        if span['enter'] == 'push':
+            from . import pushes
+            if len(rows) <= len(expanded):
+                raise SpineError(f"push: {span['id']}: missing picture rows")
+            size = rows[len(expanded)].get('source_size')
+            expanded.extend(pushes.frames(req, span, wanted, size))
+        else:
+            expanded.append(wanted)
+    expected = expanded
     if len(rows) != len(expected):
         raise SpineError('frame-map: missing or extra planned pieces')
-    spans = {s['id']: s for s in req['plan_data']['spans']}
     for row, wanted in zip(rows, expected):
         plan.interval(row['src'], 'frame-map src')
         plan.interval(row['out'], 'frame-map out')
         for key in ('span', 'src', 'out', 'frames'):
             if row[key] != wanted[key]:
                 raise SpineError(f'frame-map: {key} differs from locked source order/edges/hold')
+        if spans[row['span']]['enter'] == 'push':
+            if any(row.get(k) != wanted[k] for k in ('crop', 'source_size')):
+                raise SpineError(f"push: {row['span']}: crop or source_size differs from approved movement")
         rectangle(row['crop'], 'frame-map crop')
         asset = row['asset']
         if spans[row['span']].get('hide_picture') is True:

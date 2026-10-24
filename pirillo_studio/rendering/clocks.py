@@ -12,8 +12,11 @@ def split(req, pieces):
     source = {'file': req['source'], 'sha256': req['source_sha256']}
     for span, src in pieces:
         sid = span['id']
-        if span['enter'] == 'push' or any(k in span for k in ('retime', 'speed', 'grade')):
-            raise SpineError(f'frame-map: {sid}: pushes, retiming and grades unsupported')
+        for field in ('retime', 'speed', 'grade'):
+            if field in span:
+                raise SpineError(f'frame-map: {sid}: {field}: unsupported')
+        if plan.push(span) is not None and (span.get('hide_picture') or 'patch' in span):
+            raise SpineError(f'push: {sid}: hidden picture or patch unsupported')
         asset = source
         a, b = [round(Fraction(str(plan.number(t, 'frame-map src'))) * fps) for t in src]
         tape = [a, b]

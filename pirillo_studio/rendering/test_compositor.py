@@ -219,8 +219,7 @@ class Compositor(Fixture):
         self.assertEqual(refused['state'], 'waiting_owner', refused)
         self.assertEqual(refused['request']['bed_binding']['mode'], 'voice_only')
         self.assertTrue(self.get(refused['readings'])['checks']['bed']['ok'])
-        for enter in ('push',):
-            self.cut['spans'][0].update(enter=enter, push={'to': 'close', 's': .2})
-            self.save_cut()
-            with self.assertRaisesRegex(SpineError, 'unsupported'):
-                render(self.v, 'draft')
+        self.cut['spans'][0]['speed'] = 2
+        self.save_cut()
+        with self.assertRaisesRegex(SpineError, 'speed: unsupported'):
+            render(self.v, 'draft')

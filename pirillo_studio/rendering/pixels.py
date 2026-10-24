@@ -135,6 +135,8 @@ def _asset(video, req, row, verified):
                           req['settings']['measurement']['grid_tolerance_s'], frames_required=needed, seeks=seeks)
         verified[key] = {'size': size, 'seeks': seeks}
     size = verified[key]['size']
+    if 'source_size' in row and row['source_size'] != list(size):
+        decoded.refuse('frame-map', 'measurement', 'source_size differs from decoded asset')
     crop = row['crop']
     if not isinstance(crop, list) or len(crop) != 4:
         decoded.refuse('frame-map', 'measurement', 'crop must contain x,y,width,height')

@@ -1,13 +1,11 @@
 # Rendering: locked plans to measured files
 
-Draft for the owner to read, queue item 14 seam 1. This is a rebuild contract, not implemented behavior. The [spine](spine.md) runs stages declared as recipe data; rendering makes their files and supplies readings. A check declares its inputs, never a recipe name. C1 covers only `plain` and `shorts-only`. Item 17 owns kept words, order, cuts, framing intent, retime, cards' timing and which moments become shorts. Item 14 materializes those decisions: arc, draft, final long cut, full vertical and individual short files. The [input preflight](preflight.md) runs before expensive work; its probes are not duplicated here.
+Queue item 14 contract; built seams are identified below. The [spine](spine.md) runs stages declared as recipe data; rendering makes their files and supplies readings. A check declares its inputs, never a recipe name. C1 covers only `plain` and `shorts-only`. Item 17 owns kept words, order, cuts, framing intent, retime, cards' timing and which moments become shorts. Item 14 materializes those decisions: arc, draft, final long cut, full vertical and individual short files. The [input preflight](preflight.md) runs before expensive work; its probes are not duplicated here.
 
 ## 1. Requests and records are data
 
-Paths are relative to the video; hashes below are abbreviated examples, readings are illustrative, not targets.
-The request reads item 17's settled fields below, never the maker's plans or invented cut/shot-window tables.
-An arc consumes an immutable candidate plan, before the owner's arc choice locks the cut; it cannot require
-`story_map.json` from the later `locked` stage. Draft and masters require that lock. An arc is never a final approval.
+Paths are relative to the video; example hashes are abbreviated and readings illustrative, not targets. The request reads item 17's settled fields, never invented cut/shot-window tables.
+An arc consumes an immutable candidate before the owner locks the cut; it cannot require the later `story_map.json`. Draft and masters require that lock. An arc is never final approval.
 
 ```json
 {
@@ -51,7 +49,7 @@ An arc consumes an immutable candidate plan, before the owner's arc choice locks
 - `spans[].lead_s`: approved voice lead for a `jcut`; realized on the output frame grid.
 - `spans[].lead_from`: the settled J-cut lead's source evidence; no new lead chosen while rendering.
 - `spans[].shot`: requested shot size; rendering computes an integer source-pixel crop from all subject boxes on the picture clock, including J-cut holds. Wide retains the whole frame; med/close use `video.shot_fractions` times source width, with height on the output aspect. The fixed crop centres on their union and slides minimally inside the source; missing/empty observations, invalid sizes or a subject that cannot fit refuse naming the span, never widen.
-- `spans[].push`: requested `to` shot and `s` duration; rendering realizes the approved movement.
+- `spans[].push`: requested `to` shot and positive finite `s` duration; rendering linearly interpolates the framing endpoints on the fixed picture grid, never choosing a new shot.
 - `spans[].expression`: the held expression's `after_word` anchor and `seen` description, not a new cut decision.
 - `spans[].patch`: approved voice replacement's `record`, `sha` and `words`; hash and read its actual audio.
 - `spans[].hide_picture`: never expose this span's picture; burn its opaque cover card end to end, even in arc.
@@ -237,7 +235,7 @@ The item 18 adapter supplies versions/align/onsets/width and the same folder; cu
 voice and cues are produced outputs, never prerequisites of their own render request.
 
 `frame_map` remains the voice/caption clock (`span`, `src`, `out`, integer `frames`, audio `asset`).
-`picture_map` holds the separately validated source/cover frames, assets and fixed crops. J-cuts extend the
+`picture_map` holds the separately validated source/cover frames, assets and integer crops (push runs also bind `source_size`). J-cuts extend the
 outgoing picture by `lead_s` and skip that lead in incoming picture, without trimming incoming voice.
 A whole patch uses its own `[0,duration_s]` clock and audio asset; its duration replaces the tape duration and
 shifts following pieces. Patch duration must fit the output frame grid. Its picture is an opaque cover.
@@ -252,8 +250,8 @@ records together with the previously accepted video through the render lifecycle
 ```mermaid
 flowchart LR
   A[Resolve both clocks] --> I[Fit requested shot to observed subjects]
-  I --> B[rendering: prepare voice]
-  I --> J[Refuse invalid geometry by span]
+  I --> K[Resolve approved push on fixed grid] --> B[rendering: prepare voice]
+  I & K --> J[Refuse invalid geometry by span]
   B --> C[Generate captions and sidecar]
   C --> D[Encode picture and voice]
   D --> E[measuring: decode pixels and sound]
@@ -271,11 +269,13 @@ Built: cached re-measurement skips generated backups; previous artifacts retain 
 ### Seam 2g: bound sound, built for native wide arc/draft ([its contract](rendering-sound.md))
 Seam 2h part 3: shot framing built in `framing.crop`, integrated before voice/caption work and checked by mapping, subject coverage and decoded pixels. Face/mouth remain unsupported: the host uses facial landmarks, not fixed source fractions, and this observation contract has only subject boxes.
 
-Seam 2h next: pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
+Seam 2h part 4: pushes built in `pushes.frames`: source-relative phase is `min(1, elapsed_frames / (push.s * fps))`; widths and coordinates round to integers, heights use the framing aspect rule, and crops remain inside the source. Endpoint subject unions cover the full span plus this occurrence's outgoing J-cut hold; cold opens/selected pieces retain phase, but can have different endpoints if that hold changes the union. At/after the duration the target holds; a shorter span ends mid-move, and a subframe push reaches its target on the next frame. Equal consecutive crops share a run; mapping rederives every run and pixels verifies its bound dimensions against the decoded source. Hidden/patch pushes, contradictory push entries, missing/invalid targets or durations, face/mouth geometry, retime/speed/grade refuse by name.
+Seam 2h next: retiming/source-rate and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
 Missing/differing source color, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
 |---|---|---|
+| `pushes.frames(req, span, row, size) -> rows` | Approved push, framing endpoints and fixed picture grid | Integer crop runs with bound source dimensions; no input/media writes. |
 | `framing.crop(req, span, source_frames, size) -> [x,y,width,height]` | Requested shot, picture source frames, source dimensions, subject boxes and rendering video settings | Integer fixed crop or a named span refusal; no input/media writes. |
 | `render(video, output) -> record` | The stage's resolved request, item 17 plan or supplied file, settings, assets, approvals and current preflight result | Only output-owned work files and its render record; returns current record on unchanged content. `measure_existing` does not encode. |
 | `measure(file) -> readings` | Exact file bytes plus declared plan, caption, subject and actual stem bindings from its record | Hash-bound readings, frame/edge evidence and coverage; never changes media or chooses an edit. |
