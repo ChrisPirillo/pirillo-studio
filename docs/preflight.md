@@ -82,6 +82,38 @@ Before a render (plain `draft`), blocked by the disk:
 - `probe` `tools` `detail`: each executable's resolved version, each model's presence. The configured one only.
 - `blocks`: what stops the stage, each with its file, tool or gigabytes. Empty when ready.
 
+**`records/probe.json` and the `media` check (seam 3c, the lead's decision 2026-10-24).** The `media` stage's
+`records/probe.json` is the source's measured facts every later stage reads (cutting's `measurements` refuses a host
+measure that disagrees with it), so it has one producer and is never re-measured by a maker:
+
+```json
+{"probe_version": "1", "source": "sha256:3351...", "ready": "sha256:de58...", "ready_sha256": "sha256:71c0...", "duration_s": 60.083333,
+ "fps": 29.9417, "fps_tagged": "30000/1001", "sample_rate": 48000, "width": 3840, "height": 2160,
+ "color": {"color_primaries": null, "color_space": null, "color_transfer": null}}
+```
+
+- Producer: `write_probe(video)` in the core preflight, which the `media` stage's maker runs after its ready answer.
+  It reads `records/ready/media.json`, refuses unless that record is `ready`, carries this stage's `media` probe row
+  and its `source.mp4` hash equals the source's content hash now, and writes the projection above atomically under
+  the video's single writer: `source` that hash, `ready` the record's `key`, `ready_sha256` the record file's content hash, `fps` its `fps_measured`, `sample_rate`
+  its `audio_rate_hz`, the rest by the same names. It never probes the media again and never writes a field the
+  record lacks; a null in a field the record requires is the record's broken answer, not a value here.
+- The `media` catalog check (core `preflight/spine_checks.py`, the spine binding as cutting's and release's are):
+  passes only when `records/probe.json` parses, its `probe_version` is current, `source` equals `source.mp4`'s
+  content hash, `ready_sha256` equals `records/ready/media.json`'s content hash now, and every field equals that
+  record's projection, the record still `ready` for this source with the `key` named. The catalog's `media` row
+  declares `records/ready/media.json` among its reads (seam 3d), so the record is bound evidence like the rest. Its words name the field that differs. `records/words.json` is validated by
+  cutting's `words()` (the reader that uses it); `records/faces.json` must exist and parse, its rows being item 14's
+  subject coverage to judge. The check runs no tool.
+- The fps, duration and sample rate are measured the one way the host's measure reads them for cutting: frames
+  minus one over the span of the first video stream's packet timestamps, rounded to 4 places; the container's
+  duration; the first audio stream's rate. Agreement is cutting's existing guard, not a second comparison here.
+- Contract tests: `test_probe_is_the_ready_records_projection` (a written probe equals the record's fields; a
+  blocked, broken, other-stage or other-source record refuses naming why), `test_media_check_names_the_differing_field`
+  (an edited field, a stale `ready` key, changed record bytes under an unchanged key, a changed source, a missing or unparsable faces file each block by name).
+- Host: the `media` row in the host's binding answers from this check while `preflight` is on; off, it stays
+  unbound as today.
+
 ## 2. The API
 
 `preflight(video, stage) -> result` is a future core API; no interface is implemented in this seam.
