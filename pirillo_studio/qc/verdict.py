@@ -315,6 +315,14 @@ def judge(video, stage):
         return Verdict(record, video)
 
 
+def identity(video, stage):
+    """The key judge would give the stage now, read-only: no lock, no write, no evaluator (a caller's version)."""
+    previous = _prior(video, stage)
+    started = previous['video_started'] if previous else load(video.folder, 'records/job.json')['video_started']
+    _date(started)
+    return _key([{'id': e['id'], 'key': _snapshot(video, e, started)['key']} for e in catalog(stage)])
+
+
 def check(verdict):
     """Answer the current gate; an old or incomplete identity can never authorize."""
     try:

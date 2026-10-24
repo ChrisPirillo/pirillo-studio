@@ -51,6 +51,16 @@ class Verdicts(Fixture):
         self.assertEqual(before, self.path.read_bytes())
         self.assertEqual(stat.st_mtime_ns, self.path.stat().st_mtime_ns)
 
+    def test_identity_is_the_judged_key_and_writes_nothing(self):
+        """identity() gives judge's key without a lock, a write or an evaluator, and moves with a read."""
+        key = verdict.identity(self.v, 'masters')
+        self.assertFalse(self.path.exists())
+        self.assertFalse(os.path.exists(str(self.path) + '.lock'))
+        self.assertEqual(self.calls, [])
+        self.assertEqual(key, self.judged('passed')['key'])
+        self.put('records/render/long.json', {'value': 3})
+        self.assertNotEqual(key, verdict.identity(self.v, 'masters'))
+
     def test_crash_leaves_no_passing_verdict(self):
         for after in (False, True):
             with self.subTest(after_rename=after):
