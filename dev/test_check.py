@@ -68,6 +68,12 @@ class Refusals(unittest.TestCase):
                                                  {"id": 3, "loop": "build", "state": "queued"}]))
         self.assertEqual([m.split(":")[0] for m in check.problems(self.root)], ["queue 1", "queue 2", "queue 3"])
 
+    def test_a_finished_item_spans_one_line(self):  # defect: core queue item 44, the queue reached max_lines
+        self.write("dev/queue.json", '[{"id": 1, "loop": "build", "state": "landed", "layer": "product"},\n'
+                   '{"id": 2, "loop": "build",\n "state": "queued", "layer": "product"},\n'
+                   '{"id": 3, "loop": "build",\n "state": "parked", "layer": "product"}]')
+        self.assertEqual(check.problems(self.root), ["queue 3: finished (parked), so one line"])
+
     def test_product_never_imports_dev(self):
         self.write("pirillo_studio/__init__.py")
         self.write("pirillo_studio/a.py", "import dev.check\nfrom dev import land\nimport runpy, importlib\n"

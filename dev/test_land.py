@@ -84,6 +84,20 @@ class Landing(unittest.TestCase):
         self.git("config", "filter.hide.smudge", "sed s/self.fail..//")
         self.assertIn("dev tests failed", self.land(None).stderr)
 
+    def test_a_slow_printing_suite_lands_and_a_silent_one_is_refused(self):  # defect: core item 39 seam 4b, refused 3 times at 1200 s
+        with open(os.path.join(self.repo, "repo.json")) as f:
+            repo = json.load(f)
+        with open(os.path.join(self.repo, "repo.json"), "w") as f:
+            json.dump(dict(repo, suite_seconds=5), f)
+        with open(os.path.join(self.repo, "dev/test_slow.py"), "w") as f:  # 10 s in all, never 5 s silent
+            f.write("import time, unittest\nclass S(unittest.TestCase):\n" +
+                    "".join(f"    def test_{i}(self):\n        time.sleep(0.5)\n" for i in range(20)))
+        r = self.land(None)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(os.path.join(self.repo, "dev/test_silent.py"), "w") as f:
+            f.write("import time, unittest\nclass H(unittest.TestCase):\n    def test(self):\n        time.sleep(30)\n")
+        self.assertIn("dev tests were silent past 5 s", self.land(None).stderr)
+
     def test_package_tests_import_as_a_makers_run_does(self):  # defect: core 6b289e9's first landing refused
         for n, text in (("__init__.py", ""), ("a/__init__.py", ""), ("b/__init__.py", "x = 1\n"),
                         ("a/test_rel.py", "import unittest\nfrom ..b import x\nclass R(unittest.TestCase):\n"

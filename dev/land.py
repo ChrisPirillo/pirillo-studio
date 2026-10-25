@@ -6,7 +6,7 @@ The review file's first line is `APPROVE <tree> <reviewer>`, where <tree> is `gi
 PIRILLO_PRIVATE_PATTERNS names the owner's private-pattern file (kept outside this repo); without it nothing lands,
 and a message matching it is refused. The commit is made as repo.json `identity`, never the machine's git user.
 """
-import json, os, subprocess, sys, tempfile
+import json, os, subprocess, sys, tempfile, threading, time
 from check import patterns as private_patterns
 from pirillo_pipes import landing
 
@@ -33,17 +33,30 @@ def export(tree, dest):
 
 
 def suite(tree_dir, budget):
-    """budget is the wall seconds a test process may run before it is refused as hung; it bounds a hang only, never
-    the suite's cost: CPU seconds grow with the machine's load (one tree took 99, 121 and 139), queue item 43."""
+    """budget is the wall seconds a test process may go silent before it is refused as hung. The runner prints as each
+    test ends, so it bounds a hang only, never the suite's cost, which grows with the machine's load (CPU seconds,
+    queue item 43; then wall seconds, 1200 s refused a printing suite three times at load 60, item 44)."""
     for d in ("dev", "pirillo_studio"):
         if os.path.isdir(os.path.join(tree_dir, d)):
-            try:
-                r = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", d, "-t",  # the package's
-                                    "." if d == "pirillo_studio" else d], cwd=tree_dir,  # tests import as a maker's do
-                                   timeout=budget)
-            except subprocess.TimeoutExpired:
-                raise SystemExit(f"land refused: {d} tests hung past {budget} s") from None
-            if r.returncode:
+            p = subprocess.Popen([sys.executable, "-m", "unittest", "discover", "-s", d, "-t",  # the package's tests
+                                  "." if d == "pirillo_studio" else d], cwd=tree_dir, stderr=subprocess.PIPE)  # import as a maker's do
+            heard = [time.monotonic()]
+
+            def relay(p, heard):  # bound now: a thread outliving its join must not read the next package's pipe
+                for b in iter(lambda: os.read(p.stderr.fileno(), 4096), b""):
+                    sys.stderr.buffer.write(b)
+                    sys.stderr.flush()
+                    heard[0] = time.monotonic()
+            t = threading.Thread(target=relay, args=(p, heard), daemon=True)
+            t.start()
+            while p.poll() is None:
+                if time.monotonic() - heard[0] > budget:
+                    p.kill()
+                    p.wait()
+                    raise SystemExit(f"land refused: {d} tests were silent past {budget} s, hung")
+                time.sleep(0.2)
+            t.join(budget)  # a test's leftover child may hold the pipe; its output is not the verdict
+            if p.returncode:
                 raise SystemExit(f"land refused: {d} tests failed")
 
 

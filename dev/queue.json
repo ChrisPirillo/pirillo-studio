@@ -1,139 +1,21 @@
 [
- {
-  "id": 35,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "Enforce upload and article link guarantees",
-  "done_when": "A refused Facebook resumable start propagates without exposing a public URL; article output refuses its own video link or placeholder and never adds a video reply, while unrelated links and vault output remain supported. Hermetic causal guards fail on the old behavior and pass on the reviewed tree."
- },
- {
-  "id": 1,
-  "loop": "build",
-  "layer": "dev-kit",
-  "state": "landed",
-  "title": "Found the repository with its development loop as checks",
-  "done_when": "dev/check.py and dev/land.py pass on the first commit"
- },
- {
-  "id": 2,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "Prove the port path with one small domain",
-  "done_when": "production Studio calls it from this repository, its old writer is deleted there, and a real run uses it"
- },
- {
-  "id": 10,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "Port the posting clock's counts readers (first posting-clock seam)",
-  "done_when": "pirillo_studio/counts.py holds collect_counts and the per-platform count readers; Studio's tick calls it from this repository and the old section of tools/studio.py is deleted in the same change; a real tick reads counts through it",
-  "receipt": "3e8f4d3 here; a real tick ran collect_counts from this repository, exit 0"
- },
- {
-  "id": 11,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "Port the rest of the posting clock and the calendar, one seam per change",
-  "done_when": "each seam of the old tick (send adapters, reschedule, swaps, confirmations, reminders, calendar) runs from this repository with its old code deleted; the first landing names the seam order; and it fixes once, in the port, each working-repo issue in backlog_issues",
-  "depends_on": [
-   10
-  ],
-  "backlog_issues": [],
-  "seams": [
-   "1-9 landed (counts readers, tokens, reminders, scheduling engine, housekeeping, Facebook confirmations, Buffer checks, tips X check, live-post edits, story sends); 10a Buffer client (buffer_api.py): landed; 10b TikTok draft adapter (tiktok_drafts.py): landed; 10c Threads adapter and topics (threads_posts.py): landed; 10d Facebook adapter and page helpers (facebook_posts.py): landed; 10e YouTube adapter (youtube_posts.py): landed; 10f send and the link plan (sends.py): landed; 10g Mastodon replace and retime, reschedule bookkeeping (mastodon_edits.py, reschedule.py): landed; 11 the clock core (clock.py: tick_prepare, tick, wake), moved by dev/port.py behind host.View: landed with this queue change; 12 posting.hold (hold.py) moves whole; live_edits reads the policy from disk before a retime or a replace (1170: a hold set mid-tick): landed with this queue change. 1170's missing-policy point is declined: DEFAULTS['posting.hold'] is the explicit studio off record and the owner's studio.json carries none, so holding on a missing key would stop every post; 13 the story calendar (story_calendar.py: story_due, story_jobs, STORY_NOTE, STORY_LOOK) moves; story_jobs gives a held story its job after release past its before deadline, as story_due already did (1170's last point): landed with this queue change. story_job stays in the host (its digest folder is the owner's); 14 the rest of the story calendar (story_sweep, story_holds, story_open_until, story_unreported, story_weekend_overflow, facebook_profile_story) moves to story_calendar.py; hold.story_wait names its host s, so the view carries round5, which a held Buffer row's retime reads (through the view it would have raised AttributeError): landed with this queue change; 15 the unok report (unok_on_scheduler, _span, unok_line, unok_said) moves to clock.py; the tick still reads unok_said through s, so the Studio tests that patch it keep their seam: landed with this queue change; 16 the YouTube API route (yt_signed_in, yt_api_route, YT_PARKED) moves to youtube_posts.py; YT_SIGNIN stays in the host (it names the owner's channel) and the clock still reads both functions through s, so the host's tests that patch them keep their seam: landed with this queue change; 17 the image-approval gate (image_approval_block, image_approval_proof, turn_decisions_live, TURN_DECISIONS_FROM) moves to image_gate.py; the host keeps GRANDFATHERED_IMAGES (the owner's image hashes), outgoing_images, and two new helpers that reach image_crop (crop_gate_on, crop_parent: its gate, then a pure crop's approved parent, in the old order); the clock and sends still read image_approval_block through s, so the host's tests that patch it keep their seam: landed with this queue change; 18 the video-fit planning (video_fit_cap, video_fit_media, prepare_video_fit) moves to video_fit.py; API_VIDEO_BYTES, VIDEO_FIT_PENDING, fit_video (the encoder, rendering domain) and prepare_release_media (the release) stay in the host, read through s; the clock and the Buffer client still read video_fit_cap and prepare_video_fit through s, so the host's tests that patch them keep their seam: landed with this queue change; 19 due (the clock's send decision) moves to clock.py; has_long and anchored stay in the host (the host's own release and reminder code reads them), read through s, so NEEDS gains anchored; the clock and sends still read due through s, so the host's tests that patch it keep their seam: landed with this queue change; after: holds_refresh (image_holds.py) goes with item 19 and morning_card with the daily checks, as BOARD_LOOP.md places them"
-  ],
-  "receipt": "core 5fc5214 (seam 19) live from 2026-10-17 04:55 PDT; the posting clock (com.pirillo.studio.tick, every 10 minutes) ran on it, last exit 0 at 05:13",
-  "backlog_done": "1170 (posting.hold: seams 12 and 13; its missing-policy point declined), 468 (YouTube in NO_BROWSER, youtube method hand) and 831 (Threads and Facebook post by API: seams 10c, 10d) were met by the seams; the rest moved to the domain each belongs to"
- },
- {
-  "id": 29,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "Retire Postiz: its routes, adapter, client and tests go, and the rows routed to it are re-routed",
-  "done_when": "no route, adapter, client, fixture or test names Postiz outside the working repo's retired-services list; every planned row that named it carries a live route or hand; the working-repo issue in backlog_issues is fixed once",
-  "backlog_issues": [
-   1054
-  ]
- },
- {
-  "id": 3,
-  "loop": "build",
-  "layer": "dev-kit",
-  "state": "landed",
-  "title": "The Board draws every loop from dev/loops",
-  "done_when": "a loop's chart is rendered from its definition, with each queue item on its state"
- },
- {
-  "id": 32,
-  "loop": "build",
-  "layer": "dev-kit",
-  "state": "landed",
-  "title": "dev/port.py land carries the host patch's base and names a landing in flight",
-  "done_when": "dev/port.py land passes the host patch's base to `studio.py land commit --patch --base` (required since Studio b7ac8cc8: item 13 seam 1's host half was refused without it, 2026-10-17), and so does its recovery command; a live core holding an earlier commit's files at a landed path is refused as a landing still in flight, naming that commit, not as uncommitted work (seam 19's first land read 39f7ba5's host half in line as a defect); dev/land.py's review refusal names the line it wants. Rewritten from 'a core change landed by dev/land.py alone is live': live lagging HEAD is by design, since port.py writes live files after the host commit"
- },
- {
-  "id": 33,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "The posting clock times its steps and stops re-rendering the Board behind a busy ledger",
-  "done_when": "clock.tick records the step in hand and each step's seconds, naming a slow one; housekeeping.tick_board stops re-rendering once another command published a newer Board; the backlog line is logged once per change (2026-10-17: the tick ran 42 minutes in its Board step, working-repo #1373)"
- },
- {
-  "id": 30,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "Separate the owner's private data from the product (R1)",
-  "done_when": "Acceptance R1: the product and its exported history hold no private data, identity, accounts or preferences; dev/check.py's private-data scan is clean on the exact export with PIRILLO_PRIVATE_PATTERNS. The owner, 2026-10-16: first after item 11, so others can install and run it",
-  "seams": [
-   "1 no new private history: dev/land.py refuses a commit message (with its Reviewed-by line) matching a private pattern and commits as repo.json identity, not the machine's git user; the tree scan was already clean: landed with this queue change; 2 the history already made (77 commits: the owner's name as author on all, private text in 74 messages, private text in 17 old file versions) is not carried: the owner chose a clean start, so seam 1's tree, scanned clean, is the first commit of this repository, made as repo.json identity by dev/land.py; the old history is kept read-only in a separate archived repository: landed with this queue change; R1's last part, two owner-named identifiers the owner's patterns do not catch (not private data), is item 34"
-  ]
- },
- {
-  "id": 34,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "No owner-named identifiers in the product",
-  "done_when": "The product names no person in code or fixtures: story_calendar.py reads a wild image row's owner-in-the-image attestation only through the host (s.wild_image_post, and s.OWNER_IN_IMAGE, the host's field name, for the weekend copy), so the host's data and its key stay as they are and no live row is rewritten; test_hold.py's fixture actor is generic; the owner's private-patterns file gains his first name as a word, and dev/check.py stays clean on the exact export. Found by the clean-start scan of item 30 seam 2"
- },
- {
-  "id": 36,
-  "loop": "build",
-  "layer": "product",
-  "state": "landed",
-  "title": "The lead is a role: every landing path asks agents.lead(), no harness by name",
-  "done_when": "its code runs from this repository with its old code deleted, and it fixes once each working-repo issue in backlog_issues (their titles and detail live there)",
-  "backlog_issues": [
-   1685
-  ]
- },
- {
-  "id": 40,
-  "loop": "build",
-  "layer": "dev-kit",
-  "state": "landed",
-  "title": "dev/port.py land rebinds the host's packaged-core fixture to the core it lands",
-  "done_when": "when the host has tools/package_core.py, dev/port.py land runs it on the new core commit in a host worktree at the patch's base and lands the host half with its fresh-install fixture bound to that commit, written beside the patch so the finish command reuses it (item 13 seam 3's host half was refused at host verify on 2026-10-21 because the fixture held a core without the module it imports, and only the landing's own commit can be bound; any host half that imports a new core module, moved or rebuilt, meets it); bind refuses when the host's package_core.py at the patch's base binds nothing to the new core (item 5 seam 2's host half, 2026-10-22: its 2353148a base predated the binder, which exited 0)"
- },
- {
-  "id": 41,
-  "loop": "build",
-  "layer": "dev-kit",
-  "state": "parked",
-  "title": "dev/land.py keeps a review across commits landed beside it",
-  "done_when": "a review file may name the base it was read on (`APPROVE <tree> <reviewer> <base>`), and dev/land.py accepts it on a later HEAD only when <base> is an ancestor of HEAD, `git diff --raw --full-index --no-renames` (paths, modes and blob ids, binary included) from the reviewed tree to the staged tree is identical to the same diff from <base> to HEAD, and no commit since <base> touches a path the reviewed patch changes; any other difference, an unknown object or a git error refuses, naming the tree to re-review. Three reviews went stale on unrelated core commits (item 40 on 2a18777, its guard and item 13 seam 4's spec on 389b7d8, 2026-10-22), each re-reviewed only to confirm that identity by hand",
-  "parked": "2026-10-22: three review rounds refused (Codex gpt-6-astra): r1 merges hid a touched path (git log -m added) and refusal tests were missing; r2 a stale candidate tree named in the brief and more refusal tests (its suggestion, unabbreviated raw ids, applied); r3 a stripped raw diff let a trailing-space path pass for the reviewed one (NUL-delimited, unstripped output). Each fix has its red/green test; the candidate after r3 is tree d182982c on c7d55e9 (dev 47 OK, check clean), unreviewed. Unpark: one fresh review of that candidate re-made on the then base"
- },
+ {"id": 35, "loop": "build", "layer": "product", "state": "landed", "title": "Enforce upload and article link guarantees", "done_when": "A refused Facebook resumable start propagates without exposing a public URL; article output refuses its own video link or placeholder and never adds a video reply, while unrelated links and vault output remain supported. Hermetic causal guards fail on the old behavior and pass on the reviewed tree."},
+ {"id": 1, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "Found the repository with its development loop as checks", "done_when": "dev/check.py and dev/land.py pass on the first commit"},
+ {"id": 2, "loop": "build", "layer": "product", "state": "landed", "title": "Prove the port path with one small domain", "done_when": "production Studio calls it from this repository, its old writer is deleted there, and a real run uses it"},
+ {"id": 10, "loop": "build", "layer": "product", "state": "landed", "title": "Port the posting clock's counts readers (first posting-clock seam)", "done_when": "pirillo_studio/counts.py holds collect_counts and the per-platform count readers; Studio's tick calls it from this repository and the old section of tools/studio.py is deleted in the same change; a real tick reads counts through it", "receipt": "3e8f4d3 here; a real tick ran collect_counts from this repository, exit 0"},
+ {"id": 11, "loop": "build", "layer": "product", "state": "landed", "title": "Port the rest of the posting clock and the calendar, one seam per change", "done_when": "each seam of the old tick (send adapters, reschedule, swaps, confirmations, reminders, calendar) runs from this repository with its old code deleted; the first landing names the seam order; and it fixes once, in the port, each working-repo issue in backlog_issues", "depends_on": [10], "backlog_issues": [], "seams": ["1-9 landed (counts readers, tokens, reminders, scheduling engine, housekeeping, Facebook confirmations, Buffer checks, tips X check, live-post edits, story sends); 10a Buffer client (buffer_api.py): landed; 10b TikTok draft adapter (tiktok_drafts.py): landed; 10c Threads adapter and topics (threads_posts.py): landed; 10d Facebook adapter and page helpers (facebook_posts.py): landed; 10e YouTube adapter (youtube_posts.py): landed; 10f send and the link plan (sends.py): landed; 10g Mastodon replace and retime, reschedule bookkeeping (mastodon_edits.py, reschedule.py): landed; 11 the clock core (clock.py: tick_prepare, tick, wake), moved by dev/port.py behind host.View: landed with this queue change; 12 posting.hold (hold.py) moves whole; live_edits reads the policy from disk before a retime or a replace (1170: a hold set mid-tick): landed with this queue change. 1170's missing-policy point is declined: DEFAULTS['posting.hold'] is the explicit studio off record and the owner's studio.json carries none, so holding on a missing key would stop every post; 13 the story calendar (story_calendar.py: story_due, story_jobs, STORY_NOTE, STORY_LOOK) moves; story_jobs gives a held story its job after release past its before deadline, as story_due already did (1170's last point): landed with this queue change. story_job stays in the host (its digest folder is the owner's); 14 the rest of the story calendar (story_sweep, story_holds, story_open_until, story_unreported, story_weekend_overflow, facebook_profile_story) moves to story_calendar.py; hold.story_wait names its host s, so the view carries round5, which a held Buffer row's retime reads (through the view it would have raised AttributeError): landed with this queue change; 15 the unok report (unok_on_scheduler, _span, unok_line, unok_said) moves to clock.py; the tick still reads unok_said through s, so the Studio tests that patch it keep their seam: landed with this queue change; 16 the YouTube API route (yt_signed_in, yt_api_route, YT_PARKED) moves to youtube_posts.py; YT_SIGNIN stays in the host (it names the owner's channel) and the clock still reads both functions through s, so the host's tests that patch them keep their seam: landed with this queue change; 17 the image-approval gate (image_approval_block, image_approval_proof, turn_decisions_live, TURN_DECISIONS_FROM) moves to image_gate.py; the host keeps GRANDFATHERED_IMAGES (the owner's image hashes), outgoing_images, and two new helpers that reach image_crop (crop_gate_on, crop_parent: its gate, then a pure crop's approved parent, in the old order); the clock and sends still read image_approval_block through s, so the host's tests that patch it keep their seam: landed with this queue change; 18 the video-fit planning (video_fit_cap, video_fit_media, prepare_video_fit) moves to video_fit.py; API_VIDEO_BYTES, VIDEO_FIT_PENDING, fit_video (the encoder, rendering domain) and prepare_release_media (the release) stay in the host, read through s; the clock and the Buffer client still read video_fit_cap and prepare_video_fit through s, so the host's tests that patch them keep their seam: landed with this queue change; 19 due (the clock's send decision) moves to clock.py; has_long and anchored stay in the host (the host's own release and reminder code reads them), read through s, so NEEDS gains anchored; the clock and sends still read due through s, so the host's tests that patch it keep their seam: landed with this queue change; after: holds_refresh (image_holds.py) goes with item 19 and morning_card with the daily checks, as BOARD_LOOP.md places them"], "receipt": "core 5fc5214 (seam 19) live from 2026-10-17 04:55 PDT; the posting clock (com.pirillo.studio.tick, every 10 minutes) ran on it, last exit 0 at 05:13", "backlog_done": "1170 (posting.hold: seams 12 and 13; its missing-policy point declined), 468 (YouTube in NO_BROWSER, youtube method hand) and 831 (Threads and Facebook post by API: seams 10c, 10d) were met by the seams; the rest moved to the domain each belongs to"},
+ {"id": 29, "loop": "build", "layer": "product", "state": "landed", "title": "Retire Postiz: its routes, adapter, client and tests go, and the rows routed to it are re-routed", "done_when": "no route, adapter, client, fixture or test names Postiz outside the working repo's retired-services list; every planned row that named it carries a live route or hand; the working-repo issue in backlog_issues is fixed once", "backlog_issues": [1054]},
+ {"id": 3, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "The Board draws every loop from dev/loops", "done_when": "a loop's chart is rendered from its definition, with each queue item on its state"},
+ {"id": 32, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "dev/port.py land carries the host patch's base and names a landing in flight", "done_when": "dev/port.py land passes the host patch's base to `studio.py land commit --patch --base` (required since Studio b7ac8cc8: item 13 seam 1's host half was refused without it, 2026-10-17), and so does its recovery command; a live core holding an earlier commit's files at a landed path is refused as a landing still in flight, naming that commit, not as uncommitted work (seam 19's first land read 39f7ba5's host half in line as a defect); dev/land.py's review refusal names the line it wants. Rewritten from 'a core change landed by dev/land.py alone is live': live lagging HEAD is by design, since port.py writes live files after the host commit"},
+ {"id": 33, "loop": "build", "layer": "product", "state": "landed", "title": "The posting clock times its steps and stops re-rendering the Board behind a busy ledger", "done_when": "clock.tick records the step in hand and each step's seconds, naming a slow one; housekeeping.tick_board stops re-rendering once another command published a newer Board; the backlog line is logged once per change (2026-10-17: the tick ran 42 minutes in its Board step, working-repo #1373)"},
+ {"id": 30, "loop": "build", "layer": "product", "state": "landed", "title": "Separate the owner's private data from the product (R1)", "done_when": "Acceptance R1: the product and its exported history hold no private data, identity, accounts or preferences; dev/check.py's private-data scan is clean on the exact export with PIRILLO_PRIVATE_PATTERNS. The owner, 2026-10-16: first after item 11, so others can install and run it", "seams": ["1 no new private history: dev/land.py refuses a commit message (with its Reviewed-by line) matching a private pattern and commits as repo.json identity, not the machine's git user; the tree scan was already clean: landed with this queue change; 2 the history already made (77 commits: the owner's name as author on all, private text in 74 messages, private text in 17 old file versions) is not carried: the owner chose a clean start, so seam 1's tree, scanned clean, is the first commit of this repository, made as repo.json identity by dev/land.py; the old history is kept read-only in a separate archived repository: landed with this queue change; R1's last part, two owner-named identifiers the owner's patterns do not catch (not private data), is item 34"]},
+ {"id": 34, "loop": "build", "layer": "product", "state": "landed", "title": "No owner-named identifiers in the product", "done_when": "The product names no person in code or fixtures: story_calendar.py reads a wild image row's owner-in-the-image attestation only through the host (s.wild_image_post, and s.OWNER_IN_IMAGE, the host's field name, for the weekend copy), so the host's data and its key stay as they are and no live row is rewritten; test_hold.py's fixture actor is generic; the owner's private-patterns file gains his first name as a word, and dev/check.py stays clean on the exact export. Found by the clean-start scan of item 30 seam 2"},
+ {"id": 36, "loop": "build", "layer": "product", "state": "landed", "title": "The lead is a role: every landing path asks agents.lead(), no harness by name", "done_when": "its code runs from this repository with its old code deleted, and it fixes once each working-repo issue in backlog_issues (their titles and detail live there)", "backlog_issues": [1685]},
+ {"id": 40, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "dev/port.py land rebinds the host's packaged-core fixture to the core it lands", "done_when": "when the host has tools/package_core.py, dev/port.py land runs it on the new core commit in a host worktree at the patch's base and lands the host half with its fresh-install fixture bound to that commit, written beside the patch so the finish command reuses it (item 13 seam 3's host half was refused at host verify on 2026-10-21 because the fixture held a core without the module it imports, and only the landing's own commit can be bound; any host half that imports a new core module, moved or rebuilt, meets it); bind refuses when the host's package_core.py at the patch's base binds nothing to the new core (item 5 seam 2's host half, 2026-10-22: its 2353148a base predated the binder, which exited 0)"},
+ {"id": 41, "loop": "build", "layer": "dev-kit", "state": "parked", "title": "dev/land.py keeps a review across commits landed beside it", "done_when": "a review file may name the base it was read on (`APPROVE <tree> <reviewer> <base>`), and dev/land.py accepts it on a later HEAD only when <base> is an ancestor of HEAD, `git diff --raw --full-index --no-renames` (paths, modes and blob ids, binary included) from the reviewed tree to the staged tree is identical to the same diff from <base> to HEAD, and no commit since <base> touches a path the reviewed patch changes; any other difference, an unknown object or a git error refuses, naming the tree to re-review. Three reviews went stale on unrelated core commits (item 40 on 2a18777, its guard and item 13 seam 4's spec on 389b7d8, 2026-10-22), each re-reviewed only to confirm that identity by hand", "parked": "2026-10-22: three review rounds refused (Codex gpt-6-astra): r1 merges hid a touched path (git log -m added) and refusal tests were missing; r2 a stale candidate tree named in the brief and more refusal tests (its suggestion, unabbreviated raw ids, applied); r3 a stripped raw diff let a trailing-space path pass for the reviewed one (NUL-delimited, unstripped output). Each fix has its red/green test; the candidate after r3 is tree d182982c on c7d55e9 (dev 47 OK, check clean), unreviewed. Unpark: one fresh review of that candidate re-made on the then base"},
  {"id": 43, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "dev/land.py bounds a hung suite by wall time only, never by a CPU ceiling", "done_when": "dev/land.py suite() refuses a suite that fails or hangs past repo.json suite_seconds wall seconds (1200, the bound HANG * 120 gave), and no longer refuses a passing suite for its CPU seconds. Cause, 2026-10-24: the CPU ceiling was documented as bounding only a hang, which the wall timeout already does, yet CPU seconds grow with the machine's load (item 14 seam 2h part 1's one tree took 99, 121 and 139 CPU s under other landings' verifies), so it refused healthy landings twice and was raised once before (70e2cf2, 60 to 120). Class: a fixed number standing in for a hang bound is outgrown by a growing suite on a loaded machine. Guard: the ceiling is deleted, so there is no number left to outgrow; the hang is still refused by the wall timeout."},
- {"id": 42, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "dev/port.py land lands a core-only patch and makes it live",
-  "done_when": "dev/port.py land with no host half (a core patch, its review and message alone) stages the patch index-only, runs dev/land.py, and writes the landed paths live when each still holds the parent's bytes, naming any path that does not and leaving it; the lead's core-only landings use it, never a hand-written land.sh. Cause, 2026-10-24: dev/land.py commits from the tree and leaves the working files to dev/port.py, whose live step comes only after the host half; core-only landings had no tool, so each run wrote its own script, and item 37 seam 3d's (79bd526) refreshed only dev/queue.json, leaving two landed files stale on disk until the lead applied the patch by hand. Guard: a dev/test_port.py case landing a core-only patch shows its files live, and one with an edited path shows it named and untouched."},
+ {"id": 44, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "dev/land.py refuses a hung suite by its silence, never by its length", "done_when": "dev/land.py suite() refuses a test process silent on stderr (where the runner prints as each test ends) for repo.json suite_seconds, relaying its output as it comes, and never refuses a suite that keeps finishing tests, however long it runs. Cause, 2026-10-24 to 25: item 43's wall bound refused item 39 seam 4b three times at 1200 s while its dev tests were still printing a dot per test, at load 52 to 98 from concurrent host landings (#1901 in the working repository); the same tree's dev tests take far less unloaded. Class: any total-time number standing in for a hang bound is outgrown on a loaded machine (CPU seconds, item 43; then wall seconds). Guard: dev/test_land.py test_a_slow_printing_suite_lands_and_a_silent_one_is_refused (red on 631963d's land.py), the bound now measures only silence. The same landing found dev/queue.json at max_lines (500, the new item made it so, and test_port's fixture adds one): every landed and parked item is now one line (335 lines, the same JSON), and dev/check.py queue refuses a finished item over more than one line (dev/test_check.py test_a_finished_item_spans_one_line), so the queue grows by one line per finished item."},
+ {"id": 42, "loop": "build", "layer": "dev-kit", "state": "landed", "title": "dev/port.py land lands a core-only patch and makes it live", "done_when": "dev/port.py land with no host half (a core patch, its review and message alone) stages the patch index-only, runs dev/land.py, and writes the landed paths live when each still holds the parent's bytes, naming any path that does not and leaving it; the lead's core-only landings use it, never a hand-written land.sh. Cause, 2026-10-24: dev/land.py commits from the tree and leaves the working files to dev/port.py, whose live step comes only after the host half; core-only landings had no tool, so each run wrote its own script, and item 37 seam 3d's (79bd526) refreshed only dev/queue.json, leaving two landed files stale on disk until the lead applied the patch by hand. Guard: a dev/test_port.py case landing a core-only patch shows its files live, and one with an edited path shows it named and untouched."},
  {
   "id": 37,
   "loop": "build",
@@ -146,42 +28,7 @@
    "2 the engine and both recipes built new to it with their contract tests: built; 3 the host switched behind one setting (intake writes records/job.json id, the key every send and task id is bound to): built off (data/studio.json spine, tools/spine_host.py), the engine record renamed records/spine.json (the host's run.json is its stage log); 3b each catalog check bound to its domain's core check as items 6, 14, 17, 18 and 39 land (titles and text-read bound through Studio tools/release_host.py, the core release adapter; they block until job.py FOOTER's file name moves to wordcopy.py and data/studio.json release holds disclosure.ai, length.long_url, titles.research_days and search.min_rows; own_urls as ids, not link prefixes, and a settings version that moves with every upload are item 39 seam 3's to settle), the switch made per video: built (Studio tools/spine_host.py adopt <slug> puts one video with no host stage log on the engine, with its id and its immutable records/job.json video_started, the adoption, which QC's verdict.judge reads (built 2026-10-24); on, every other video stays the host's); paper-read binds through QC's manual row (stage paper) once two things are settled there: its judge is the owner in qc/catalog.json but checker-plans in spine/catalog.json, and Studio tools/qc_host.py answers a row awaiting the owner as waiting_owner, which a domain check may not answer (engine VERDICTS), so it would block as a check error; 3c the host's paper read as the core paper-read check: built (pirillo_studio/cutting/paper_read.py, bound in cutting's spine checks: story_review.json's lands, landing_fact and STORY_FIELDS gag_setups, button, each_point_once, open_loops, pace, plus look, and its plan named as the engine's judged digest of paper.md and cut_plan2.json, answered pass or fail from the story editor's record with no manual QC row; this settles both findings; Studio tools/spine_host.py answers it with core cutting while data/studio.json cutting is on); 3d the closing read and the note owners: built (paper_read.py closing, from the host's closing_problem and closing_line_problem; owners, from note_owner_problem, an owner being one spine catalog role or \"none\", so the host's names for the owner and the chief are \"owner\" on an engine video, a line the story editor's file gets when one is turned on); 3e the measured prompts: built (pirillo_studio/cutting/prompts.py, paper.py's prompts, MOST and the host's paper_limits as LIMITS; settle writes records/paper_prompts.json beside paper.md, a plan output and paper input, so the read's plan digest covers it; paper-read blocks on prompts not as hashed and fails a read leaving one without a kept or changed answer and its why, from paper_prompts_problem; source prompts wait for the overlays stage's cards); 3f a read that does not land reopens the plan stage for the editor, as an owner send-back reopens its producers (engine reopen), instead of failing to the stage's maker, the story editor: built (a domain check's fail may answer reopen, engine.verdict and check; paper_read answers it when lands false is the read's only problem); next, turned on for one, a new video with no host stage log (each video in the works on 2026-10-24 has one, so adopt refuses it) once item 6 seam 3e's media maker writes records/probe.json (built: Studio tools/spine_host.py probe), which blocks every adopted video until then (2026-10-24: the one new video with no stage log is unrecorded, and an adopted video also stops at paper-read, arc-read and draft-read until items 17 and 14 bind them, so it stays on the host until those bind); 4 the host's next, dispatch, holds and recipe_absent deleted"
   ]
  },
- {
-  "id": 13,
-  "loop": "build",
-  "layer": "product",
-  "state": "parked",
-  "title": "The new Board: one task model, one API, one page, the old renderers deleted",
-  "done_when": "Working #1680's done-when: Board.html is drawn only from GET /board.json and every action goes through POST /act on the Board helper; board_c's render/apply, board_v5a, board_unified and studio.py's b5_*, board_v5, board_v4 and board_fallback_alert are deleted with their settings keys; board_contract.py run --layout api is green; and it fixes once each working-repo issue in backlog_issues. The owner, 2026-10-21: the migration's next item",
-  "backlog_issues": [
-   1061,
-   1067,
-   1146,
-   1169,
-   987,
-   1167,
-   1056,
-   1158,
-   110,
-   984,
-   1066,
-   1069,
-   1126,
-   1183,
-   1059,
-   637,
-   1181,
-   1808
-  ],
-  "seams": [
-   "1 how an ask reads (board/asks.py: open_asks, ask_recommendation, ask_title, asks_answered_today, ask_said, ask_line), moved by dev/port.py; the host keeps the ask comments that name the owner, and youtube_posts.py still reads open_asks through s (its tests patch that seam): landed with this queue change",
-   "2 the rest of the ask reads (ask_by, ask_images, ask_find, ask_echo and their pure helper answered_note) move into board/asks.py; owner values HOME, MORNING_RUN, ASK_STUDIO and ANSWERED stay in the host through s, as do stage logging and the ask_title callback: landed with this queue change",
-   "3 the ask writes: landed with this queue change; next: 4 the owner's cards, 5 the owner's turn, 6 board_data.py (as named before); 7 one model (board_c.model, board_data.model, board_unified.model merged, a coverage check); 8 one API (GET /board.json, POST /act); 9 one page (markup by the lead, board_contract layout api, behind studio.json board_api); 10 the old renderers deleted. Detail and expectation list: Working #1680",
-   "4 the task model spec: one shape for every task (what, why, source, the thing to judge, one set of actions each undoable, can't-and-why, its loop from filed to done), every kind on today's Board mapped to it, Working #1680's expectation list as its tests; the owner reads it. The owner's cards, the owner's turn and board_data.py are rebuilt to it, not moved (the owner, 2026-10-22): spec drafted in docs/board.md, for the owner to read",
-   "5 the task shape, its loop and the coverage check (pirillo_studio/board/model.py), built new to docs/board.md sections 1 and 2: parked 2026-10-22 after three refused review rounds, each on a real gap the next round fixed: r1 wrong-typed fields raised instead of being reported and a protocol-relative href passed; r2 backslash and control-character hrefs passed as same-origin and untyped text fields passed; r3 untyped related keys and a free-text undo expiry passed (r3's 'related keys own their sources' is declined: section 1's own example relates an ask to a post that owns its own task, so aliases are the source readers' to collapse, seam 6). The candidate after r3 (tree bedc3a51 on 9b56266, model +108, contract tests +110, pirillo_studio 122 OK) waits unreviewed; unpark is one fresh review of it re-made on the then base. Then: 6 each source read into tasks, asks first, then posts, ideas and tasks, one seam per family, each with its undo writer and coverage run on a copy of the owner's ledger; 7 one API (GET /board.json, POST /act); 8 one page (behind studio.json board_api, side by side with today's); 9 the old renderers deleted. Detail: Working #1680"
-  ],
-  "issue": 1680
- },
+ {"id": 13, "loop": "build", "layer": "product", "state": "parked", "title": "The new Board: one task model, one API, one page, the old renderers deleted", "done_when": "Working #1680's done-when: Board.html is drawn only from GET /board.json and every action goes through POST /act on the Board helper; board_c's render/apply, board_v5a, board_unified and studio.py's b5_*, board_v5, board_v4 and board_fallback_alert are deleted with their settings keys; board_contract.py run --layout api is green; and it fixes once each working-repo issue in backlog_issues. The owner, 2026-10-21: the migration's next item", "backlog_issues": [1061, 1067, 1146, 1169, 987, 1167, 1056, 1158, 110, 984, 1066, 1069, 1126, 1183, 1059, 637, 1181, 1808], "seams": ["1 how an ask reads (board/asks.py: open_asks, ask_recommendation, ask_title, asks_answered_today, ask_said, ask_line), moved by dev/port.py; the host keeps the ask comments that name the owner, and youtube_posts.py still reads open_asks through s (its tests patch that seam): landed with this queue change", "2 the rest of the ask reads (ask_by, ask_images, ask_find, ask_echo and their pure helper answered_note) move into board/asks.py; owner values HOME, MORNING_RUN, ASK_STUDIO and ANSWERED stay in the host through s, as do stage logging and the ask_title callback: landed with this queue change", "3 the ask writes: landed with this queue change; next: 4 the owner's cards, 5 the owner's turn, 6 board_data.py (as named before); 7 one model (board_c.model, board_data.model, board_unified.model merged, a coverage check); 8 one API (GET /board.json, POST /act); 9 one page (markup by the lead, board_contract layout api, behind studio.json board_api); 10 the old renderers deleted. Detail and expectation list: Working #1680", "4 the task model spec: one shape for every task (what, why, source, the thing to judge, one set of actions each undoable, can't-and-why, its loop from filed to done), every kind on today's Board mapped to it, Working #1680's expectation list as its tests; the owner reads it. The owner's cards, the owner's turn and board_data.py are rebuilt to it, not moved (the owner, 2026-10-22): spec drafted in docs/board.md, for the owner to read", "5 the task shape, its loop and the coverage check (pirillo_studio/board/model.py), built new to docs/board.md sections 1 and 2: parked 2026-10-22 after three refused review rounds, each on a real gap the next round fixed: r1 wrong-typed fields raised instead of being reported and a protocol-relative href passed; r2 backslash and control-character hrefs passed as same-origin and untyped text fields passed; r3 untyped related keys and a free-text undo expiry passed (r3's 'related keys own their sources' is declined: section 1's own example relates an ask to a post that owns its own task, so aliases are the source readers' to collapse, seam 6). The candidate after r3 (tree bedc3a51 on 9b56266, model +108, contract tests +110, pirillo_studio 122 OK) waits unreviewed; unpark is one fresh review of it re-made on the then base. Then: 6 each source read into tasks, asks first, then posts, ideas and tasks, one seam per family, each with its undo writer and coverage run on a copy of the owner's ledger; 7 one API (GET /board.json, POST /act); 8 one page (behind studio.json board_api, side by side with today's); 9 the old renderers deleted. Detail: Working #1680"], "issue": 1680},
  {
   "id": 6,
   "loop": "build",
@@ -281,18 +128,7 @@
    "4 capabilities and voice built new to it with their contract tests: built ; 5 the host switched behind one setting: built off (data/studio.json capabilities, tools/capabilities_host.py) ; 6 the host's doctor, voice and capability code, tests and settings deleted"
   ]
  },
- {
-  "id": 12,
-  "loop": "build",
-  "layer": "product",
-  "state": "parked",
-  "title": "Fix the settings backlog in the ported settings domain",
-  "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1",
-  "parked": "2026-10-24, at seam 1 (the settings rebuild contract, docs/settings.md, Codex job 155f4d3f built the candidates): three review rounds by fresh one-shot Claude agents refused, each on a real gap the next round fixed: r1 posting's unserved keys had no source, host rows had no home for set/explain/check, release's revision missed platforms and map, the legacy first-run write copied served keys; r2 the legacy cfg was said to hold only unserved keys, two functions were listed as keys, release's profile reads (own_urls.videos, do_not_say, footer, checklist thresholds) had no home; r3 wc.LIMITS contradicted posting owning platform facts, and given()'s owner dict release collided with release's boolean switch. The candidate after r3 (tree 5df512c5 on 4b1b5c9, work/_port 12-unpark 2026-10-24/core.patch) waits unreviewed; unpark is one fresh review of it re-made on the then base.",
-  "backlog_issues": [
-   473
-  ]
- },
+ {"id": 12, "loop": "build", "layer": "product", "state": "parked", "title": "Fix the settings backlog in the ported settings domain", "done_when": "rebuilt to its spec (docs/architecture.md, How a domain is rebuilt): spec read, contract tests green, its Live check run on real media, the host switched behind one setting and its legacy code, tests and settings deleted; it fixes once each working-repo issue in backlog_issues. Only what the plain and shorts-only recipes use; the rest waits until C1", "parked": "2026-10-24, at seam 1 (the settings rebuild contract, docs/settings.md, Codex job 155f4d3f built the candidates): three review rounds by fresh one-shot Claude agents refused, each on a real gap the next round fixed: r1 posting's unserved keys had no source, host rows had no home for set/explain/check, release's revision missed platforms and map, the legacy first-run write copied served keys; r2 the legacy cfg was said to hold only unserved keys, two functions were listed as keys, release's profile reads (own_urls.videos, do_not_say, footer, checklist thresholds) had no home; r3 wc.LIMITS contradicted posting owning platform facts, and given()'s owner dict release collided with release's boolean switch. The candidate after r3 (tree 5df512c5 on 4b1b5c9, work/_port 12-unpark 2026-10-24/core.patch) waits unreviewed; unpark is one fresh review of it re-made on the then base.", "backlog_issues": [473]},
  {
   "id": 38,
   "loop": "build",

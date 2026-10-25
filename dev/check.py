@@ -20,8 +20,21 @@ def sizes(root, paths, repo):
 
 
 def queue(root):
-    return shared_checks.queue(os.path.join(root, "dev", "loops"),
-                               os.path.join(root, "dev", "queue.json"), ("product", "dev-kit"))
+    """The shared queue checks, and a finished item (a state its loop never leaves) on one line: the queue grows by an
+    item a landing, and only open items need their lines (queue item 44: it reached max_lines)."""
+    path, loops = os.path.join(root, "dev", "queue.json"), os.path.join(root, "dev", "loops")
+    out = shared_checks.queue(loops, path, ("product", "dev-kit"))
+    ends = {(loop["name"], s) for loop in (load(os.path.join(loops, n)) for n in os.listdir(loops))
+            for s in loop["states"] if all(t["from"] != s for t in loop["transitions"])}
+    with open(path) as f:
+        text = f.read()
+    dec, at = json.JSONDecoder(), text.index("[") + 1
+    while (at := at + len(text[at:]) - len(text[at:].lstrip(" \t\r\n,"))) < len(text) and text[at] != "]":
+        item, end = dec.raw_decode(text, at)
+        if (item.get("loop"), item.get("state")) in ends and "\n" in text[at:end]:
+            out.append(f"queue {item['id']}: finished ({item['state']}), so one line")
+        at = end
+    return out
 
 
 def needs(root, paths):
