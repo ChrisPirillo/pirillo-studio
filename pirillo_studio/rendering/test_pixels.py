@@ -56,9 +56,9 @@ class PixelCorrespondence(unittest.TestCase):
         row = self.row([0, count], [0, count])
         row['crop'] = [0, 0, 1920, 1080]
         self.req['frame_map'] = [row]
-        start = time.perf_counter()
+        start = time.process_time()   # this process's CPU only: a busy machine or ffmpeg's decode never counts
         result = self.compare()
-        per_frame = (time.perf_counter() - start) / count
+        per_frame = (time.process_time() - start) / count
         print(f'1080p comparison: {per_frame:.6f} s/frame; {count} frames; {filehash(self.source)}', flush=True)
         self.assertEqual(len(result['frame_checks']), count)
         self.assertTrue(result['checks']['frame-map']['ok'])
