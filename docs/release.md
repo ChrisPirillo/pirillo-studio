@@ -256,7 +256,7 @@ unchanged build showing nothing written. Nothing is sent.
 The host's sole switch is the video's adoption onto the spine (the host's `spine` switch and its per-video adopt;
 the host's `release` key holds its release profile, not a switch). On an adopted video the spine's `titles`, `copy`,
 `text`, `release` and `release-choice` stages call this API (the release stage's run is the host's
-`spine_host.py release <slug>`, which builds and prints the envelope) and the clock ingests `rows`; every other video
+`spine_host.py release <slug>`, which builds and prints the envelope; his Board answer to the `release-choice` task calls `decide`, Approve for every row, Send back for the rows his words name by row ID) and the clock ingests `rows`; every other video
 keeps the host path byte for byte; on cannot fall back.
 
 The switch-and-delete landing removes, for C1 paths: in `publish.py` `release_files`, `release_gate`,

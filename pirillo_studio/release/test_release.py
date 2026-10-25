@@ -10,7 +10,7 @@ from pirillo_studio.qc import evaluators
 from pirillo_studio.release import api
 from pirillo_studio.release.inputs import ENVELOPE, RELEASE, REVIEW
 from pirillo_studio.spine import engine
-from pirillo_studio.spine.files import digest, filehash
+from pirillo_studio.spine.files import digest, filehash, hashes
 
 SAID = "Subject works well. Details matter a lot. The result lasts for years. Shorter is better here."
 SETTINGS = {
@@ -384,6 +384,21 @@ class Contracts(Fixture):
         self.assertEqual(set(self.ledger()), set(self.rows()) - {"short-alpha:youtube"})
         api.decide(self.v, {"short-alpha:youtube": "approved"}, "owner")
         self.assertEqual(self.ledger()["short-alpha:youtube"], "Result lasts for years.")
+        self.assertTrue(api.check(self.v)["ok"])
+
+
+class SeenDecision(Fixture):
+    """guard: never let an owner's answer approve release words he was not shown (decide's seen, inside its lock)."""
+
+    def test_a_release_rebuilt_since_he_saw_it_refuses(self):
+        self.built()
+        seen = hashes(self.v, [RELEASE, REVIEW])
+        api.edit(self.v, "short-alpha:youtube", "Result lasts for years.", "owner")
+        self.built()
+        with self.assertRaisesRegex(api.Stale, "changed since the decider saw it"):
+            api.decide(self.v, {rid: "approved" for rid in self.rows()}, "owner", seen)
+        self.assertFalse(api.check(self.v)["ok"])
+        api.decide(self.v, {rid: "approved" for rid in self.rows()}, "owner", hashes(self.v, [RELEASE, REVIEW]))
         self.assertTrue(api.check(self.v)["ok"])
 
 

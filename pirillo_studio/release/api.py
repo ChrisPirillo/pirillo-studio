@@ -1,7 +1,7 @@
 """build, edit, decide and check (release.md section 2), each held under the spine's per-video writer lock."""
 from ..cutting.plan import words as transcript
 from ..spine.engine import writer
-from ..spine.files import SpineError, canon, digest, filehash, inside, load
+from ..spine.files import SpineError, canon, digest, filehash, hashes, inside, load
 from . import readings, review, rows as rowing
 from .inputs import (COPY, COPY_READ, CUES, DECISION, EDITS, ENVELOPE, MANIFEST, NAMED, PUBLISH, RELEASE, REVIEW, TEXT,
                      TEXT_READ, WORDS, Inputs, Refused, Unavailable, current, day, dump, facts, field, key, settings,
@@ -215,9 +215,12 @@ def edit(video, row, text, by):
         return _append(video, row, text, by, was, rec["key"])
 
 
-def decide(video, rows, by):
-    """rows maps row ID to "approved" or {"changes": note, "maker": who}; binds each row's current hashes."""
+def decide(video, rows, by, seen=None):
+    """rows maps row ID to "approved" or {"changes": note, "maker": who}; binds each row's current hashes. seen, the
+    {path: hash} the decider was shown (the owner task's inputs), refuses as Stale once any of them changed."""
     with writer(video):
+        if seen is not None and hashes(video, seen) != seen:
+            raise Stale(f"decide: {', '.join(p for p, h in hashes(video, seen).items() if h != seen[p])} changed since the decider saw it")
         rec = _current(video)
         if rec["state"] != "built":
             raise SpineError(f"{RELEASE}: is {rec['state']}, not built")
