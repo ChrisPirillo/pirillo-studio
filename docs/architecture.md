@@ -122,8 +122,10 @@ the other recipes (animated explainer, claymation, review roundup) and the host'
    changes what he sees, then the legacy code, its tests and its settings are deleted in one landing.
 
 **Legacy freeze** (until C1): the host gets fixes that keep the owner's videos posting and the Board answering, and
-nothing new. A bug in a domain on the cutover list is fixed in its rebuild. An issue about the host's own machinery is frozen,
+nothing new. A bug in a domain on the cutover list is fixed in its rebuild. An issue about the rest of the host's machinery is frozen,
 not closed; each is read once at cutover and either becomes a spec line or goes with the legacy.
+The host's build machinery (picking, building, reviewing and landing work, and its schedule) is out of the freeze:
+the owner moved it wholesale to GitHub Actions on 2026-10-24 (host issue 1899), so it is changed where it now runs.
 
 `dev/port.py move` stays for the few places where the legacy code is right as written; its rules (exact source,
 `s.<name>` reads in `NEEDS`, host forwarders, one review per item) still hold when it is used.
