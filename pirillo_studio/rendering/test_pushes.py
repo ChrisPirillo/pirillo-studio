@@ -130,7 +130,8 @@ class Pushes(unittest.TestCase):
                     span = {**self.span, 'enter': enter, field: {}}
                     if enter != 'push':
                         del span['push']
-                    with self.assertRaisesRegex(SpineError, field + ': unsupported'):
+                    message = field + (': unsupported' if field == 'grade' else ': expected positive rational')
+                    with self.assertRaisesRegex(SpineError, message):
                         clocks.split(req, [(span, span['src'])])
 
     def test_landmarks_and_hidden_picture_refuse(self):

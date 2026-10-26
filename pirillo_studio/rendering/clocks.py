@@ -4,6 +4,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError
+from . import retiming
 
 
 def split(req, pieces):
@@ -12,9 +13,10 @@ def split(req, pieces):
     source = {'file': req['source'], 'sha256': req['source_sha256']}
     for span, src in pieces:
         sid = span['id']
-        for field in ('retime', 'speed', 'grade'):
-            if field in span:
-                raise SpineError(f'frame-map: {sid}: {field}: unsupported')
+        if 'grade' in span:
+            raise SpineError(f'frame-map: {sid}: grade: unsupported')
+        speed = retiming.validate(req, span)
+        retimed = 'speed' in span or 'retime' in span
         if plan.push(span) is not None and (span.get('hide_picture') or 'patch' in span):
             raise SpineError(f'push: {sid}: hidden picture or patch unsupported')
         asset = source
@@ -40,8 +42,13 @@ def split(req, pieces):
                 raise SpineError(f'patch: {sid}: opaque cover required')
         if a < 0 or b <= a:
             raise SpineError('frame-map: source interval collapses on the output grid')
-        row = {'span': sid, 'frames': [end, end + b - a], 'source_frames': [a, b]}
+        count = round((b - a) / speed)
+        if count <= 0:
+            raise SpineError(f'retiming: {sid}: interval collapses on the output grid')
+        row = {'span': sid, 'frames': [end, end + count], 'source_frames': [a, b]}
         voice.append({**row, 'asset': copy.deepcopy(asset)})
+        if retimed:
+            voice[-1].update(silent=True, source_frames=[0, count])
         visual = copy.deepcopy(row)
         if 'patch' in span:
             visual['source_frames'] = tape
@@ -49,6 +56,8 @@ def split(req, pieces):
             lead = round(Fraction(str(plan.number(span['lead_s'], 'J-cut lead'))) * fps)
             ordered = sorted(req['plan_data']['spans'], key=lambda s: s['order'])
             previous = ordered[span['order'] - 2] if span['order'] > 1 else None
+            if previous is not None and ('speed' in previous or 'retime' in previous):
+                raise SpineError(f'J-cut: {sid}: outgoing retimed expression unsupported')
             if (not picture or previous is None or picture[-1]['span'] != previous['id']
                     or previous.get('hide_picture') or span.get('hide_picture') or 'patch' in span
                     or picture[-1]['source_frames'][1] != round(Fraction(str(previous['src'][1])) * fps)
@@ -60,7 +69,7 @@ def split(req, pieces):
             visual['source_frames'][0] += lead
             visual['frames'][0] += lead
         picture.append(visual)
-        end += b - a
+        end += count
     for row in voice + picture:
         row['src'] = [float(frame / fps) for frame in row['source_frames']]
         row['out'] = [float(frame / fps) for frame in row['frames']]

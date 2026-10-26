@@ -227,7 +227,9 @@ def _render(video, req):
         for field in ('duration_s', 'fps', 'loudness_lufs', 'true_peak_dbtp', 'frame_checks'):
             result[field] = readings[field]
         if req['mode'] == 'render' and 'frame_map' in req:
-            result.update(frame_map=req['frame_map'], elements=req['elements'])
+            # Caption identity uses the planned clock; decoded/container duration stays in readings.
+            result.update(frame_map=req['frame_map'], elements=req['elements'],
+                          duration_s=req['frame_map'][-1]['out'][1])
         if result['state'] == 'waiting_owner':
             result['viewed'] = {'file': req['file'], 'file_sha256': readings['file_sha256'],
                                 'plan': req['plan_key']}

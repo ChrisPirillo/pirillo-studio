@@ -2,7 +2,7 @@
 
 prepare(request) supplies frame_map crops/assets, elements, and optional audio/caption bindings.
 The core derives the edit independently; a renderer cannot change source selection or cover identity.
-Separate picture maps support J-cuts and whole patches; pushes bind per-frame integer crops; retiming still refuses.
+Separate picture maps support J-cuts, whole patches and silent retiming; pushes bind per-frame integer crops.
 """
 import copy
 
@@ -39,8 +39,9 @@ def timeline(req):
     """Legacy combined map; separate clocks require an explicit picture_map binding."""
     from . import clocks
     selected = pieces(req)
-    if any('patch' in span or span['enter'] in ('jcut', 'push') for span, _ in selected):
-        raise SpineError('frame-map: separate picture_map required for J-cut/patch/push clocks')
+    if any(any(k in span for k in ('patch', 'speed', 'retime')) or span['enter'] in ('jcut', 'push')
+           for span, _ in selected):
+        raise SpineError('frame-map: separate picture_map required for J-cut/patch/push/retiming clocks')
     voice, _ = clocks.split(req, selected)
     return [{k: v for k, v in row.items() if k != 'asset'} for row in voice]
 

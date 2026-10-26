@@ -223,5 +223,5 @@ class Compositor(Fixture):
         self.assertTrue(self.get(refused['readings'])['checks']['bed']['ok'])
         self.cut['spans'][0]['speed'] = 2
         self.save_cut()
-        with self.assertRaisesRegex(SpineError, 'speed: unsupported'):
+        with self.assertRaisesRegex(SpineError, 'speed/retime with voice unsupported'):
             render(self.v, 'draft')

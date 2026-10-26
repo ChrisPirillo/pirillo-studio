@@ -1,11 +1,11 @@
-"""Constant-rate picture sampling; source seconds and voice clocks never change.
+"""Constant-rate picture sampling, including approved rational expression speed.
 
 See docs/rendering-source-rate.md for the clock and refusal flow.
 """
 import math
 from fractions import Fraction
 
-from . import decoded
+from . import decoded, retiming
 
 
 def rate(value):
@@ -68,7 +68,9 @@ def bind(req, row):
     """Record every output frame's exact source index, including drops and repeats."""
     grid = row['source_frames'][:]
     ratio = rate(req['source_rate']) / Fraction(req['settings']['video']['fps'])
-    indices = [int(n * ratio) for n in range(*grid)]
+    speed = retiming.step(req, row)
+    count = round((grid[1] - grid[0]) / speed)
+    indices = [int((grid[0] + n * speed) * ratio) for n in range(count)]
     row.update(source_grid_frames=grid, source_indices=indices,
                source_frames=[indices[0], indices[-1] + 1])
     return row
@@ -84,10 +86,11 @@ def validate(req, row):
     indices = row.get('source_indices')
     count = row['frames'][1] - row['frames'][0]
     if (not isinstance(grid, list) or len(grid) != 2
-            or any(type(n) is not int or n < 0 for n in grid) or grid[1] - grid[0] != count
+            or any(type(n) is not int or n < 0 for n in grid)
+            or round((grid[1] - grid[0]) / retiming.step(req, row)) != count
             or not isinstance(indices, list) or any(type(n) is not int for n in indices)):
         decoded.refuse('frame-map', 'video.fps', 'missing or invalid source-rate frame indices')
-    wanted = bind(req, {'source_frames': grid})
+    wanted = bind(req, {'span': row['span'], 'source_frames': grid})
     if any(row.get(k) != wanted[k] for k in ('source_frames', 'source_indices')):
         decoded.refuse('frame-map', 'video.fps', 'source-rate frame indices differ from source clock')
 
@@ -95,11 +98,14 @@ def validate(req, row):
 def filters(req, row, *, seeked=False):
     """Stamp exact source instants, then hold the frame covering each output instant."""
     source, output = rate(req['source_rate']), Fraction(req['settings']['video']['fps'])
-    base = math.lcm(source.numerator, output.numerator)
+    speed = retiming.step(req, row)
+    source *= speed
+    origin = output * speed
+    base = math.lcm(source.numerator, output.numerator, origin.numerator)
     a, b = row['source_frames']
     grid = row['source_grid_frames'][0]
     count = row['frames'][1] - row['frames'][0]
     # One tail frame lets fps emit the last sample's entire interval before trimming.
     return (f'trim=start_frame={0 if seeked else a}:end_frame={b - a if seeked else b},'
-            f'settb=1/{base},setpts=(N+{a})*{base // source}-{grid}*{base // output},'
+            f'settb=1/{base},setpts=(N+{a})*{base // source}-{grid}*{base // origin},'
             f'tpad=stop_mode=clone:stop=1,fps={output}:start_time=0:round=up,trim=end_frame={count}')

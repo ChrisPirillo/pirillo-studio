@@ -184,3 +184,150 @@ class SourceRate(unittest.TestCase):
                 frame['duration'] *= 2
         with self.altered_probe(change), self.assertRaisesRegex(SpineError, 'decoded source clock'):
             request.resolve(self.case.v, 'draft', 'draft')
+
+
+class Retiming(unittest.TestCase):
+    """e2e: Draft/draft.mp4 samples approved expression speeds and preserves following speech."""
+
+    @classmethod
+    def setUpClass(cls):
+        test_compositor.Compositor.setUpClass()
+    setUp = SourceRate.setUp
+    source = SourceRate.source
+    rgb = SourceRate.rgb
+
+    def expression(self, speed=2, rate='60', field='speed'):
+        self.source(rate)
+        self.case.put('records/words.json', {'words': [
+            {'id': 'w1', 'text': 'First.', 'start': .05, 'end': .2},
+            {'id': 'w2', 'text': 'Next.', 'start': .75, 'end': .9}]})
+        self.case.cut['spans'] = [
+            {'id': 's1', 'order': 1, 'src': [0, .3], 'words': ['w1', 'w1'], 'enter': 'open', 'shot': 'wide'},
+            {'id': 's2', 'order': 2, 'src': [.3, .7], 'words': [], 'enter': 'pop', 'shot': 'wide',
+             'expression': {'after_word': 'w1', 'seen': 'looks aside'}, field: speed},
+            {'id': 's3', 'order': 3, 'src': [.7, 1], 'words': ['w2', 'w2'], 'enter': 'jump', 'shot': 'wide'}]
+        count = round(Fraction(12) / Fraction(speed))
+        offset = Fraction(9 + count, 30) - Fraction(7, 10)
+        self.case.truth = {'0:w1': [.05, .2], '2:w2': [float(Fraction(3, 4) + offset),
+                                                       float(Fraction(9, 10) + offset)]}
+        self.case.save_cut()
+        return count
+
+    def delivered(self, speed, rate, field='speed'):
+        import wave
+        count = self.expression(speed, rate, field)
+        result = self.case.accepted()
+        req = result['request']
+        mapping.validate(req)
+        indices = ([int(Fraction(n) * Fraction(rate) / 30) for n in range(9)]
+                   + [int((9 + n * Fraction(speed)) * Fraction(rate) / 30) for n in range(count)]
+                   + [int(Fraction(n) * Fraction(rate) / 30) for n in range(21, 30)])
+        self.assertEqual([i for row in req['picture_map'] for i in row['source_indices']], indices)
+        self.assertEqual(req['picture_map'][1]['src'], [.3, .7])
+        measured = self.case.get(result['readings'])
+        self.assertEqual([r['source_frame'] for r in measured['mapped_frames']], indices)
+        self.assertTrue(all(r['ok'] for r in measured['mapped_frames']))
+        self.assertTrue(coverage.subjects(req, True)['ok'])
+        source, output = self.rgb(self.case.folder / 'source.mp4'), self.rgb(self.case.folder / result['file'])
+        self.assertEqual(len(output), 18 + count)
+        peak = max(max(abs(a - b) for a, b in zip(frame, source[index])) for frame, index in zip(output, indices))
+        self.assertLessEqual(peak, 3)
+        with wave.open(str(self.case.folder / 'records/render/draft-voice.wav')) as voice:
+            self.assertEqual(voice.getnframes(), (18 + count) * 1600)
+            voice.setpos(9 * 1600)
+            self.assertEqual(set(voice.readframes(count * 1600)), {0})
+        captions = self.case.get('records/captions/draft.json')
+        self.assertAlmostEqual(captions['cues'][-1]['start_s'], self.case.truth['2:w2'][0], delta=.005)
+        for defect in ('index', 'grid', 'silence'):
+            wrong = copy.deepcopy(req)
+            if defect == 'index':
+                wrong['picture_map'][1]['source_indices'][0] += 1
+            elif defect == 'grid':
+                wrong['picture_map'][1].pop('source_grid_frames')
+            else:
+                wrong['frame_map'][1].pop('silent')
+            with self.assertRaises(SpineError):
+                mapping.validate(wrong)
+        wrong = copy.deepcopy(req)
+        wrong['picture_map'][1]['source_indices'][0] += 1
+        with self.assertRaisesRegex(SpineError, 'source-rate frame indices'):
+            pixels.compare(self.case.v, wrong, self.case.folder / result['file'])
+        print('RETIME_OUTPUT ' + json.dumps({'speed': speed, 'rate': rate, 'indices': indices,
+            'file_sha256': result['file_sha256'], 'independent_rgb_peak_error': peak,
+            'silent_samples': count * 1600, 'following_caption_s': captions['cues'][-1]['start_s']}), flush=True)
+        return result
+
+    def test_fast_expression_decoded_frames_and_silent_voice(self):
+        self.delivered(2, '60')
+
+    def test_slow_expression_at_fractional_source_rate(self):
+        self.delivered('1/2', '30000/1001')
+
+    def test_rational_alias_rounds_duration_on_fixed_grid(self):
+        self.delivered('7/3', '60', 'retime')
+
+    def test_invalid_factors_voice_and_unsupported_combinations_refuse_by_name(self):
+        from . import clocks
+        self.expression()
+        req = request.resolve(self.case.v, 'draft', 'draft')
+        for factor in (0, -1, float('nan'), float('inf'), 1.5, True, None, 'NaN', '1/0', 'sqrt(2)', {}, []):
+            with self.subTest(factor=factor):
+                wrong = copy.deepcopy(req)
+                wrong['plan_data']['spans'][1]['speed'] = factor
+                with self.assertRaisesRegex(SpineError, 's2.*speed.*positive rational'):
+                    clocks.split(wrong, mapping.pieces(wrong))
+        for defect, message in [('voice', 'speed.*voice'), ('overlap', 'speed.*voice'),
+                                ('alias', 'speed.*retime'), ('grade', 'grade.*unsupported'),
+                                ('jcut', 'J-cut.*retim'), ('collapse', 'retim.*collapses')]:
+            with self.subTest(defect=defect):
+                wrong = copy.deepcopy(req)
+                spans = wrong['plan_data']['spans']
+                if defect == 'voice':
+                    spans[0]['speed'] = 2
+                elif defect == 'overlap':
+                    wrong['words_data'][0]['end'] = .4
+                elif defect == 'alias':
+                    spans[1]['retime'] = 2
+                elif defect == 'grade':
+                    spans[1]['grade'] = 'warm'
+                elif defect == 'jcut':
+                    spans[2].update(enter='jcut', lead_s=.1)
+                else:
+                    spans[1]['speed'] = 100
+                with self.assertRaisesRegex(SpineError, message):
+                    clocks.split(wrong, mapping.pieces(wrong))
+        with self.assertRaisesRegex(SpineError, 'separate picture_map'):
+            mapping.timeline(req)
+
+    def test_retime_identity_alias_and_crash_recovery(self):
+        from . import records
+        from .render import render
+        from .test_rendering import PowerLoss
+        self.expression()
+        request.resolve(self.case.v, 'draft', 'draft')
+        target = self.case.folder / 'records/render/draft-voice.wav'
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.symlink_to(self.case.folder / 'owner.txt')
+        with self.assertRaises(SpineError):
+            render(self.case.v, 'draft')
+        self.assertEqual((self.case.folder / 'owner.txt').read_bytes(), b'owner original')
+        target.unlink()
+        first = self.case.accepted()
+        self.case.cut['spans'][1]['speed'] = 3
+        self.case.put('records/cut_plan2.json', self.case.cut)
+        with self.assertRaisesRegex(SpineError, 'stale cut check'):
+            render(self.case.v, 'draft')
+        self.case.save_cut()
+        self.case.truth['2:w2'] = [float(Fraction(29, 60)), float(Fraction(19, 30))]
+        write = records.write
+        def crash(video, name, value):
+            if name == 'records/render/draft.json' and value['state'] == 'waiting_owner':
+                raise PowerLoss()
+            return write(video, name, value)
+        with patch.object(records, 'write', side_effect=crash), self.assertRaises(PowerLoss):
+            render(self.case.v, 'draft')
+        recovered = self.case.accepted()
+        self.assertNotEqual(first['key'], recovered['key'])
+        self.assertEqual(recovered['request']['picture_map'][1]['source_indices'], [18, 24, 30, 36])
+        self.assertEqual(len(self.rgb(self.case.folder / recovered['file'])), 22)
+        self.assertEqual(self.case.accepted()['key'], recovered['key'])

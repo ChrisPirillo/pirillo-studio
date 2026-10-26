@@ -105,9 +105,12 @@ def voice(video, req):
             if (len(probe['streams']) != 1 or int(probe['streams'][0]['sample_rate']) != rate
                     or sum(f['nb_samples'] for f in probe['frames']) != patch['sample_count']):
                 raise SpineError('patch: actual audio sample count/rate differs from record')
-        args += ['-i', str(source)]
         a = round(row['source_frames'][0] * samples_per_frame)
         count = round(row['frames'][1] * samples_per_frame) - round(row['frames'][0] * samples_per_frame)
+        if row.get('silent') is True:
+            args += ['-f', 'lavfi', '-i', f'anullsrc=r={rate}:cl=mono']
+        else:
+            args += ['-i', str(source)]
         graph.append(f'[{i}:a:0]aresample={rate}:async=1:first_pts=0,atrim=start_sample={a}:end_sample={a + count},'
                      f'asetpts=PTS-STARTPTS[a{i}]')
         joined.append(f'[a{i}]')

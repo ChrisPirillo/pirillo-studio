@@ -13,8 +13,8 @@ bounds those indices. Mapping rederives them, subject coverage uses them, and de
 them. FFmpeg stamps rational source instants and holds/drops frames onto the output grid without
 blending. Voice, captions and audio trims retain their existing source-seconds clock. Push phase
 remains on that clock, with source-frame subject unions and outgoing J-cut holds. Legacy injected
-combined maps still require equal rates; converters supply the explicit split-clock binding. Span
-retime/speed/grade remain unsupported.
+combined maps still require equal rates; converters supply the explicit split-clock binding. Approved expression retiming extends this sampling rule as specified in
+[rendering-retime.md](rendering-retime.md); grades remain unsupported.
 
 Source subject observations are `faces_data.frames: [{frame, boxes: [[x,y,width,height], ...]}]`; item 6 must
 supply native decoded source frame indices. Every uncovered mapped frame needs nonempty observations inside

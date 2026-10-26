@@ -172,7 +172,7 @@ Each output has its own record at `records/render/<output-id>.json`; this array 
 ]
 ```
 
-`duration_s` is measured from actual streams; `fps` includes measured packet cadence, not merely a header claim.
+`duration_s` in readings is measured from actual streams; native render records retain the planned frame-map duration for caption identity. `fps` includes measured packet cadence, not merely a header claim.
 Each named frame check has its result, coverage, evidence and threshold reference in `readings`; names alone do
 not mean pass. Missing readings are explicit, never zero. Record resolved settings and tool versions there too.
 Loudness comes from the finished mix. Bed comparisons name its actual stem and alignment evidence, never a
@@ -266,10 +266,10 @@ ASS-only burns, unbound/stale rasters, missing alpha, unsafe raster pixels and m
 Built: cached re-measurement skips generated backups; previous artifacts retain accepted hashes; cues artifact names include burn; committed restart retires stale backups without restoring; caption restore holds the captions writer lock. Cue-time errors name cue times, raster bounds use intervals, and the production compositor binds supplied caption rasters. [Contract and recovery flow](rendering-captions.md).
 ### Seam 2g: bound sound, built for native wide arc/draft ([its contract](rendering-sound.md))
 Seam 2h part 3: shot framing built in `framing.crop`, integrated before voice/caption work and checked by mapping, subject coverage and decoded pixels. Face/mouth remain unsupported: the host uses facial landmarks, not fixed source fractions, and this observation contract has only subject boxes.
-
-Seam 2h part 4: pushes built in `pushes.frames`: source-relative phase is `min(1, elapsed_frames / (push.s * fps))`; widths and coordinates round to integers, heights use the framing aspect rule, and crops remain inside the source. Endpoint subject unions cover the full span plus this occurrence's outgoing J-cut hold; cold opens/selected pieces retain phase, but can have different endpoints if that hold changes the union. At/after the duration the target holds; a shorter span ends mid-move, and a subframe push reaches its target on the next frame. Equal consecutive crops share a run; mapping rederives every run and pixels verifies its bound dimensions against the decoded source. Hidden/patch pushes, contradictory push entries, missing/invalid targets or durations, face/mouth geometry, retime/speed/grade refuse by name.
+Seam 2h part 4: pushes built in `pushes.frames`: source-relative phase is `min(1, elapsed_frames / (push.s * fps))`; widths and coordinates round to integers, heights use the framing aspect rule, and crops remain inside the source. Endpoint subject unions cover the full span plus this occurrence's outgoing J-cut hold; cold opens/selected pieces retain phase, but can have different endpoints if that hold changes the union. At/after the duration the target holds; a shorter span ends mid-move, and a subframe push reaches its target on the next frame. Equal consecutive crops share a run; mapping rederives every run and pixels verifies its bound dimensions against the decoded source. Hidden/patch pushes, contradictory push entries, missing/invalid targets or durations, face/mouth geometry and grades refuse by name. Retiming is limited to the speechless expressions below.
 Seam 2h part 5: source-rate conversion built; see [source clocks and sampling](rendering-source-rate.md).
-Seam 2h next: retiming and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
+Seam 2h part 6: [approved expression retiming](rendering-retime.md) built: exact rational speed, per-output source indices, decoded picture proof and a local silent voice clock; speech retiming and outgoing retimed J-cut holds refuse. Published native records retain the planned duration for caption identity; decoded duration remains in readings.
+Seam 2h next: color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
 Missing/differing source color, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
