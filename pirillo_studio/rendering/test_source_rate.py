@@ -32,7 +32,7 @@ class SourceRate(unittest.TestCase):
             f'nullsrc=size=160x90:rate={rate}', '-f', 'lavfi', '-i',
             'sine=frequency=440:sample_rate=48000', '-t', str(seconds),
             '-vf', filters, '-af', 'volume=0.5', '-fps_mode', 'vfr' if variable else 'passthrough',
-            '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', '-colorspace', 'bt709',
+            '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', *test_compositor.COLOR_TAGS,
             '-c:a', 'aac', str(path)], check=True, capture_output=True)
         self.case.v.preflight['source_sha256'] = filehash(path)
         self.case.cut['spans'][0]['shot'] = 'wide'
@@ -128,7 +128,8 @@ class SourceRate(unittest.TestCase):
         real = decoded.probe
         def probe(path, entries):
             raw = copy.deepcopy(real(path, entries))
-            if str(path).endswith('source.mp4') and '-show_frames' in entries:
+            if (str(path).endswith('source.mp4') and '-show_frames' in entries
+                    and any('r_frame_rate' in entry for entry in entries)):
                 change(raw)
             return raw
         return patch.object(decoded, 'probe', side_effect=probe)
@@ -331,3 +332,150 @@ class Retiming(unittest.TestCase):
         self.assertEqual(recovered['request']['picture_map'][1]['source_indices'], [18, 24, 30, 36])
         self.assertEqual(len(self.rgb(self.case.folder / recovered['file'])), 22)
         self.assertEqual(self.case.accepted()['key'], recovered['key'])
+
+
+class ColorConversion(unittest.TestCase):
+    """e2e: Draft/draft.mp4 converts decoded BT.601/range with independent RGB proof."""
+
+    setUpClass = classmethod(lambda cls: test_compositor.Compositor.setUpClass())
+    setUp = SourceRate.setUp
+
+    def source(self, standard='smpte170m', level='tv', transfer=None):
+        path = self.case.folder / 'source.mp4'
+        transfer = standard if transfer is None else transfer
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i',
+            'testsrc=size=160x90:rate=30', '-f', 'lavfi', '-i',
+            'sine=frequency=440:sample_rate=48000', '-t', '1', '-af', 'volume=0.5',
+            '-vf', 'format=yuv444p,lutyuv=y=val*0.5+64:u=val*0.5+64:v=val*0.5+64',
+            '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv444p',
+            '-x264-params', f'colorprim={standard}:transfer={transfer}:colormatrix={standard}',
+            '-color_range', level, '-c:a', 'aac', str(path)], check=True, capture_output=True)
+        self.case.v.preflight['source_sha256'] = filehash(path)
+        self.case.cut['spans'][0]['shot'] = 'wide'
+        self.case.save_cut()
+        return path
+
+    def planes(self, path):
+        return subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-map', '0:v:0',
+            '-an', '-c:v', 'rawvideo', '-fps_mode', 'passthrough', '-f', 'rawvideo', 'pipe:1'],
+            check=True, capture_output=True).stdout
+
+    @staticmethod
+    def rgb(y, u, v, matrix, level):
+        y = (y - 16) / 219 if level == 'tv' else y / 255
+        u, v = [(c - 128) / (224 if level == 'tv' else 255) for c in (u, v)]
+        kr, kb = (.2126, .0722) if matrix == 'bt709' else (.299, .114)
+        return [y + 2*(1-kr)*v, y - 2*kb*(1-kb)/(1-kr-kb)*u - 2*kr*(1-kr)/(1-kr-kb)*v,
+                y + 2*(1-kb)*u]
+
+    def delivered(self, standard, level, output='tv'):
+        path = self.source(standard, level)
+        self.case.settings['shared']['video'].update(color_range=output,
+            pix_fmt='yuv444p' if output == 'tv' else 'yuvj444p')
+        result = self.case.accepted()
+        req = result['request']
+        source, target = self.planes(path), self.planes(self.case.folder / result['file'])
+        indices = [i for row in req['picture_map'] for i in row['source_indices']]
+        self.assertEqual(len(target), len(indices)*160*90*3)
+        matrices = {'bt709': ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+            'smpte170m': ((.939542064, .050181357, .010276579), (.017772223, .965792862, .016434914),
+                         (-.0016216, -.00436975, 1.00599135)),
+            'bt470bg': ((1.044043209, -.044043209, 0), (0, 1, 0), (0, .011793378, .988206622))}
+        peak = 0
+        for frame, index in enumerate(indices):
+            for x in (12, 32, 52, 72, 92, 112, 132, 152):
+                p = 45*160+x
+                values = [source[index*43200 + c*14400+p] for c in range(3)]
+                rgb = self.rgb(*values, standard, level)
+                linear = [v**2.8 if standard == 'bt470bg' else
+                          v/4.5 if v < .081 else ((v+.099)/1.099)**(1/.45) for v in rgb]
+                linear = [sum(a*b for a, b in zip(row, linear)) for row in matrices[standard]]
+                expected = [4.5*v if v < .018 else 1.099*v**.45-.099 for v in linear]
+                actual = self.rgb(*(target[frame*43200 + c*14400+p] for c in range(3)), 'bt709', output)
+                peak = max(peak, *(abs(a-b)*255 for a, b in zip(actual, expected)))
+        self.assertLessEqual(peak, 3)
+        reading = self.case.get(result['readings'])
+        self.assertTrue(reading['checks']['color']['ok'], reading['checks']['color'])
+        self.assertEqual(reading['checks']['color']['coverage']['frames'], len(indices))
+        print('COLOR_OUTPUT ' + json.dumps({'input': standard, 'range': level, 'output_range': output,
+            'frames': len(indices), 'independent_rgb_peak_error': peak, 'sha256': result['file_sha256']}), flush=True)
+        return result
+
+    def test_bt601_and_ranges_have_independent_decoded_rgb_proof(self):
+        for standard in ('smpte170m', 'bt470bg', 'bt709'):
+            for level in ('tv', 'pc'):
+                with self.subTest(standard=standard, level=level):
+                    self.delivered(standard, level)
+        self.delivered('smpte170m', 'tv', 'pc')
+
+    def test_ambiguous_decoded_colors_and_hdr_refuse_by_name(self):
+        self.source()
+        probe = decoded.probe
+        for defect, message in [('missing', 'color_primaries'), ('unknown', 'color_transfer'),
+                                ('nonfinite', 'color_space'), ('mixed', 'mixed.*color'),
+                                ('declared', 'declared.*color'), ('pq', 'HDR.*tone'), ('hlg', 'HDR.*tone')]:
+            with self.subTest(defect=defect):
+                def altered(path, args):
+                    raw = probe(path, args)
+                    if '-show_frames' in args and raw.get('frames'):
+                        frames = [r for r in raw['frames'] if r.get('media_type', 'video') == 'video']
+                        if defect == 'missing':
+                            frames[0].pop('color_primaries', None)
+                        elif defect == 'unknown':
+                            frames[0]['color_transfer'] = 'unknown'
+                        elif defect == 'nonfinite':
+                            frames[0]['color_space'] = float('nan')
+                        elif defect == 'mixed':
+                            frames[-1]['color_range'] = 'pc'
+                        elif defect == 'declared':
+                            raw['streams'][0]['color_range'] = 'pc'
+                        else:
+                            frames[0]['color_transfer'] = 'smpte2084' if defect == 'pq' else 'arib-std-b67'
+                    return raw
+                with patch.object(decoded, 'probe', side_effect=altered), self.assertRaisesRegex(SpineError, message):
+                    request.resolve(self.case.v, 'draft', 'draft')
+
+    def test_color_binding_cache_identity_and_recovery(self):
+        from . import records
+        from .render import render
+        from .test_rendering import PowerLoss
+        path = self.source()
+        probe, calls = decoded.probe, []
+        def counted(path, args):
+            if '-show_frames' in args and any('color_primaries' in arg for arg in args):
+                calls.append(str(path))
+                if len(calls) == 1:
+                    raw = probe(path, args)
+                    raw['frames'][0].pop('color_range')
+                    return raw
+            return probe(path, args)
+        with patch.object(decoded, 'probe', side_effect=counted):
+            with self.assertRaisesRegex(SpineError, 'color_range'):
+                request.resolve(self.case.v, 'draft', 'draft')
+            first = request.resolve(self.case.v, 'draft', 'draft')
+            request.resolve(self.case.v, 'draft', 'draft')
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(first['picture_map'][0]['color_conversion']['input']['color_space'], 'smpte170m')
+        result = self.case.accepted()
+        wrong = copy.deepcopy(result['request'])
+        wrong['picture_map'][0].pop('color_conversion')
+        with self.assertRaisesRegex(SpineError, 'color.*binding'):
+            pixels.compare(self.case.v, wrong, self.case.folder / result['file'])
+        self.source('bt470bg')
+        with self.assertRaisesRegex(SpineError, 'stale|unbound'):
+            pixels.compare(self.case.v, result['request'], self.case.folder / result['file'])
+        write = records.write
+        def crash(video, name, value):
+            if name == 'records/render/draft.json' and value['state'] == 'waiting_owner':
+                raise PowerLoss()
+            return write(video, name, value)
+        with patch.object(records, 'write', side_effect=crash), self.assertRaises(PowerLoss):
+            render(self.case.v, 'draft')
+        recovered = self.case.accepted()
+        self.assertNotEqual(result['key'], recovered['key'])
+        alias = self.case.folder / 'alias.mp4'
+        alias.symlink_to(path)
+        wrong = copy.deepcopy(recovered['request'])
+        wrong['picture_map'][0]['asset']['file'] = 'alias.mp4'
+        with self.assertRaises(SpineError):
+            pixels.compare(self.case.v, wrong, self.case.folder / recovered['file'])

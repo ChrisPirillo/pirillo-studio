@@ -13,6 +13,9 @@ from .render import Video, render
 from .test_rendering import Fixture, PowerLoss
 
 
+COLOR_TAGS = ['-color_range', 'tv', '-x264-params', 'colorprim=bt709:transfer=bt709:colormatrix=bt709']
+
+
 class Compositor(Fixture):
     """e2e: Draft/draft.mp4, prepared voice and caption sidecar on separate picture/voice clocks."""
 
@@ -23,13 +26,16 @@ class Compositor(Fixture):
             subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'testsrc=size=160x90:rate=30',
                 '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '1',
                 '-af', 'volume=0.5', '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p',
-                '-colorspace', 'bt709', '-c:a', 'aac', str(path)], check=True, capture_output=True)
+                *COLOR_TAGS, '-c:a', 'aac', str(path)], check=True, capture_output=True)
             cls.media = path.read_bytes()
 
     def setUp(self):
         super().setUp()
         self.addCleanup(compositor._RATES.clear)
         compositor._RATES.clear()
+        colors = patch.object(compositor, '_COLORS', {}, create=True)
+        colors.start()
+        self.addCleanup(colors.stop)
         self.cut['cold_open'] = None
         self.settings['shared']['video']['sizes']['wide'] = [160, 90]
         self.settings['shared']['encoder']['crf'] = 0
@@ -141,7 +147,7 @@ class Compositor(Fixture):
         subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=48000',
                         '-t', '0.3', '-af', 'volume=0.5', '-c:a', 'pcm_s16le', str(patch_audio)], check=True, capture_output=True)
         subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=blue:size=160x90:rate=30',
-                        '-frames:v', '1', '-c:v', 'libx264', '-crf', '0', '-colorspace', 'bt709', str(self.folder / 'cover.mp4')],
+                        '-frames:v', '1', '-c:v', 'libx264', '-crf', '0', *COLOR_TAGS, str(self.folder / 'cover.mp4')],
                        check=True, capture_output=True)
         self.put('records/patches/p.json', {'audio': 'patch.wav', 'duration_s': .3, 'sample_rate': 48000,
             'sample_count': 14400, 'words': [{'id': 'p1', 'text': 'Patch.', 'start': .05, 'end': .25, 'flags': ['held']}]})

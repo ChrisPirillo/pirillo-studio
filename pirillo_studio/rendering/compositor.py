@@ -9,7 +9,7 @@ from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, decoded, framing, mapping, mix, pixels, pushes, raster, records, source_rate
+from . import clocks, color, decoded, framing, mapping, mix, pixels, pushes, raster, records, source_rate
 
 
 def caption_identity(video):
@@ -26,6 +26,7 @@ def caption_identity(video):
 
 names = records.artifact_names
 _RATES = {}  # source sha256 -> (tolerance, rate); only successful clock proofs are kept
+_COLORS = {}  # asset sha256 -> decoded color; source and opaque covers share the proof
 _PROBING = threading.Lock()  # request resolution precedes output locks
 
 
@@ -59,9 +60,14 @@ def prepare(video, req):
         row['asset'] = {'file': name, 'sha256': req['inputs'][name]}
         path = records.path(video, name)
         stream = decoded.probe(path, ['-select_streams', 'v:0', '-show_streams'])['streams'][0]
-        if stream.get('color_space') != req['settings']['video']['color_space']:
-            raise SpineError('compositor: missing or differing source color matrix; conversion unsupported (seam 2h)')
+        with _PROBING:
+            digest = row['asset']['sha256']
+            if digest not in _COLORS:
+                _COLORS[digest] = color.inspect(path)
+            row['color_conversion'] = color.binding(_COLORS[digest], req['settings']['video'])
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
+        if row['color_conversion']['input'] != row['color_conversion']['output'] and any(n % 2 for n in size):
+            raise SpineError('color: conversion requires even source dimensions')
         span = spans[row['span']]
         if span['enter'] == 'push':
             resolved.extend(pushes.frames(req, span, row, size))
@@ -175,6 +181,7 @@ def encode(video, req, path):
             filters = source_rate.filters(req, row)
         if row['kind'] == 'cover':
             filters += f',loop=loop={count - 1}:size=1:start=0'
+        filters += ',' + color.filters(row['color_conversion'])
         filters += f',crop={w}:{h}:{x}:{y}:exact=1,scale={width}:{height}:flags=bilinear'
         # Fix scaling's format before concat can negotiate a different chroma path.
         filters += ',format=' + ('rgb24' if caption['burn'] is not None else settings['video']['pix_fmt'])

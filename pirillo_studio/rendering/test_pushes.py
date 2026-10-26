@@ -62,7 +62,7 @@ class Pushes(unittest.TestCase):
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i',
             'testsrc=size=160x90:rate=30', '-f', 'lavfi', '-i',
             'sine=frequency=440:sample_rate=48000', '-t', '5', '-af', 'volume=0.5',
-            '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', '-colorspace', 'bt709',
+            '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', *test_compositor.COLOR_TAGS,
             '-c:a', 'aac', str(path)], check=True, capture_output=True)
         self.case.v.preflight['source_sha256'] = filehash(path)
         self.span.update(src=[0, 5], push={'to': 'close', 's': 5})

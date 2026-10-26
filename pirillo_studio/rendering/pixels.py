@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from ..spine.files import filehash
-from . import decoded, mapping, records, source_rate
+from . import color, decoded, mapping, records, source_rate
 
 
 def integer(value, name, minimum=0):
@@ -19,10 +19,12 @@ def integer(value, name, minimum=0):
     return value
 
 
-def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=False, seeks=None, stream=None):
+def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=False, seeks=None, stream=None, conversion=None):
     entries = ['-select_streams', 'v:0', '-show_streams']
     if fps is not None or frames_required is not None:
-        entries += ['-show_frames', '-show_entries', 'stream=width,height,pix_fmt,avg_frame_rate,r_frame_rate,time_base:frame=pts,duration']
+        colors = ','.join(color.FIELDS)
+        entries += ['-show_frames', '-show_entries',
+                    f'stream=width,height,pix_fmt,avg_frame_rate,r_frame_rate,time_base,{colors}:frame=pts,duration,{colors}']
     raw = decoded.probe(path, entries)
     streams = raw['streams']
     if len(streams) != 1:
@@ -42,6 +44,8 @@ def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=Fa
             if points and points[0] >= points[1]:
                 decoded.refuse('frame-map', 'verification.complete_decode', 'unordered frame timestamps')
             seeks[index] = str(float(sum(points) / 2)) if points else None
+    if conversion is not None and color.validate(raw) != conversion['input']:
+        decoded.refuse('color', 'video', 'decoded source differs from color binding')
     if fps is not None and source_rate.clock(raw, tolerance) != source_rate.rate(fps):
         decoded.refuse('source rate', 'video.fps', 'decoded source rate differs from bound rate')
     return [integer(streams[0][key], key, 1) for key in ('width', 'height')]
@@ -69,6 +73,8 @@ def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, ras
     filters = [f'trim=end_frame={source_count}', f'crop={w}:{h}:{x}:{y}:exact=1', scaled]
     if selection is not None:
         filters[0] = selection
+    if 'color_conversion' in row:
+        filters.insert(1, color.filters(row['color_conversion']))
     if row['kind'] == 'cover' and source_count == 1:
         filters.append(f'loop=loop={count - 1}:size=1:start=0')
     graph = [f'[0:v:0]trim=end_frame={count},{rgb},{clock}[actual]',
@@ -117,6 +123,12 @@ def _asset(video, req, row, verified):
     path = records.path(video, asset['file'])
     if not asset['sha256'] or req['inputs'].get(asset['file']) != asset['sha256'] or filehash(path) != asset['sha256']:
         decoded.refuse('frame-map', 'verification.complete_decode', f"stale or unbound asset: {asset['file']}")
+    conversion = row.get('color_conversion')
+    if 'source_rate' in req or conversion is not None:
+        if (not isinstance(conversion, dict) or set(conversion) != {'input', 'output'}
+                or not isinstance(conversion['input'], dict)
+                or conversion != color.binding(conversion['input'], req['settings']['video'])):
+            decoded.refuse('color', 'video', 'missing or invalid color conversion binding')
     key = (asset['file'], row['kind'])
     if key not in verified:
         needed = max(r['source_frames'][1] for r in mapping.pictures(req) if r['asset']['file'] == asset['file'])
@@ -124,8 +136,10 @@ def _asset(video, req, row, verified):
         converted = row['kind'] == 'source' and 'source_rate' in req
         fps = req['source_rate'] if converted else req['settings']['video']['fps']
         size = dimensions(path, fps if row['kind'] == 'source' else None,
-                          req['settings']['measurement']['grid_tolerance_s'], frames_required=needed, seeks=seeks)
-        verified[key] = {'size': size, 'seeks': seeks}
+                          req['settings']['measurement']['grid_tolerance_s'], frames_required=needed, seeks=seeks, conversion=conversion)
+        verified[key] = {'size': size, 'seeks': seeks, 'conversion': conversion}
+    if verified[key]['conversion'] != conversion:
+        decoded.refuse('color', 'video', 'inconsistent asset color binding')
     size = verified[key]['size']
     if 'source_size' in row and row['source_size'] != list(size):
         decoded.refuse('frame-map', 'measurement', 'source_size differs from decoded asset')

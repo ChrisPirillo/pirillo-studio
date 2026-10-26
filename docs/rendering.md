@@ -269,8 +269,9 @@ Seam 2h part 3: shot framing built in `framing.crop`, integrated before voice/ca
 Seam 2h part 4: pushes built in `pushes.frames`: source-relative phase is `min(1, elapsed_frames / (push.s * fps))`; widths and coordinates round to integers, heights use the framing aspect rule, and crops remain inside the source. Endpoint subject unions cover the full span plus this occurrence's outgoing J-cut hold; cold opens/selected pieces retain phase, but can have different endpoints if that hold changes the union. At/after the duration the target holds; a shorter span ends mid-move, and a subframe push reaches its target on the next frame. Equal consecutive crops share a run; mapping rederives every run and pixels verifies its bound dimensions against the decoded source. Hidden/patch pushes, contradictory push entries, missing/invalid targets or durations, face/mouth geometry and grades refuse by name. Retiming is limited to the speechless expressions below.
 Seam 2h part 5: source-rate conversion built; see [source clocks and sampling](rendering-source-rate.md).
 Seam 2h part 6: [approved expression retiming](rendering-retime.md) built: exact rational speed, per-output source indices, decoded picture proof and a local silent voice clock; speech retiming and outgoing retimed J-cut holds refuse. Published native records retain the planned duration for caption identity; decoded duration remains in readings.
-Seam 2h next: color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
-Missing/differing source color, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
+Seam 2h part 7: [decoded color conversion](rendering-color.md) built: BT.601 and range conversion to BT.709, hash-bound decoded color, per-frame source and output proof; unknown, HDR, mixed and disagreeing descriptions refuse.
+Seam 2h next: grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
+Missing/unsupported or ambiguous source color, HDR needing tone mapping, grades, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
 |---|---|---|
@@ -283,8 +284,7 @@ Missing/differing source color, ASS-only burns, unbound/stale rasters, missing a
 
 Each call refuses missing, unsafe or contradictory inputs by name. No implicit encoder, target, frame rate or
 recipe fallback. The engine owns preflight blocks and decision tasks, with their spine/Board states; this domain
-owns only the states in section 3. A tool failure identifies the step and stderr; an unavailable measurement
-refuses with its reading and required tool. `ok` is true only for a checked delivered result, not for waiting.
+owns only the states in section 3. A tool failure identifies the step and stderr; an unavailable measurement refuses with its reading and required tool. `ok` is true only for a checked delivered result, not for waiting.
 
 Render to a unique sibling work file on the destination volume, close it, measure it and check the current input
 hashes again before atomic rename. Commit the hash-bound record last. Readers require both matching record and
