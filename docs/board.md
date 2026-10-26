@@ -256,7 +256,33 @@ Story's inverse uses `story_pick(converted_to, None)` from the action receipt: i
 receipt and pick only, preserves the brief, and refuses once the post is on the Board. Conversion or
 Want is acted across days from its durable receipt; Skip and let-go receipts are done. A saved idea stays shown in the Bank, including a previously skipped idea;
 conversion takes precedence. Poll and tip ideas remain facets of their posts, not extra cards; the Posts reader now covers those
-facets (seam 9). Vault options are next, then tasks. `test_ideas.py` checks the shared read and coverage paths.
+facets (seam 9). Vault options have their own reader (seam 10); tasks are next. `test_ideas.py` checks the shared read and coverage paths.
+
+### Vault options reader (seam 10)
+
+`board/vault.py` follows the shared reader flowchart above. One host adapter inventories ledger options by day
+and number, coalesces their next5 brief aliases, and preserves generated storypost relations. Brief positions
+supply option numbers; a ledger option owns its retained words and decisions. Current briefs take precedence
+over the same day's archive. Brief-only options remain held until the host's intake writer records them.
+`describe` supplies `what`, `why`, `words` (all platform copy), `file` (still path/URL or null), `state`,
+`deadline` (UTC or null), `converted_to` (post source key or null), `filed_by`, `related`, and optional
+`content_identity` and `history`. The host retains legacy card picks and sibling closure, validates conversion
+identities, and gives dated options their next local midnight deadline; rolling weekend options have none.
+
+Each option is a revision-bound `vault option` task with served copy and still parts. Want declares
+`ok_from_board(ids=[key])`; Skip declares `weekend_change(vid=key, action="remove")`. The opaque schedule,
+earlier, later, save, move and remove verbs declare the same option writer and their corresponding action.
+Values and dispatch validation belong to the API seam. These declarations neither execute nor authorize writers.
+Want and schedule already approve the generated posts: a picked or converted option is acted, relates to its
+storypost task and has no further approval actions. Removed, skipped and expired options remain terminal history.
+
+The existing option writers have no genuine inverse. Save loses distinct platform words; moving or swapping
+queue slots can affect other options, sweep can change more records, and an edge swap can be a no-op. Every
+option action therefore declares `undo.writer: null` and a named unmet restoration writer, never a misleading
+opposite action. `read` refuses partial coverage; `coverage` names every unplaced option. Captured media identities
+can replace filesystem reads during copied-source coverage; missing active media remains named and unplaced.
+`test_vault.py` checks serialized tasks, revisions, conversion, writer declarations, deadlines and refusals.
+Next: tasks; the API and page follow.
 
 ## 4. API and writer boundary
 
