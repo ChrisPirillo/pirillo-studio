@@ -7,7 +7,7 @@ FIELDS = ('color_primaries', 'color_transfer', 'color_space', 'color_range')
 def description(value):
     result = {key: value.get(key) for key in FIELDS}
     if result['color_transfer'] in ('smpte2084', 'arib-std-b67'):
-        decoded.refuse('color', 'video', 'HDR transfer requires tone mapping; grades unsupported')
+        decoded.refuse('color', 'video', 'HDR transfer requires tone mapping (next grade seam)')
     for key, item in result.items():
         supported = ('tv', 'pc') if key == 'color_range' else ('bt709', 'smpte170m', 'bt470bg')
         if item not in supported:

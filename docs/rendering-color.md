@@ -19,7 +19,7 @@ leave pixels untouched. Covers use the same binding. Odd-sized conversions refus
 by name because this filter requires even dimensions. Unknown/unspecified values,
 mixed frame colors, decoded/declared disagreement and unsupported profiles refuse.
 PQ (`smpte2084`) and HLG (`arib-std-b67`) refuse as HDR requiring tone mapping.
-Grades and tone mapping remain outside this seam and refuse.
+Declared SDR grades follow [rendering-grade.md](rendering-grade.md); HDR tone mapping still refuses.
 
 Pixel verification rechecks decoded source color against the binding and applies its
 conversion before comparison. The existing `color` frame check verifies output tags,

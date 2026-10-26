@@ -94,6 +94,9 @@ def validate(req):
             if any(row.get(k) != wanted[k] for k in ('crop', 'source_size')):
                 raise SpineError(f"push: {row['span']}: crop or source_size differs from approved movement")
         rectangle(row['crop'], 'frame-map crop')
+        from . import grade
+        if row.get('grade') != grade.binding(req, row):
+            raise SpineError('grade: missing or contradictory picture binding')
         asset = row['asset']
         if spans[row['span']].get('hide_picture') is True:
             cards = [c for c in req['cards_data']['cards']

@@ -6,9 +6,9 @@ from pathlib import Path
 
 from ..cutting import checks, plan as cutting
 from ..spine.files import SpineError, canon, digest, inside, load, safe
-from . import records
+from . import grade, records
 
-RENDERER_VERSION = "rendering-2h-7"
+RENDERER_VERSION = "rendering-2h-8"
 _OUTPUTS = {"arc": ("arc", "Draft/arc.mp4"), "draft": ("draft", "Draft/draft.mp4"),
             "long": ("masters", "YouTube/main.mp4"), "vertical": ("masters", "Vertical/main.mp4")}
 _PATH_FIELDS = {"file", "path", "record", "asset", "stem", "audio", "image", "font", "lut", "source", "voice"}
@@ -265,7 +265,9 @@ def _resolve(video, stage, output):
                 result['patches'][patch_name] = patch
                 if not any(isinstance(patch.get(k), str) for k in ("audio", "file", "path")):
                     raise SpineError(f"{patch_name}: missing actual patch audio path")
-        identity["plan"] = inputs.normalize({k: settled[k] for k in ("spans", "cold_open", "end_hold_s")})
+        grade.resolve(video, result, inputs, job)
+        identity["plan"] = inputs.normalize({**{k: settled[k] for k in ("cold_open", "end_hold_s")},
+            "spans": [{k: v for k, v in span.items() if k != "grade"} for span in settled["spans"]]})
         identity["words"], identity["selected"] = inputs.normalize(rows), inputs.normalize(selected)
         for label, name in (("cards", "records/overlay_plan.json"), ("bed", "records/bed.json"),
                             ("faces", "records/faces.json")):

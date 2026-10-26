@@ -1,0 +1,53 @@
+# Approved SDR grades
+
+Seam 2h part 8 applies declared transforms, never an automatic exposure decision.
+`records/job.json.grade` is an optional finish: `{decision, source_sha256, lut,
+parameters, sha256}`. `lut` is `{file, sha256}`, a relative, nonsymlink .cube with
+unit domain and tetrahedral interpolation. Parameters are `skin_target`, `knee`,
+`max_stop`, `n`; they must match `rendering/settings.json shared.grade` (unset by
+default), and `n` must match the cube size. These record the approved LUT's recipe;
+the core applies its supplied bytes, it does not solve skin exposure or create LUTs.
+
+A plan span's optional `grade` is `{decision, source_sha256, parameters, sha256}`.
+Parameters are `exposure: [start, end]` in stops, `contrast: [start, end]`, and
+`space: "rgb" | "luma"`. Its approval payload also includes the owning span's `src`.
+For both forms, `decision` must be exactly `approve`, and `sha256` is the canonical
+JSON digest of all fields except `decision` and `sha256`. It binds the source hash,
+LUT bytes and parameters, preventing stale approval after an edit. Missing, unbound,
+non-finite, contradictory or unsupported inputs refuse by name. Removing the
+optional grade removes the transform on the next render; the existing accepted
+artifact recovery owns rollback after failed or interrupted replacement.
+
+Order: explicit SDR color conversion, finish LUT, local correction, crop/scale,
+caption composite, output matrix/range conversion and frame tags. Local exposure is
+linear between the approved span edges at the selected decoded source instant,
+clamped at its endpoints for outgoing holds. The host's endpoint-preserving curve
+is `clip(contrast * (signal - .5) + .5, 0, 1) ** (1 - exposure / 2.4)`;
+RGB applies it per channel; luma applies it to expanded Y and preserves chroma.
+No ease, saturation or overlapping separate corrections are inferred. Unsupported
+parameters refuse. Picture bindings carry the same transform in every occurrence,
+including selected pieces, retiming and pushes in wide outputs; covers are unchanged.
+Native tall drafts remain refused, including graded spans; tall grading with native
+tall crops requires its own geometry and decoded proof.
+Custom encoders without `prepare` refuse grades on selected source spans or finishes;
+preparation must bind every applied transform before its output identity is accepted.
+Only selected local grades enter the output identity. Finish grades affect outputs
+showing source. Generated artifacts retain the existing transactional lifecycle.
+
+Synthetic contracts decode every frame independently to RGB and evaluate an affine
+cube and the exposure curve in Python, allowing 5/255 per channel in flat interiors
+for YUV/filter quantization. Every delivered frame's tags are checked separately.
+Pixel correspondence revalidates approval, inputs and row bindings before decoding.
+PQ/HLG tone mapping and the skin/gain solver remain a named refusal and the next
+part; native master correspondence/composition remains the existing later seam.
+
+```mermaid
+flowchart LR
+  A[Resolve approved grade and input hashes] --> B{Binding and parameters valid?}
+  B -->|no| R[Refuse by name]
+  B -->|yes| C[Bind selected picture transforms]
+  C --> D[Render through existing atomic lifecycle]
+  D --> E{Decoded pixels and frame tags pass?}
+  E -->|no or interrupted| F[Preserve or restore accepted artifacts]
+  E -->|yes| G[Commit measured output]
+```

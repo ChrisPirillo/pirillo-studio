@@ -33,9 +33,8 @@ class Compositor(Fixture):
         super().setUp()
         self.addCleanup(compositor._RATES.clear)
         compositor._RATES.clear()
-        colors = patch.object(compositor, '_COLORS', {}, create=True)
-        colors.start()
-        self.addCleanup(colors.stop)
+        self.addCleanup(compositor._COLORS.clear)
+        compositor._COLORS.clear()
         self.cut['cold_open'] = None
         self.settings['shared']['video']['sizes']['wide'] = [160, 90]
         self.settings['shared']['encoder']['crf'] = 0

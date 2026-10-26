@@ -40,13 +40,14 @@ The production compositor accepts a caption record with `raster: {file, sha256, 
 that record has a burn. A provider adds the burn and raster metadata to the current caption record after
 initial sidecar generation; it preserves the caption key and supplies matching file hashes. Re-rendering
 binds this asset as `caption_binding.raster`, overlays the raster
-and verifies the delivered composite. It does not generate glyph pixels from ASS. Native tall/master
-composition remains deferred. Missing raster data or stale identity refuses by name. Publication and
+and verifies the delivered composite. It does not generate glyph pixels from ASS. Native tall composition,
+including graded spans, burns and crops/cards, and master composition remain refused.
+Missing raster data or stale identity refuses by name. Publication and
 reuse revalidate the generated caption record plus its referenced burn/raster bytes before accepting them.
 
 Seam 2h owns pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context
 and their raster edges/safe bounds, split-clock master correspondence,
-and native tall/master composition. Missing/differing source color matrices, ASS-only burns and missing
+and remaining native tall/master composition. Missing/differing source color matrices, ASS-only burns and missing
 bed evidence still refuse. Text-only cover cards require a resolved raster asset. Partial patch excerpts/cold
 opens, J-cuts into or after hidden picture, and excerpt J-cuts without the settled predecessor still refuse.
 Default profiles retain every required check; this seam does not claim complete plain-recipe delivery.

@@ -1,7 +1,7 @@
 """Compare every delivered frame with its bound full-frame source or opaque cover.
 
 FFmpeg subtracts RGB planes; records retain per-frame measured evidence.
-Arbitrary grades, transparent overlays and animated transforms require a different binding.
+Declared grades share the bound transform; other overlays require their own binding.
 """
 import contextlib
 import shutil
@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from ..spine.files import filehash
-from . import color, decoded, mapping, records, source_rate
+from . import color, decoded, grade, mapping, records, source_rate
 
 
 def integer(value, name, minimum=0):
@@ -51,7 +51,7 @@ def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=Fa
     return [integer(streams[0][key], key, 1) for key in ('width', 'height')]
 
 
-def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, raster=None, selection=None):
+def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, raster=None, selection=None, transform=None):
     """Yield one span's absolute RGB differences; only a declared cover may repeat."""
     width, height = [integer(value, 'pixel size', 1) for value in size]
     executable = shutil.which('ffmpeg')
@@ -75,6 +75,8 @@ def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, ras
         filters[0] = selection
     if 'color_conversion' in row:
         filters.insert(1, color.filters(row['color_conversion']))
+    if transform is not None:
+        filters.insert(2, transform)
     if row['kind'] == 'cover' and source_count == 1:
         filters.append(f'loop=loop={count - 1}:size=1:start=0')
     graph = [f'[0:v:0]trim=end_frame={count},{rgb},{clock}[actual]',
@@ -119,16 +121,16 @@ def read_frames(args, length, reading):
 
 
 def _asset(video, req, row, verified):
+    grade.validate(video, req, row)
     asset = row['asset']
     path = records.path(video, asset['file'])
     if not asset['sha256'] or req['inputs'].get(asset['file']) != asset['sha256'] or filehash(path) != asset['sha256']:
         decoded.refuse('frame-map', 'verification.complete_decode', f"stale or unbound asset: {asset['file']}")
     conversion = row.get('color_conversion')
-    if 'source_rate' in req or conversion is not None:
-        if (not isinstance(conversion, dict) or set(conversion) != {'input', 'output'}
-                or not isinstance(conversion['input'], dict)
-                or conversion != color.binding(conversion['input'], req['settings']['video'])):
-            decoded.refuse('color', 'video', 'missing or invalid color conversion binding')
+    if (not isinstance(conversion, dict) or set(conversion) != {'input', 'output'}
+            or not isinstance(conversion['input'], dict)
+            or conversion != color.binding(conversion['input'], req['settings']['video'])):
+        decoded.refuse('color', 'video', 'missing or invalid color conversion binding')
     key = (asset['file'], row['kind'])
     if key not in verified:
         needed = max(r['source_frames'][1] for r in mapping.pictures(req) if r['asset']['file'] == asset['file'])
@@ -137,9 +139,7 @@ def _asset(video, req, row, verified):
         fps = req['source_rate'] if converted else req['settings']['video']['fps']
         size = dimensions(path, fps if row['kind'] == 'source' else None,
                           req['settings']['measurement']['grid_tolerance_s'], frames_required=needed, seeks=seeks, conversion=conversion)
-        verified[key] = {'size': size, 'seeks': seeks, 'conversion': conversion}
-    if verified[key]['conversion'] != conversion:
-        decoded.refuse('color', 'video', 'inconsistent asset color binding')
+        verified[key] = {'size': size, 'seeks': seeks}
     size = verified[key]['size']
     if 'source_size' in row and row['source_size'] != list(size):
         decoded.refuse('frame-map', 'measurement', 'source_size differs from decoded asset')
@@ -206,7 +206,7 @@ def _compare(video, req, output_path, *, raster=None):
         hold = row['kind'] == 'cover' and source_end - source_start == 1
         name = row['asset']['file']
         source_seek = verified[(name, row['kind'])]['seeks'][source_start]
-        with contextlib.closing(frames(output, size, reference=assets[name]['path'], row=row,
+        with contextlib.closing(frames(output, size, transform=grade.filters(video, req, row), reference=assets[name]['path'], row=row,
                                        output_seek=seeks[start], source_seek=source_seek,
                                        pix_fmt=stream['pix_fmt'],
                                        **({'selection': source_rate.filters(req, row, seeked=True)}

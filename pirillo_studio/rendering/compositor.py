@@ -9,7 +9,7 @@ from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, color, decoded, framing, mapping, mix, pixels, pushes, raster, records, source_rate
+from . import clocks, color, decoded, framing, grade, mapping, mix, pixels, pushes, raster, records, source_rate
 
 
 def caption_identity(video):
@@ -33,8 +33,6 @@ _PROBING = threading.Lock()  # request resolution precedes output locks
 def prepare(video, req):
     if req['stage'] not in ('arc', 'draft') or req['settings']['shape'] != 'wide':
         raise SpineError('compositor: native masters/tall unsupported (seam 2h)')
-    if 'grade' in req['settings']:
-        raise SpineError('compositor: grades unsupported (seam 2h)')
     if any(c['kind'] != 'cover' for c in req['cards_data']['cards']):
         raise SpineError('compositor: non-cover card raster coverage unsupported')
     tolerance = req['settings']['measurement']['grid_tolerance_s']
@@ -65,6 +63,9 @@ def prepare(video, req):
             if digest not in _COLORS:
                 _COLORS[digest] = color.inspect(path)
             row['color_conversion'] = color.binding(_COLORS[digest], req['settings']['video'])
+        transform = grade.binding(req, row)
+        if transform is not None:
+            row['grade'] = transform
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
         if row['color_conversion']['input'] != row['color_conversion']['output'] and any(n % 2 for n in size):
             raise SpineError('color: conversion requires even source dimensions')
@@ -144,6 +145,8 @@ def bind(video, req, generated):
     req['caption_binding'] = {'record': names(req)[1], 'sha256': generated[names(req)[1]]}
     caption = records.read(video, names(req)[1])
     if caption['burn'] is not None:
+        if req['settings']['shape'] == 'tall':
+            raise SpineError('compositor: native tall caption burns unsupported (seam 2h)')
         supplied = caption.get('raster')
         if not isinstance(supplied, dict):
             raise SpineError('captions: burn requires supplied raster coverage')
@@ -182,6 +185,7 @@ def encode(video, req, path):
         if row['kind'] == 'cover':
             filters += f',loop=loop={count - 1}:size=1:start=0'
         filters += ',' + color.filters(row['color_conversion'])
+        filters += ',' + grade.filters(video, req, row)
         filters += f',crop={w}:{h}:{x}:{y}:exact=1,scale={width}:{height}:flags=bilinear'
         # Fix scaling's format before concat can negotiate a different chroma path.
         filters += ',format=' + ('rgb24' if caption['burn'] is not None else settings['video']['pix_fmt'])

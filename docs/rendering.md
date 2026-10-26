@@ -266,12 +266,13 @@ ASS-only burns, unbound/stale rasters, missing alpha, unsafe raster pixels and m
 Built: cached re-measurement skips generated backups; previous artifacts retain accepted hashes; cues artifact names include burn; committed restart retires stale backups without restoring; caption restore holds the captions writer lock. Cue-time errors name cue times, raster bounds use intervals, and the production compositor binds supplied caption rasters. [Contract and recovery flow](rendering-captions.md).
 ### Seam 2g: bound sound, built for native wide arc/draft ([its contract](rendering-sound.md))
 Seam 2h part 3: shot framing built in `framing.crop`, integrated before voice/caption work and checked by mapping, subject coverage and decoded pixels. Face/mouth remain unsupported: the host uses facial landmarks, not fixed source fractions, and this observation contract has only subject boxes.
-Seam 2h part 4: pushes built in `pushes.frames`: source-relative phase is `min(1, elapsed_frames / (push.s * fps))`; widths and coordinates round to integers, heights use the framing aspect rule, and crops remain inside the source. Endpoint subject unions cover the full span plus this occurrence's outgoing J-cut hold; cold opens/selected pieces retain phase, but can have different endpoints if that hold changes the union. At/after the duration the target holds; a shorter span ends mid-move, and a subframe push reaches its target on the next frame. Equal consecutive crops share a run; mapping rederives every run and pixels verifies its bound dimensions against the decoded source. Hidden/patch pushes, contradictory push entries, missing/invalid targets or durations, face/mouth geometry and grades refuse by name. Retiming is limited to the speechless expressions below.
+Seam 2h part 4: pushes built in `pushes.frames`: source-relative phase is `min(1, elapsed_frames / (push.s * fps))`; widths and coordinates round to integers, heights use the framing aspect rule, and crops remain inside the source. Endpoint subject unions cover the full span plus this occurrence's outgoing J-cut hold; cold opens/selected pieces retain phase, but can have different endpoints if that hold changes the union. At/after the duration the target holds; a shorter span ends mid-move, and a subframe push reaches its target on the next frame. Equal consecutive crops share a run; mapping rederives every run and pixels verifies its bound dimensions against the decoded source. Hidden/patch pushes, contradictory push entries, missing/invalid targets or durations, face/mouth geometry refuse by name. Retiming is limited to the speechless expressions below.
 Seam 2h part 5: source-rate conversion built; see [source clocks and sampling](rendering-source-rate.md).
 Seam 2h part 6: [approved expression retiming](rendering-retime.md) built: exact rational speed, per-output source indices, decoded picture proof and a local silent voice clock; speech retiming and outgoing retimed J-cut holds refuse. Published native records retain the planned duration for caption identity; decoded duration remains in readings.
 Seam 2h part 7: [decoded color conversion](rendering-color.md) built: BT.601 and range conversion to BT.709, hash-bound decoded color, per-frame source and output proof; unknown, HDR, mixed and disagreeing descriptions refuse.
-Seam 2h next: grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
-Missing/unsupported or ambiguous source color, HDR needing tone mapping, grades, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
+Seam 2h part 8: [approved SDR grades](rendering-grade.md) built: hash-bound finish LUT/parameters and local source-span exposure, source-span transforms in wide drafts, selected dependency identity, decoded RGB and every-frame tags; settings own the finish recipe without owner values.
+Seam 2h next: tall grading with native tall crops, HDR tone mapping and exposure solving, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence, native tall crops/cards/burns and master composition.
+Missing/unsupported or ambiguous source color, HDR needing tone mapping, missing/unbound/stale/contradictory grade inputs, grades without adapter preparation, native tall composition (including grades), ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
 |---|---|---|
@@ -282,9 +283,10 @@ Missing/unsupported or ambiguous source color, HDR needing tone mapping, grades,
 | `measure(file) -> readings` | Exact file bytes plus declared plan, caption, subject and actual stem bindings from its record | Hash-bound readings, frame/edge evidence and coverage; never changes media or chooses an edit. |
 | `check(record) -> {ok, state, next_action, detail}` | Current hashes, readings, acceptance settings and approval bindings | No media writes; names file, failed reading, measured value, setting owner and corrective actor. Item 15 uses this same result. |
 
-Each call refuses missing, unsafe or contradictory inputs by name. No implicit encoder, target, frame rate or
-recipe fallback. The engine owns preflight blocks and decision tasks, with their spine/Board states; this domain
-owns only the states in section 3. A tool failure identifies the step and stderr; an unavailable measurement refuses with its reading and required tool. `ok` is true only for a checked delivered result, not for waiting.
+Each call refuses missing, unsafe or contradictory inputs by name; no encoder, target, frame rate or recipe fallback.
+The engine owns preflight blocks and decisions, with their spine/Board states; rendering owns only section 3's states.
+A tool failure identifies the step and stderr; an unavailable measurement refuses with its reading and required tool.
+`ok` is true only for a checked delivered result, not for waiting.
 
 Render to a unique sibling work file on the destination volume, close it, measure it and check the current input
 hashes again before atomic rename. Commit the hash-bound record last. Readers require both matching record and
@@ -469,10 +471,8 @@ domain, never dropped wholesale. Item 17 retains plan/short selection; item 18 r
 retains final verdict/hear-back; item 39 retains release and route code. Shared non-C1 consumers keep only their
 still-needed branch until their recipe switches, not a fallback from the C1 API.
 
-Move the named delivery/encoder/grade/bed/measurement settings to the single core settings owner and delete the
-host's duplicate constants/tables and dated warning switches for replaced paths. Preserve owner overrides as
-injected settings data, not public defaults. Remove recipe-specific render skip lists in favor of spine inputs.
-Once both C1 videos run on the core, remove the switch and old C1 path together. No deletions occur in this seam.
+Keep delivery/encoder/grade/bed/measurement settings in the core owner, with owner overrides injected as data, never public defaults. Delete replaced host constants/tables and dated switches; replace recipe skip lists with spine inputs.
+After both C1 videos run on the core, remove the switch and old C1 path together. This seam deletes no host code.
 
 ## 7. Failings this contract ends
 

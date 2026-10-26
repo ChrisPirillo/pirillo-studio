@@ -1,5 +1,6 @@
 {
   "shared": {
+    "grade": {"skin_target": null, "knee": null, "max_stop": null, "n": null},
     "video": {
       "note": "delivery_spec.json common.video; job.py FPS. Generic delivery format; hosts inject their complete settings.",
       "codec": "h264",

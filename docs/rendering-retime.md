@@ -6,7 +6,7 @@ and non-rational factors refuse by name. Omission keeps the existing normal-spee
 Only speechless `pop` expressions with empty `words`, no overlapping transcript words and no
 patch are supported. A retimed segment with voice refuses; no pitch shifting is built here.
 A J-cut immediately after a retimed expression refuses because its outgoing hold is not built.
-Grades still refuse. The existing approved plan and input hashes bind the factor.
+Declared grades use the sampled source instant; see [rendering-grade.md](rendering-grade.md). The existing approved plan and input hashes bind the factor.
 
 Round source edges to the output-rate source-time grid as before. For those edges `[a,b]`,
 output rate `F`, decoded source rate `R` and exact factor `s`, output length is

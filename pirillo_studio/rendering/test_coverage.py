@@ -8,10 +8,16 @@ from ..spine.files import SpineError, digest, filehash
 from . import coverage, records, request
 from .render import Video, render
 from .test_rendering import Fixture, PowerLoss
+from .test_compositor import COLOR_TAGS
 
 
 class RendererCoverage(Fixture):
     """e2e: Draft/draft.mp4 and its frame-map/coverage record, with lavfi source and real encoding."""
+
+    @classmethod
+    def setUpClass(cls):
+        from .test_compositor import Compositor
+        Compositor.setUpClass.__func__(cls)
 
     def setUp(self):
         super().setUp()
@@ -27,10 +33,11 @@ class RendererCoverage(Fixture):
         self.v.prepare = self.prepare
 
     def prepare(self, req):
-        from . import mapping
+        from . import color, mapping
         rows = mapping.timeline(req)
         for row in rows:
-            row.update(kind='source', asset={'file': req['source'], 'sha256': req['source_sha256']},
+            row.update(color_conversion=color.binding(color.inspect(self.folder / req['source']), req['settings']['video']),
+                       kind='source', asset={'file': req['source'], 'sha256': req['source_sha256']},
                        crop=[55, 0, 50, 90] if req['settings']['shape'] == 'tall' else [0, 0, 160, 90])
         return {'frame_map': rows, 'elements': []}
 
@@ -48,7 +55,7 @@ class RendererCoverage(Fixture):
         graph.append(''.join(joins) + f'concat=n={len(joins)}:v=1:a=1[v][a]')
         subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', str(self.folder / req['source']),
                         '-filter_complex', ';'.join(graph), '-map', '[v]', '-map', '[a]',
-                        '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', '-c:a', 'aac', str(path)],
+                        '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', *COLOR_TAGS, '-c:a', 'aac', str(path)],
                        check=True, capture_output=True)
 
     def accepted(self, output='draft'):
@@ -241,7 +248,7 @@ class RendererCoverage(Fixture):
         cover = self.folder / 'cover.mp4'
         subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i',
                         'color=blue:size=160x90:rate=30', '-frames:v', '1', '-c:v', 'libx264', '-crf', '0',
-                        str(cover)], check=True, capture_output=True)
+                        *COLOR_TAGS, str(cover)], check=True, capture_output=True)
         self.cut['spans'][0]['hide_picture'] = True
         self.put('records/cut_plan2.json', self.cut)
         self.put('records/overlay_plan.json', {'plan': self.cut['key'], 'cards': [

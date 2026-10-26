@@ -4,7 +4,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError, canon, digest, filehash
-from . import decoded, mapping, pixels, raster, records, sound, source_rate
+from . import color, decoded, mapping, pixels, raster, records, sound, source_rate
 
 
 def entry(req, name, value, ok, evidence, frames):
@@ -100,8 +100,12 @@ def draft(video, req, path, pixels_ok):
     count = req['frame_map'][-1]['frames'][1]
     if req['output'] == 'long':
         width, height = pixels.dimensions(records.path(video, asset['file']))
-        reference = {**bound, 'frame_map': [{'span': 'viewed-draft', 'frames': [0, count], 'source_frames': [0, count],
-                                            'kind': 'source', 'crop': [0, 0, width, height], 'asset': asset}]}
+        reference = {k: v for k, v in bound.items()
+                     if k not in ('plan_data', 'picture_map', 'source_rate', 'grade')}
+        reference.update(frame_map=[{'span': 'viewed-draft', 'frames': [0, count], 'source_frames': [0, count],
+                                            'kind': 'source', 'crop': [0, 0, width, height], 'asset': asset,
+                                            'color_conversion': color.binding(color.inspect(records.path(video, asset['file'])),
+                                                                              req['settings']['video'])}])
         picture = pixels.compare(video, reference, path)['checks']['frame-map']
     else:
         try:

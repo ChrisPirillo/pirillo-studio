@@ -4,7 +4,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError
-from . import retiming
+from . import grade, retiming
 
 
 def split(req, pieces):
@@ -14,7 +14,7 @@ def split(req, pieces):
     for span, src in pieces:
         sid = span['id']
         if 'grade' in span:
-            raise SpineError(f'frame-map: {sid}: grade: unsupported')
+            grade.approved(span['grade'], req['source_sha256'], src=span['src'])
         speed = retiming.validate(req, span)
         retimed = 'speed' in span or 'retime' in span
         if plan.push(span) is not None and (span.get('hide_picture') or 'patch' in span):
