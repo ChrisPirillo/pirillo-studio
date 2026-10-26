@@ -134,3 +134,33 @@ def coverage(sources, tasks):
     out += [f"{r}: open source has {owned.count(r)} tasks" for r in sorted(want & set(owned)) if owned.count(r) > 1]
     out += [f"{r}: task names no open source" for r in sorted(set(owned) - want)]
     return out
+
+
+def _collect(adapter, source, now, task):
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise ValueError("now must be an aware datetime")
+    keys, tasks, errors = [], [], []
+    for key, record in adapter.records(source):
+        keys.append(key)
+        try:
+            tasks.append(task(adapter, key, record))
+        except ValueError as exc:
+            errors.append(str(exc))
+    errors.extend(coverage(keys, tasks))
+    return keys, effective(tasks, now), errors
+
+
+def read(adapter, source, now, task):
+    """A source family's effective tasks (task builds one from the adapter's record); any problem refuses them all."""
+    _, tasks, errors = _collect(adapter, source, now, task)
+    if errors:
+        raise ValueError("; ".join(errors))
+    return tasks
+
+
+def inventory(adapter, source, now, task):
+    """Diagnostic coverage of a copied source family; unplaced records remain named in problems."""
+    keys, tasks, errors = _collect(adapter, source, now, task)
+    return {"ok": not errors, "state": "ready" if not errors else "refused",
+            "next_action": "review" if not errors else "correct",
+            "detail": {"sources": len(keys), "tasks": len(tasks), "problems": errors}}

@@ -216,6 +216,29 @@ primary action and recipient, writer/inverse declarations, coverage, revision id
 post-owned image approval. It also checks hand-post timeout closure and fail-closed source reads. It does not
 claim URL serving, delivery, writer undo, browser refresh, search UI or rendering acceptance.
 
+`model.read` and `model.inventory` hold the family-independent path above; each family reader passes its `task`.
+
+### Asks reader (seam 7)
+
+`board/ask_tasks.py` consumes one host adapter: `records(source)` yields every ask, open or not, keyed
+`ask:<id>`; `describe(key, record)` supplies `what`, `about`, `options` (each with a `label`), `docs`, `files`,
+`steps` (a path or null), `state` (`open`, `answered` or `withdrawn`), `todo` (bool, the host's own to-do test),
+`acted` (bool), `deadline` (UTC or null),
+`default_on_timeout`, `filed_by`, `blocks`, `related` and `recommendation`, with optional `content_identity` (each
+path's size and mtime, or that it is a folder or gone) and `history` (answer, earlier answers, acted, withdrawal).
+Words, options, paths and identities determine the content hash; the full raw facts bind the task ID.
+
+The judge is the first file (typed by extension: image, video, else file), else the words; further files are
+content parts, documents source parts, and the steps one steps part, a document equal to the steps never linked
+twice. An option is an answer action carrying its label (`ask_answer`); a to-do's one action is Done (`board_data.action`, answer
+and `ask_acted`); any other ask without options answers in words. No owner writer
+takes an answer back today, so every answer's undo is `unmet`. A decision ask (`deadline` with its
+`default_on_timeout`) closes at its deadline as acted until `decisions.expire` records the default; an ask's `by`
+alone is a due time and never closes it. Answered and not acted is `acted`; acted or withdrawn is `done`.
+A host's adapter refuses an open ask whose document or file is gone; a closed ask keeps its record without it.
+`test_ask_tasks.py` covers section 5 tests 1, 2, 4 and 12 for asks; a decision's `gates` link to the post or
+video it decides waits on the API seam, which owns cross-family keys.
+
 ## 4. API and writer boundary
 
 `GET /board.json` returns `{ "tasks": [...], "generated_at": "2030-01-01T12:00:00Z" }`. It reads a coherent source

@@ -110,31 +110,11 @@ def task(adapter, key, record):
         raise ValueError(f"{key}: {exc}") from exc
 
 
-def _collect(adapter, source, now):
-    if now.tzinfo is None or now.utcoffset() is None:
-        raise ValueError("now must be an aware datetime")
-    keys, tasks, errors = [], [], []
-    for key, record in adapter.records(source):
-        keys.append(key)
-        try:
-            tasks.append(task(adapter, key, record))
-        except ValueError as exc:
-            errors.append(str(exc))
-    errors.extend(model.coverage(keys, tasks))
-    return keys, model.effective(tasks, now), errors
-
-
 def read(adapter, source, now):
     """Return effective tasks, including history; never return a deceptively partial Board."""
-    _, tasks, errors = _collect(adapter, source, now)
-    if errors:
-        raise ValueError("; ".join(errors))
-    return tasks
+    return model.read(adapter, source, now, task)
 
 
 def coverage(adapter, source, now):
     """Diagnostic inventory of a copied source; unplaced records remain named in problems."""
-    keys, tasks, errors = _collect(adapter, source, now)
-    return {"ok": not errors, "state": "ready" if not errors else "refused",
-            "next_action": "review" if not errors else "correct",
-            "detail": {"sources": len(keys), "tasks": len(tasks), "problems": errors}}
+    return model.inventory(adapter, source, now, task)
