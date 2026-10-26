@@ -149,6 +149,11 @@ def _asset(video, req, row, verified):
     x, y, w, h = [integer(value, 'crop', 1 if i > 1 else 0) for i, value in enumerate(crop)]
     if x + w > size[0] or y + h > size[1]:
         decoded.refuse('frame-map', 'measurement', 'crop exceeds decoded asset bounds')
+    if req['settings']['shape'] == 'tall' and row['kind'] == 'source' and video.native:
+        from . import framing
+        span = next(s for s in req['plan_data']['spans'] if s['id'] == row['span'])
+        if span['enter'] != 'push' and crop != framing.crop(req, span, row['source_frames'], size):
+            decoded.refuse('frame-map', 'measurement', 'tall crop differs from shot framing')
     return path
 
 

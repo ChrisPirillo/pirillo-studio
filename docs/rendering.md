@@ -48,7 +48,7 @@ An arc consumes an immutable candidate before the owner locks the cut; it cannot
 - `spans[].enter`: `open|jump|jcut|push|pop`, exactly cutting's values; no separate cut-kind vocabulary.
 - `spans[].lead_s`: approved voice lead for a `jcut`; realized on the output frame grid.
 - `spans[].lead_from`: the settled J-cut lead's source evidence; no new lead chosen while rendering.
-- `spans[].shot`: requested shot size; rendering computes an integer source-pixel crop from all subject boxes on the picture clock, including J-cut holds. Wide retains the whole frame; med/close use `video.shot_fractions` times source width, with height on the output aspect. The fixed crop centres on their union and slides minimally inside the source; missing/empty observations, invalid sizes or a subject that cannot fit refuse naming the span, never widen.
+- `spans[].shot`: requested shot size; rendering computes an integer source-pixel crop from all subject boxes on the picture clock, including J-cut holds. Wide outputs retain full-frame wide shots; med/close use `video.shot_fractions` times source width, with height on the output aspect. Tall uses the fitting width and explicit crop contract in [rendering-grade.md](rendering-grade.md). The fixed crop centres on their union and slides minimally inside the source; missing/empty observations, invalid sizes or a subject that cannot fit refuse naming the span, never widen.
 - `spans[].push`: requested `to` shot and positive finite `s` duration; rendering linearly interpolates the framing endpoints on the fixed picture grid, never choosing a new shot.
 - `spans[].expression`: the held expression's `after_word` anchor and `seen` description, not a new cut decision.
 - `spans[].patch`: approved voice replacement's `record`, `sha` and `words`; hash and read its actual audio.
@@ -228,8 +228,7 @@ decoded output duration. A declared burn with no decoded glyph evidence refuses,
 
 ### Seam 2d: separate clocks and voice-first composition
 
-`Video(..., encode=None, captioner=adapter)` selects the core compositor for wide arc/draft outputs.
-The item 18 adapter supplies versions/align/onsets/width and the same folder; custom encode/prepare adapters remain supported. Resolution binds caption settings, code and tool versions;
+`Video(..., encode=None, captioner=adapter)` selects the core compositor for wide or cropped tall arc/draft outputs (seam 2h part 9). The item 18 adapter supplies versions/align/onsets/width and the same folder; custom encode/prepare adapters remain supported. Resolution binds caption settings, code and tool versions;
 voice and cues are produced outputs, never prerequisites of their own render request.
 
 `frame_map` remains the voice/caption clock (`span`, `src`, `out`, integer `frames`, audio `asset`).
@@ -271,8 +270,9 @@ Seam 2h part 5: source-rate conversion built; see [source clocks and sampling](r
 Seam 2h part 6: [approved expression retiming](rendering-retime.md) built: exact rational speed, per-output source indices, decoded picture proof and a local silent voice clock; speech retiming and outgoing retimed J-cut holds refuse. Published native records retain the planned duration for caption identity; decoded duration remains in readings.
 Seam 2h part 7: [decoded color conversion](rendering-color.md) built: BT.601 and range conversion to BT.709, hash-bound decoded color, per-frame source and output proof; unknown, HDR, mixed and disagreeing descriptions refuse.
 Seam 2h part 8: [approved SDR grades](rendering-grade.md) built: hash-bound finish LUT/parameters and local source-span exposure, source-span transforms in wide drafts, selected dependency identity, decoded RGB and every-frame tags; settings own the finish recipe without owner values.
-Seam 2h next: tall grading with native tall crops, HDR tone mapping and exposure solving, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence, native tall crops/cards/burns and master composition.
-Missing/unsupported or ambiguous source color, HDR needing tone mapping, missing/unbound/stale/contradictory grade inputs, grades without adapter preparation, native tall composition (including grades), ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
+Seam 2h part 9: [native tall crops and grades](rendering-grade.md) built: aspect-fitting med/close crops and pushes, source-relative grades, independently checked decoded crop bindings, RGB and per-frame subject/tag proof; plain full-frame tall, missing crop observations, tall cards/burns and masters refuse by name.
+Seam 2h next: anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence, native tall cards/burns and master composition; HDR tone mapping and exposure solving remain unsupported.
+Missing/unsupported or ambiguous source color, HDR needing tone mapping, missing/unbound/stale/contradictory grade inputs, grades without adapter preparation, plain full-frame tall without a crop source, subjects that cannot fit the tall crop, native tall cards/burns and masters, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
 |---|---|---|

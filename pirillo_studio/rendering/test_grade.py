@@ -27,12 +27,12 @@ class Grades(unittest.TestCase):
         subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i',
             'testsrc=size=160x90:rate=30', '-f', 'lavfi', '-i',
             'sine=frequency=440:sample_rate=48000', '-t', '1', '-af', 'volume=0.5',
-            '-vf', 'geq=lum=100:cb=128:cr=128', '-c:v', 'libx264', '-crf', '0',
+            '-vf', "geq=lum='if(lt(X,53),80,if(lt(X,106),100,120))':cb=110:cr=150",
+            '-c:v', 'libx264', '-crf', '0',
             '-pix_fmt', 'yuv444p', *test_compositor.COLOR_TAGS,
             '-c:a', 'aac', str(path)], check=True, capture_output=True)
         c.v.preflight['source_sha256'] = filehash(path)
         c.settings['shared']['video'].update(pix_fmt='yuv444p')
-        c.settings['shared']['video']['sizes']['tall'] = [90, 160]
         c.settings['shared']['grade'] = {'skin_target': .6, 'knee': .8, 'max_stop': 1.0, 'n': 2}
         c.cut['spans'][0]['shot'] = 'wide'
         c.save_cut()
@@ -73,22 +73,24 @@ class Grades(unittest.TestCase):
     def resolve(self):
         return request.resolve(self.case.v, 'draft', 'draft')
 
-    def samples(self, path, size):
+    def samples(self, path, size, point=None):
         raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-map', '0:v:0',
             '-an', '-fps_mode', 'passthrough', '-pix_fmt', 'rgb24', '-f', 'rawvideo', 'pipe:1'],
             check=True, capture_output=True).stdout
         width, height = size
-        length, center = width * height * 3, ((height // 2) * width + width // 2) * 3
+        x, y = point if point is not None else (width // 2, height // 2)
+        length, center = width * height * 3, (y * width + x) * 3
         self.assertEqual(len(raw) % length, 0)
         return [raw[i + center:i + center + 3] for i in range(0, len(raw), length)]
 
-    def prove(self, result, finish=False, local=False):
+    def prove(self, result, finish=False, local=False, source_points=None):
         c, req = self.case, result['request']
         size = req['settings']['video']['sizes'][req['settings']['shape']]
         actual = self.samples(c.folder / result['file'], size)
-        source = self.samples(c.folder / 'source.mp4', [160, 90])[0]
         expected = []
         for row in req['picture_map']:
+            point = source_points[row['span']] if source_points else None
+            source = self.samples(c.folder / 'source.mp4', [160, 90], point)[0]
             span = next(s for s in c.cut['spans'] if s['id'] == row['span'])
             for index in row['source_indices']:
                 rgb = [value / 255 for value in source]
@@ -100,8 +102,13 @@ class Grades(unittest.TestCase):
                     phase = min(1, max(0, (index / 30 - a) / (b - a)))
                     exposure, contrast = [p[k][0] + phase*(p[k][1] - p[k][0])
                                           for k in ('exposure', 'contrast')]
-                    rgb = [min(1, max(0, contrast*(v - .5) + .5))**(1-exposure/2.4)
-                           for v in rgb]
+                    def curve(v):
+                        return min(1, max(0, contrast*(v - .5) + .5))**(1-exposure/2.4)
+                    if p['space'] == 'luma':
+                        y = sum(v*k for v, k in zip(rgb, (.2126, .7152, .0722)))
+                        rgb = [min(1, max(0, v + curve(y) - y)) for v in rgb]
+                    else:
+                        rgb = [curve(v) for v in rgb]
                 expected.append([round(v * 255) for v in rgb])
         self.assertEqual(len(actual), len(expected))
         peak = max(abs(a - e) for got, want in zip(actual, expected) for a, e in zip(got, want))

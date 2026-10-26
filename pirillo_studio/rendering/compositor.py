@@ -31,8 +31,10 @@ _PROBING = threading.Lock()  # request resolution precedes output locks
 
 
 def prepare(video, req):
-    if req['stage'] not in ('arc', 'draft') or req['settings']['shape'] != 'wide':
-        raise SpineError('compositor: native masters/tall unsupported (seam 2h)')
+    if req['stage'] not in ('arc', 'draft'):
+        raise SpineError('compositor: native masters unsupported (seam 2h)')
+    if req['settings']['shape'] == 'tall' and req['cards_data']['cards']:
+        raise SpineError('compositor: native tall cards unsupported (seam 2h)')
     if any(c['kind'] != 'cover' for c in req['cards_data']['cards']):
         raise SpineError('compositor: non-cover card raster coverage unsupported')
     tolerance = req['settings']['measurement']['grid_tolerance_s']

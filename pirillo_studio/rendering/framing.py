@@ -11,7 +11,10 @@ def crop(req, span, source_frames, size):
     shot = span['shot']
     at = f"framing: {span['id']}: {shot}"
     sw, sh = size
+    tall = req['settings']['shape'] == 'tall'
     if shot == 'wide':
+        if tall:
+            raise SpineError(f'{at}: tall crop source required; full-frame scaling unsupported')
         return [0, 0, sw, sh]
     if shot not in ('med', 'close'):
         raise SpineError(f'{at}: unsupported shot; landmark geometry unavailable')
@@ -24,7 +27,8 @@ def crop(req, span, source_frames, size):
         raise SpineError(f'{at}: size must be positive and no larger than the source')
     ow, oh = video['sizes'][req['settings']['shape']]
     ow, oh = [pixels.integer(n, at + ' output size', 1) for n in (ow, oh)]
-    w = round(sw * fraction)
+    base = min(sw, sh * ow // oh) if tall else sw
+    w = round(base * fraction)
     h = round(w * oh / ow)
     if min(w, h) <= 0 or w > sw or h > sh:
         raise SpineError(f'{at}: size is empty or larger than the source on the output aspect')
