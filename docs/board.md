@@ -171,6 +171,51 @@ rg -n 'add\(|need\(|src|self.path ==' tools/board_v5a.py tools/board_unified.py 
 rg -n '^def ' pirillo_studio/board/*.py
 ```
 
+### Posts reader (seam 6, first family)
+
+`board/posts.py` consumes one host-supplied adapter. `records(source)` inventories one canonical key and raw
+record per logical post, coalescing platform aliases and retaining history. `describe(key, record)` supplies raw
+`kind`, `platforms`, `status` (one state or a list across platforms), `words`, `file` (path/URL or null),
+`scheduled_at` (UTC or null), `error`, `blocker`, `filed_by` and `related`. Optional `content_identity` carries
+file hashes or size/mtime read by the host; optional `history` retains source receipts unchanged.
+
+The model produces the explanation, facets, actions and exact-content URL
+`/board/content/<quoted source key>/<content hash>`. Words, file identity and platforms determine that hash;
+the full raw facts also bind the task ID. The API in seam 7 serves this route. Local paths never become browser
+links. Post kinds and image controls follow section 3; approval, hand, stuck and failed remain facets.
+
+A failed or stuck post has no send deadline: its controls stay shown after its scheduled time.
+Otherwise a scheduled hand post has deadline outcome `missed`, with `run: false`. An unapproved automatic post
+is held with no send deadline, matching the posting clock's `due` approval gate and `scheduling.stale` rescheduling;
+its approval stays available. Other scheduled posts have outcome `send`, with `run: true`, awaiting the send
+writer's receipt. No schedule means no deadline. No grace is added.
+Actions name section 3's host writers. Approval reversal names `ok_post` for video assets or `story_ok` for story
+kinds, with `args: {undo: true}`; Skip reversal names `pass_from_board` with the same undo argument. Save words
+restores the saved words through `edit_post`. Posted uses `unmark_posted` and never deletes published content.
+Image redo and Signed in (`helper.signins`) have no restoration writer today; poll approval also has no inverse
+in `poll_ok`. These controls carry `undo.writer: null` and an explicit `undo.unmet` rebuild requirement, never
+a second redo or a fake reversal. The API must refuse these inverses until their writers exist. This reader
+neither executes nor authorizes writers. Source snapshots, stale-click refusal and receipts belong to seam 7.
+
+`read(adapter, source, now)` validates the complete inventory with `model.coverage`, refuses partial success and
+returns `model.effective` tasks, including terminal history. `coverage(adapter, source, now)` reports
+`{ok,state,next_action,detail}` with source/task counts and every unplaced key and reason. Coverage runs against
+copies; it never writes the source. The reader's path is:
+
+```mermaid
+flowchart LR
+  I[Inventory logical posts] --> D[Build task from facts and validate]
+  D --> C[Check complete coverage]
+  C -->|missing or invalid| R[Refuse with source identities]
+  C -->|valid| E[Apply deadline effective state]
+  E --> T[Return tasks and history]
+```
+
+`test_posts.py` covers the reader portions of section 5 tests 1 through 5, 9 and 11: serialized task content,
+primary action and recipient, writer/inverse declarations, coverage, revision identity, retained history and
+post-owned image approval. It also checks hand-post timeout closure and fail-closed source reads. It does not
+claim URL serving, delivery, writer undo, browser refresh, search UI or rendering acceptance.
+
 ## 4. API and writer boundary
 
 `GET /board.json` returns `{ "tasks": [...], "generated_at": "2030-01-01T12:00:00Z" }`. It reads a coherent source
