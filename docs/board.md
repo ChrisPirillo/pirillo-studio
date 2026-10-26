@@ -239,6 +239,23 @@ A host's adapter refuses an open ask whose document or file is gone; a closed as
 `test_ask_tasks.py` covers section 5 tests 1, 2, 4 and 12 for asks; a decision's `gates` link to the post or
 video it decides waits on the API seam, which owns cross-family keys.
 
+### Ideas reader (seam 8)
+
+`board/ideas.py` consumes `records(source)` keyed by the host's idea identity and `describe(key, record)`
+with `kind` (`video` or `story`), `what`, `why`, `outlet`, `sources` (URL and label), `saved`, `wanted`,
+`skipped`, `converted_to` (key or null), `filed_by`, `related` and optional `history`. Title/take or
+headline/why/outlet stay in the owner's words. Words and source links bind the served words judge and
+source parts; all raw facts bind the task ID. Shared `model.read` refuses partial coverage and
+`model.inventory` names each unplaced record. The host merges its newest video offers, today's stories, saved rows and story picks.
+
+Want it, Bank, Story (video only) and Skip declare `idea_decide` actions. Bank's inverse is
+`star_idea(key, False)` (Unbank); Unbank saves again. Want and Skip reversal remain unmet writers.
+Story's inverse uses `story_pick(converted_to, None)` from the action receipt: it clears the conversion
+receipt and pick only, preserves the brief, and refuses once the post is on the Board. Conversion or
+Want is acted across days from its durable receipt; Skip and let-go receipts are done. A saved idea stays shown in the Bank, including a previously skipped idea;
+conversion takes precedence. Poll and tip ideas remain facets of their posts, not extra cards; those
+facets and vault options are next, then tasks. `test_ideas.py` checks the shared read and coverage paths.
+
 ## 4. API and writer boundary
 
 `GET /board.json` returns `{ "tasks": [...], "generated_at": "2030-01-01T12:00:00Z" }`. It reads a coherent source
