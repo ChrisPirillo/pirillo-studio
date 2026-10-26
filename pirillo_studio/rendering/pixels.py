@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from ..spine.files import filehash
-from . import decoded, mapping, records
+from . import decoded, mapping, records, source_rate
 
 
 def integer(value, name, minimum=0):
@@ -42,24 +42,12 @@ def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=Fa
             if points and points[0] >= points[1]:
                 decoded.refuse('frame-map', 'verification.complete_decode', 'unordered frame timestamps')
             seeks[index] = str(float(sum(points) / 2)) if points else None
-    if fps is not None:
-        expected = decoded.fraction(fps, 'frame-map', 'video.fps')
-        for key in ('avg_frame_rate', 'r_frame_rate'):
-            if decoded.fraction(streams[0].get(key), 'frame-map', 'video.fps') != expected:
-                decoded.refuse('frame-map', 'video.fps', 'source frame rate differs from requested frame grid')
-        tolerance = decoded.number(tolerance, 'frame-map', 'measurement.grid_tolerance_s')
-        if tolerance < 0 or not raw.get('frames'):
-            decoded.refuse('frame-map', 'measurement.grid_tolerance_s', 'invalid tolerance or no source frames')
-        base = decoded.fraction(streams[0]['time_base'], 'frame-map', 'video.fps')
-        for index, frame in enumerate(raw['frames']):
-            pts = decoded.number(frame.get('pts'), 'frame-map', 'video.fps') * base
-            duration = decoded.number(frame.get('duration'), 'frame-map', 'video.fps') * base
-            if abs(pts - index / expected) > tolerance or abs(duration - 1 / expected) > tolerance:
-                decoded.refuse('frame-map', 'video.fps', f'source frame rate clock differs at frame {index}')
+    if fps is not None and source_rate.clock(raw, tolerance) != source_rate.rate(fps):
+        decoded.refuse('source rate', 'video.fps', 'decoded source rate differs from bound rate')
     return [integer(streams[0][key], key, 1) for key in ('width', 'height')]
 
 
-def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, raster=None):
+def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, raster=None, selection=None):
     """Yield one span's absolute RGB differences; only a declared cover may repeat."""
     width, height = [integer(value, 'pixel size', 1) for value in size]
     executable = shutil.which('ffmpeg')
@@ -79,6 +67,8 @@ def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, ras
     # Match the encoder's scaling format before RGB comparison, including chroma resampling.
     scaled = f'scale={width}:{height}:flags=bilinear,format={pix_fmt},{rgb}' if raster is None else rgb
     filters = [f'trim=end_frame={source_count}', f'crop={w}:{h}:{x}:{y}:exact=1', scaled]
+    if selection is not None:
+        filters[0] = selection
     if row['kind'] == 'cover' and source_count == 1:
         filters.append(f'loop=loop={count - 1}:size=1:start=0')
     graph = [f'[0:v:0]trim=end_frame={count},{rgb},{clock}[actual]',
@@ -131,7 +121,9 @@ def _asset(video, req, row, verified):
     if key not in verified:
         needed = max(r['source_frames'][1] for r in mapping.pictures(req) if r['asset']['file'] == asset['file'])
         seeks = {r['source_frames'][0]: None for r in mapping.pictures(req) if r['asset']['file'] == asset['file']}
-        size = dimensions(path, req['settings']['video']['fps'] if row['kind'] == 'source' else None,
+        converted = row['kind'] == 'source' and 'source_rate' in req
+        fps = req['source_rate'] if converted else req['settings']['video']['fps']
+        size = dimensions(path, fps if row['kind'] == 'source' else None,
                           req['settings']['measurement']['grid_tolerance_s'], frames_required=needed, seeks=seeks)
         verified[key] = {'size': size, 'seeks': seeks}
     size = verified[key]['size']
@@ -181,7 +173,12 @@ def _compare(video, req, output_path, *, raster=None):
         integer(source_start, 'source frame start')
         integer(source_end, 'source frame end', source_start + 1)
         hold = row['kind'] == 'cover' and source_end - source_start == 1
-        if not hold and source_end - source_start != end - start:
+        converted = row['kind'] == 'source' and 'source_rate' in req
+        if converted:
+            source_rate.validate(req, row)
+        elif 'source_indices' in row:
+            decoded.refuse('source rate', 'video.fps', 'source indices without bound source rate')
+        if not hold and not converted and source_end - source_start != end - start:
             decoded.refuse('frame-map', 'measurement', 'source and output frame counts differ')
         assets[row['asset']['file']] = {'path': _asset(video, req, row, verified), 'sha256': row['asset']['sha256']}
         cursor = end
@@ -198,6 +195,8 @@ def _compare(video, req, output_path, *, raster=None):
         with contextlib.closing(frames(output, size, reference=assets[name]['path'], row=row,
                                        output_seek=seeks[start], source_seek=source_seek,
                                        pix_fmt=stream['pix_fmt'],
+                                       **({'selection': source_rate.filters(req, row, seeked=True)}
+                                          if 'source_indices' in row else {}),
                                        **({'raster': raster} if raster is not None else {}))) as differences:
             for index in range(start, end):
                 delta = next(differences, None)
@@ -206,7 +205,7 @@ def _compare(video, req, output_path, *, raster=None):
                 mean, peak = sum(delta) / len(delta), max(delta)
                 ok = mean <= limits['pixel_mean_error_max'] and peak <= limits['pixel_peak_error_max']
                 evidence.append({'frame': index, 'span': row['span'], 'kind': row['kind'],
-                                 'asset': row['asset'], 'source_frame': source_start if hold else source_start + index - start,
+                                 'asset': row['asset'], 'source_frame': source_start if hold else source_rate.index(row, index),
                                  'mean_error': mean, 'peak_error': peak, 'ok': ok})
             if next(differences, None) is not None:
                 decoded.refuse('frame-map', 'verification.complete_decode', 'unexpected difference frame')

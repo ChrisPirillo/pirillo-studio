@@ -205,15 +205,13 @@ The existing encode callback consumes that bound request. The final render recor
 Each map row keeps `{span, src: [seconds], out: [seconds]}` for captions, with half-open integer `frames` and
 `source_frames`, `kind: source|cover`, `asset: {file, sha256}` and integer source-pixel `crop: [x,y,width,height]`.
 `mapping.timeline(request)` supplies the canonical rows; preparation adds only the resolved picture geometry.
-Cuts snap to the nearest frame on the declared output grid; source FPS and every decoded source PTS/duration
-must match that grid. `end_hold_s` is already included in cutting's settled final `src`, never appended twice.
+Cuts snap to the nearest frame on the declared output grid; every decoded source PTS/duration must match
+the bound `source_rate`. `end_hold_s` is already included in cutting's settled final `src`, never appended twice.
 Cold-open words precede story-order spans; a short uses only its settled pieces. A cover row retains its oral
 `src` clock, names its planned `card` ID, and holds asset frame `[0,1]` across every hidden-picture output frame.
 The renderer supplies the cover asset even when the editorial card contains text rather than a file path.
 
-Source subject observations are `faces_data.frames: [{frame, boxes: [[x,y,width,height], ...]}]`, on that same
-source grid. Every uncovered mapped frame needs nonempty observations, all inside its decoded crop. Duplicate
-or missing observations refuse. Full opaque covers are explicitly excluded, never treated as unseen subjects.
+Item 6 supplies native source-frame observations; see [subject coverage](rendering-source-rate.md).
 
 `audio_binding` names `{stem: {file, sha256}, offset_s, gain_db, tacets: [[start_s,end_s], ...]}` on the output
 clock. Speech-band PCM is compared with the actual stem, in windows split at tacet boundaries. Missing samples
@@ -270,11 +268,13 @@ Built: cached re-measurement skips generated backups; previous artifacts retain 
 Seam 2h part 3: shot framing built in `framing.crop`, integrated before voice/caption work and checked by mapping, subject coverage and decoded pixels. Face/mouth remain unsupported: the host uses facial landmarks, not fixed source fractions, and this observation contract has only subject boxes.
 
 Seam 2h part 4: pushes built in `pushes.frames`: source-relative phase is `min(1, elapsed_frames / (push.s * fps))`; widths and coordinates round to integers, heights use the framing aspect rule, and crops remain inside the source. Endpoint subject unions cover the full span plus this occurrence's outgoing J-cut hold; cold opens/selected pieces retain phase, but can have different endpoints if that hold changes the union. At/after the duration the target holds; a shorter span ends mid-move, and a subframe push reaches its target on the next frame. Equal consecutive crops share a run; mapping rederives every run and pixels verifies its bound dimensions against the decoded source. Hidden/patch pushes, contradictory push entries, missing/invalid targets or durations, face/mouth geometry, retime/speed/grade refuse by name.
-Seam 2h next: retiming/source-rate and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
+Seam 2h part 5: source-rate conversion built; see [source clocks and sampling](rendering-source-rate.md).
+Seam 2h next: retiming and color conversion, grades, anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence and native tall/master composition.
 Missing/differing source color, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
 |---|---|---|
+| `source_rate.inspect(path, tolerance) / bind(req, row) / filters(req, row)` | Decoded CFR evidence, source seconds and output grid | Bound rate and explicit source indices; exact picture sampling, or named refusal. No voice/media-input writes. |
 | `pushes.frames(req, span, row, size) -> rows` | Approved push, framing endpoints and fixed picture grid | Integer crop runs with bound source dimensions; no input/media writes. |
 | `framing.crop(req, span, source_frames, size) -> [x,y,width,height]` | Requested shot, picture source frames, source dimensions, subject boxes and rendering video settings | Integer fixed crop or a named span refusal; no input/media writes. |
 | `render(video, output) -> record` | The stage's resolved request, item 17 plan or supplied file, settings, assets, approvals and current preflight result | Only output-owned work files and its render record; returns current record on unchanged content. `measure_existing` does not encode. |

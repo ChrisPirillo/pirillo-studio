@@ -64,4 +64,10 @@ def split(req, pieces):
     for row in voice + picture:
         row['src'] = [float(frame / fps) for frame in row['source_frames']]
         row['out'] = [float(frame / fps) for frame in row['frames']]
+    if 'source_rate' in req:
+        from . import source_rate
+        hidden = {span['id'] for span, _ in pieces if span.get('hide_picture')}
+        for row in picture:
+            if row['span'] not in hidden:
+                source_rate.bind(req, row)
     return voice, picture

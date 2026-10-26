@@ -3,7 +3,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError
-from . import framing, pixels
+from . import framing, pixels, source_rate
 
 
 def frames(req, span, row, size):
@@ -15,7 +15,10 @@ def frames(req, span, row, size):
     sw, sh = [pixels.integer(n, at + ' source_size', 1) for n in size]
     fps = Fraction(req['settings']['video']['fps'])
     origin, end = [round(Fraction(str(t)) * fps) for t in span['src']]
-    interval = [origin, max(end, row['source_frames'][1])]
+    grid = row.get('source_grid_frames', row['source_frames'])
+    interval = [origin, max(end, grid[1])]
+    if 'source_indices' in row:
+        interval = source_rate.interval(req, interval)
     start = framing.crop(req, span, interval, size)
     finish = framing.crop(req, {**span, 'shot': movement['to']}, interval, size)
     ow, oh = req['settings']['video']['sizes'][req['settings']['shape']]
@@ -24,7 +27,7 @@ def frames(req, span, row, size):
     duration = Fraction(str(movement['s'])) * fps
     resolved = []
     for output in range(*row['frames']):
-        source = row['source_frames'][0] + output - row['frames'][0]
+        source = grid[0] + output - row['frames'][0]
         phase = min(Fraction(1), max(Fraction(0), (source - origin) / duration))
         x, y, w, _ = [round(a + (b - a) * phase) for a, b in zip(start, finish)]
         h = round(w * oh / ow)
@@ -39,4 +42,6 @@ def frames(req, span, row, size):
     for item in resolved:
         item['src'] = [float(n / fps) for n in item['source_frames']]
         item['out'] = [float(n / fps) for n in item['frames']]
+        if 'source_indices' in row:
+            source_rate.bind(req, item)
     return resolved

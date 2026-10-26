@@ -104,6 +104,7 @@ def validate(req):
             if 'file' in cards[0] and asset['file'] != cards[0]['file']:
                 raise SpineError('cards: resolved cover differs from locked asset')
         elif (row['kind'] != 'source' or row['source_frames'] != wanted['source_frames']
+              or any(row.get(k) != wanted.get(k) for k in ('source_grid_frames', 'source_indices'))
               or asset != {'file': req['source'], 'sha256': req['source_sha256']}):
             raise SpineError('frame-map: source asset or source frames differ from request')
     elements = req['elements']
@@ -122,7 +123,7 @@ def bind(video, req, inputs):
     """Hash the renderer's resolved inputs before encoding; the same resolver runs at commit."""
     binding = video.prepare(copy.deepcopy(req))
     if not isinstance(binding, dict) or set(binding) - {
-            'frame_map', 'picture_map', 'elements', 'audio_binding', 'caption_binding'}:
+            'frame_map', 'picture_map', 'elements', 'source_rate', 'audio_binding', 'caption_binding'}:
         raise SpineError('frame-map: invalid renderer preparation result')
     resolved = copy.deepcopy(binding)
     identity = inputs.normalize(resolved)

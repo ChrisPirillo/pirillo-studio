@@ -1,0 +1,186 @@
+"""Real decoded frame identities prove CFR conversion independently of render filters."""
+import copy
+import json
+from fractions import Fraction
+import subprocess
+import unittest
+from unittest.mock import patch
+
+from ..spine.files import SpineError, filehash
+from . import coverage, decoded, mapping, pixels, request, test_compositor
+
+
+class SourceRate(unittest.TestCase):
+    """e2e: Draft/draft.mp4 keeps source-frame identity across differing CFR clocks."""
+
+    @classmethod
+    def setUpClass(cls):
+        test_compositor.Compositor.setUpClass()
+
+    def setUp(self):
+        self.case = test_compositor.Compositor('test_jcut_decoded_picture_voice_captions_and_reuse')
+        self.case.setUp()
+        self.addCleanup(self.case.doCleanups)
+
+    def source(self, rate, seconds=1, variable=False):
+        path = self.case.folder / 'source.mp4'
+        # Every source frame has its own gray value; crops cannot erase its identity.
+        filters = "geq=lum='32+mod(N*7,180)':cb=128:cr=128"
+        if variable:
+            filters += ",select='lt(n,15)+gte(n,15)*not(mod(n,2))'"
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-f', 'lavfi', '-i',
+            f'nullsrc=size=160x90:rate={rate}', '-f', 'lavfi', '-i',
+            'sine=frequency=440:sample_rate=48000', '-t', str(seconds),
+            '-vf', filters, '-af', 'volume=0.5', '-fps_mode', 'vfr' if variable else 'passthrough',
+            '-c:v', 'libx264', '-crf', '0', '-pix_fmt', 'yuv420p', '-colorspace', 'bt709',
+            '-c:a', 'aac', str(path)], check=True, capture_output=True)
+        self.case.v.preflight['source_sha256'] = filehash(path)
+        self.case.cut['spans'][0]['shot'] = 'wide'
+        self.case.put('records/faces.json', {'frames': [
+            {'frame': i, 'boxes': [[70, 35, 20, 20]]}
+            for i in range(int(Fraction(rate) * seconds) + 1)]})
+        self.case.save_cut()
+        return path
+
+    def rgb(self, path):
+        raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-map', '0:v:0',
+            '-an', '-fps_mode', 'passthrough', '-pix_fmt', 'rgb24', '-f', 'rawvideo', 'pipe:1'],
+            check=True, capture_output=True).stdout
+        length = 160 * 90 * 3
+        self.assertEqual(len(raw) % length, 0)
+        return [raw[i:i + length] for i in range(0, len(raw), length)]
+
+    def converted(self, rate):
+        result = self.case.accepted()
+        req = result['request']
+        self.assertEqual(Fraction(req['source_rate']), Fraction(rate))
+        mapping.validate(req)
+        indices = []
+        for row in req['picture_map']:
+            grid = row['source_grid_frames']
+            expected = [int(Fraction(n) * Fraction(rate) / 30) for n in range(*grid)]
+            self.assertEqual(row['source_indices'], expected)
+            self.assertEqual(row['source_frames'], [expected[0], expected[-1] + 1])
+            self.assertEqual(row['src'], [n / 30 for n in grid])
+            indices.extend(expected)
+        measured = self.case.get(result['readings'])['mapped_frames']
+        self.assertEqual([row['source_frame'] for row in measured], indices)
+        self.assertTrue(all(row['ok'] for row in measured))
+        subject = coverage.subjects(req, True)
+        self.assertTrue(subject['ok'], subject)
+        source = self.rgb(self.case.folder / 'source.mp4')
+        output = self.rgb(self.case.folder / result['file'])
+        self.assertEqual(len(output), len(indices))
+        peak = 0
+        for frame, index in zip(output, indices):
+            # Plain decoding only: no shared selection, timestamps, crop or fps filters.
+            peak = max(peak, max(abs(a - b) for a, b in zip(frame, source[index])))
+        self.assertLessEqual(peak, 3)
+        wrong = copy.deepcopy(req)
+        wrong['picture_map'][0]['source_indices'][0] += 1
+        with self.assertRaisesRegex(SpineError, 'source.*frames'):
+            mapping.validate(wrong)
+        with self.assertRaisesRegex(SpineError, 'source-rate frame indices'):
+            pixels.compare(self.case.v, wrong, self.case.folder / result['file'])
+        print('SOURCE_RATE_OUTPUT ' + json.dumps({'rate': rate, 'file_sha256': result['file_sha256'],
+            'indices': indices, 'independent_rgb_peak_error': peak,
+            'pixels': self.case.get(result['readings'])['checks']['frame-map']['value'],
+            'subjects': subject['value'], 'voice_seconds': [r['src'] for r in req['frame_map']]}), flush=True)
+        return req
+
+    def test_sixty_to_thirty_keeps_every_other_source_frame(self):
+        self.source('60')
+        req = self.converted('60')
+        self.assertEqual(req['picture_map'][0]['source_indices'], list(range(0, 60, 2)))
+
+    def test_fractional_rate_uses_absolute_source_offset(self):
+        self.source('30000/1001', seconds=2)
+        self.case.cut['spans'][0]['src'] = [1, 2]
+        self.case.put('records/words.json', {'words': [
+            {'id': 'w1', 'text': 'Ready.', 'start': 1.1, 'end': 1.3}]})
+        self.case.save_cut()
+        req = self.converted('30000/1001')
+        self.assertEqual(req['picture_map'][0]['source_indices'], list(range(29, 59)))
+
+    def test_twenty_four_to_thirty_repeats_source_frames(self):
+        self.source('24')
+        req = self.converted('24')
+        self.assertEqual(req['picture_map'][0]['source_indices'][:6], [0, 0, 1, 2, 3, 4])
+
+    def test_sixty_push_and_jcut_use_picture_clock(self):
+        self.source('60')
+        self.case.two_spans()
+        self.case.cut['spans'][0].update(enter='push', shot='wide', push={'to': 'close', 's': .2})
+        self.case.settings['shared']['video']['shot_fractions'] = {'med': .8, 'close': .5}
+        self.case.save_cut()
+        req = self.converted('60')
+        indices = [i for r in req['picture_map'] for i in r['source_indices']]
+        self.assertEqual(indices, list(range(0, 30, 2)) + list(range(42, 60, 2)))
+        self.assertEqual([r['src'] for r in req['frame_map']], [[0, .4], [.6, 1]])
+        self.assertEqual([r['frames'] for r in req['frame_map']], [[0, 12], [12, 24]])
+
+    def test_variable_frame_rate_is_refused_by_name(self):
+        self.source('30', variable=True)
+        with self.assertRaisesRegex(SpineError, 'variable-frame-rate'):
+            request.resolve(self.case.v, 'draft', 'draft')
+
+    def altered_probe(self, change):
+        real = decoded.probe
+        def probe(path, entries):
+            raw = copy.deepcopy(real(path, entries))
+            if str(path).endswith('source.mp4') and '-show_frames' in entries:
+                change(raw)
+            return raw
+        return patch.object(decoded, 'probe', side_effect=probe)
+
+    def test_coarse_time_base_cannot_hide_a_missing_frame(self):
+        self.source('30')
+        def change(raw, drop=True):
+            raw['streams'][0]['time_base'] = '1/30'
+            for index, frame in enumerate(raw['frames']):
+                frame.update(pts=index, duration=1)
+            if drop:
+                del raw['frames'][2]
+        with self.altered_probe(change), self.assertRaisesRegex(
+                SpineError, 'variable-frame-rate source decoded clock'):
+            request.resolve(self.case.v, 'draft', 'draft')
+        with self.altered_probe(lambda raw: change(raw, drop=False)):  # a time base of one frame stamps exactly
+            request.resolve(self.case.v, 'draft', 'draft')
+
+    def test_source_clock_probe_is_reused_but_refusals_are_not(self):
+        self.source('60')
+        calls = []
+        def change(raw):
+            calls.append(raw)
+            if len(calls) == 1:
+                raw['streams'][0]['avg_frame_rate'] = 'NaN'
+        with self.altered_probe(change):
+            with self.assertRaisesRegex(SpineError, 'source rate'):
+                request.resolve(self.case.v, 'draft', 'draft')
+            first = request.resolve(self.case.v, 'draft', 'draft')
+            second = request.resolve(self.case.v, 'draft', 'draft')
+        self.assertEqual(first['source_rate'], second['source_rate'])
+        self.assertEqual(len(calls), 2, 'successful source clock was decoded again')
+
+    def test_missing_or_nonfinite_declared_source_rate_refuses(self):
+        self.source('60')
+        for value in (None, 'NaN', '1/0'):
+            with self.subTest(value=value):
+                def change(raw):
+                    video = next(s for s in raw['streams'] if s['codec_type'] == 'video')
+                    if value is None:
+                        video.pop('avg_frame_rate', None)
+                    else:
+                        video['avg_frame_rate'] = value
+                with self.altered_probe(change), self.assertRaisesRegex(SpineError, 'source rate'):
+                    request.resolve(self.case.v, 'draft', 'draft')
+
+    def test_declared_rate_disagrees_with_decoded_source_clock(self):
+        self.source('60')
+        def change(raw):
+            frames = [r for r in raw['frames'] if r['media_type'] == 'video']
+            for frame in frames:
+                frame['pts'] *= 2
+                frame['duration'] *= 2
+        with self.altered_probe(change), self.assertRaisesRegex(SpineError, 'decoded source clock'):
+            request.resolve(self.case.v, 'draft', 'draft')

@@ -2,13 +2,14 @@
 import copy
 import os
 import tempfile
+import threading
 import wave
 from pathlib import Path
 from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, decoded, framing, mapping, mix, pixels, pushes, raster, records
+from . import clocks, decoded, framing, mapping, mix, pixels, pushes, raster, records, source_rate
 
 
 def caption_identity(video):
@@ -24,6 +25,8 @@ def caption_identity(video):
 
 
 names = records.artifact_names
+_RATES = {}  # source sha256 -> (tolerance, rate); only successful clock proofs are kept
+_PROBING = threading.Lock()  # request resolution precedes output locks
 
 
 def prepare(video, req):
@@ -33,6 +36,14 @@ def prepare(video, req):
         raise SpineError('compositor: grades unsupported (seam 2h)')
     if any(c['kind'] != 'cover' for c in req['cards_data']['cards']):
         raise SpineError('compositor: non-cover card raster coverage unsupported')
+    tolerance = req['settings']['measurement']['grid_tolerance_s']
+    with _PROBING:
+        cached = _RATES.get(req['source_sha256'])
+        if cached is None or cached[0] != tolerance:
+            rate = source_rate.inspect(records.path(video, req['source']), tolerance)
+            _RATES[req['source_sha256']] = (tolerance, rate)
+        rate = _RATES[req['source_sha256']][1]
+    req = {**req, 'source_rate': rate}
     voice, picture = clocks.split(req, mapping.pieces(req))
     spans = {s['id']: s for s in req['plan_data']['spans']}
     resolved = []
@@ -59,7 +70,7 @@ def prepare(video, req):
                            framing.crop(req, span, row['source_frames'], size))
             resolved.append(row)
     mix.prepare(video, {**req, 'frame_map': voice})
-    return {'frame_map': voice, 'picture_map': resolved, 'elements': []}
+    return {'source_rate': rate, 'frame_map': voice, 'picture_map': resolved, 'elements': []}
 
 
 def reuse(video, req, accepted):
@@ -157,6 +168,8 @@ def encode(video, req, path):
         count = row['frames'][1] - row['frames'][0]
         x, y, w, h = row['crop']
         filters = f'trim=start_frame={a}:end_frame={b},setpts=PTS-STARTPTS'
+        if 'source_indices' in row:
+            filters = source_rate.filters(req, row)
         if row['kind'] == 'cover':
             filters += f',loop=loop={count - 1}:size=1:start=0'
         filters += f',crop={w}:{h}:{x}:{y}:exact=1,scale={width}:{height}:flags=bilinear'

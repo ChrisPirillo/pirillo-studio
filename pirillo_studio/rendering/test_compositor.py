@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import coverage, mapping, records, sound
+from . import compositor, coverage, mapping, records, sound
 from .render import Video, render
 from .test_rendering import Fixture, PowerLoss
 
@@ -28,6 +28,8 @@ class Compositor(Fixture):
 
     def setUp(self):
         super().setUp()
+        self.addCleanup(compositor._RATES.clear)
+        compositor._RATES.clear()
         self.cut['cold_open'] = None
         self.settings['shared']['video']['sizes']['wide'] = [160, 90]
         self.settings['shared']['encoder']['crf'] = 0

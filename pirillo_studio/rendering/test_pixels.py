@@ -74,15 +74,17 @@ class PixelCorrespondence(unittest.TestCase):
         self.assertEqual(rejected['checks']['frame-map']['value']['failed_frames'], [0, 1, 2, 3])
 
     def test_source_rate_mismatch_refuses(self):
-        for source in ('color=red:size=32x24:rate=8:duration=0.5',
-                       'color=red:size=32x24:rate=4:duration=1,setpts=PTS+gte(N\\,2)'):
+        for source, refusal in (('color=red:size=32x24:rate=8:duration=0.5',
+                                 'decoded source rate differs from bound rate'),
+                                ('color=red:size=32x24:rate=4:duration=1,setpts=PTS+gte(N\\,2)',
+                                 'variable-frame-rate source decoded clock')):
             with self.subTest(source=source):
                 self.make(self.source, source + ',drawbox=color=blue:t=fill:enable=gte(n\\,2)')
                 sha = filehash(self.source)
                 self.req['inputs']['source.mkv'] = sha
                 for row in self.req['frame_map']:
                     row['asset']['sha256'] = sha
-                with self.assertRaisesRegex(MeasurementRefused, 'source frame rate'):
+                with self.assertRaisesRegex(MeasurementRefused, refusal):
                     self.compare()
 
     def test_one_exposed_edge_cannot_pass_opaque_cover(self):

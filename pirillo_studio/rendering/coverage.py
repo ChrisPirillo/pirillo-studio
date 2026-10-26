@@ -4,7 +4,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError, canon, digest, filehash
-from . import decoded, mapping, pixels, raster, records, sound
+from . import decoded, mapping, pixels, raster, records, sound, source_rate
 
 
 def entry(req, name, value, ok, evidence, frames):
@@ -31,7 +31,7 @@ def subjects(req, pixels_ok):
             if row['kind'] == 'cover':
                 covered.append(index)
                 continue
-            source = row['source_frames'][0] + index - row['frames'][0]
+            source = source_rate.index(row, index)
             if source not in observations:
                 unseen.append(index)
                 continue
