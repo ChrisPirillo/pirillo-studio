@@ -254,3 +254,47 @@ class ReviewCorrections(unittest.TestCase):
                     elif verb in ("approve", "skip"):
                         self.assertEqual(undo["args"], {"undo": True})
                 self.assertEqual(actions["signed-in"]["writer"], "helper.signins")
+
+
+class PostIdeas(unittest.TestCase):
+    """defect: queue-13-seam-9, poll and tip selections were excluded from post coverage."""
+
+    output = Posts.output
+
+    def setUp(self):
+        self.adapter = Adapter()
+
+    def test_selection_keeps_post_identity_and_copy(self):
+        for kind, key, inverse in (("poll", "poll:day", None),
+                                   ("tip post", "story:day-t1", "story_ok")):
+            with self.subTest(kind=kind):
+                row = descriptor(kind)
+                row.update(status=["planned", "approval", "hand"], scheduled_at=NOW.isoformat())
+                original = copy.deepcopy(row)
+                [idea] = self.output({key: row})
+                self.assertIn("selection", idea["facets"])
+                self.assertEqual(idea["loop"], "shown")
+                self.assertNotIn("deadline", idea)
+                actions = {a["verb"]: a for a in idea["actions"]}
+                self.assertEqual(actions["want"]["label"], "Want")
+                self.assertEqual(actions["want"]["writer"], "ok_from_board")
+                self.assertEqual(actions["want"]["undo"]["writer"], inverse)
+                if inverse:
+                    self.assertEqual(actions["want"]["undo"]["args"], {"undo": True})
+                else:
+                    self.assertTrue(actions["want"]["undo"]["unmet"])
+                self.assertEqual(actions["skip"]["writer"], "pass_from_board")
+                self.assertEqual(actions["skip"]["undo"]["args"], {"undo": True})
+                self.assertNotIn("approve", actions)
+                self.assertEqual(row, original)
+                row.update(status="planned", scheduled_at=None)
+                [post] = self.output({key: row})
+                self.assertEqual(idea["source"]["record"], post["source"]["record"])
+                self.assertEqual(idea["kind"], post["kind"])
+                self.assertEqual(idea["judge"], post["judge"])
+                self.assertNotEqual(idea["id"], post["id"], "state revisions invalidate stale clicks")
+                self.assertNotIn("selection", post["facets"])
+                row["status"] = "skipped"
+                [skipped] = self.output({key: row})
+                self.assertEqual(skipped["loop"], "done")
+                self.assertEqual(skipped["actions"], [])

@@ -49,6 +49,9 @@ def task(adapter, key, record):
         if not statuses or not all(isinstance(state, str) and state.strip() for state in statuses):
             raise ValueError("status must name the source state")
         facets = sorted({FACETS[state] for state in statuses if state in FACETS})
+        selection = kind in {"poll", "tip post"} and "planned" in statuses and "approval" in facets
+        if selection:
+            facets.append("selection")
         finished = all(state in TERMINAL for state in statuses)
         content = {k: data[k] for k in ("words", "file", "platforms")}
         if "content_identity" in data:
@@ -65,13 +68,13 @@ def task(adapter, key, record):
         if "hand" in facets:
             why.append("The owner posts it by hand.")
         if "approval" in facets:
-            why.append("The post waits for approval.")
+            why.append("Choose whether to use this post." if selection else "The post waits for approval.")
         for facet, field in (("stuck", "blocker"), ("failed", "error")):
             if facet in facets:
                 if not data[field].strip():
                     raise ValueError(f"{field} is missing for {facet} post")
                 why.append(data[field])
-        verbs = ["posted"] if "hand" in facets or "stuck" in facets else []
+        verbs = ["posted"] if not selection and ("hand" in facets or "stuck" in facets) else []
         if "stuck" in facets:
             verbs.append("signed-in")
         if "approval" in facets:
@@ -92,12 +95,14 @@ def task(adapter, key, record):
                 undo["unmet"] = limit
             elif verb in ("approve", "skip"):
                 undo["args"] = {"undo": True}
+            if verb == "approve" and selection:
+                verb, label = "want", "Want"
             actions.append(dict(verb=verb, label=label, writer=writer, undo=undo))
         out = dict(kind=kind, what=f"Review {kind}", why=" ".join(why), judge=judge,
                    actions=[] if finished else actions, facets=facets,
                    source=dict(record=key, filed_by=data["filed_by"], related=data["related"]),
                    cant=dict(words="", goes_to=data["filed_by"]), loop="done" if finished else "shown")
-        if data["scheduled_at"] is not None and not {"failed", "stuck"}.intersection(facets) and (
+        if not selection and data["scheduled_at"] is not None and not {"failed", "stuck"}.intersection(facets) and (
                 "hand" in facets or "approval" not in facets):
             out["deadline"] = dict(at=data["scheduled_at"], outcome="missed" if "hand" in facets else "send", run="hand" not in facets)
             out["why"] += f" Its send is scheduled at {data['scheduled_at']}."

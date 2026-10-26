@@ -171,7 +171,7 @@ rg -n 'add\(|need\(|src|self.path ==' tools/board_v5a.py tools/board_unified.py 
 rg -n '^def ' pirillo_studio/board/*.py
 ```
 
-### Posts reader (seam 6, first family)
+### Posts reader (seams 6 and 9, first family)
 
 `board/posts.py` consumes one host-supplied adapter. `records(source)` inventories one canonical key and raw
 record per logical post, coalescing platform aliases and retaining history. `describe(key, record)` supplies raw
@@ -189,6 +189,8 @@ Otherwise a scheduled hand post has deadline outcome `missed`, with `run: false`
 is held with no send deadline, matching the posting clock's `due` approval gate and `scheduling.stale` rescheduling;
 its approval stays available. Other scheduled posts have outcome `send`, with `run: true`, awaiting the send
 writer's receipt. No schedule means no deadline. No grace is added.
+Poll and tip ideas are pre-selection facets of these same posts: planned, unapproved rows offer Want/Skip,
+with the same source key, revision-bound ID basis and unchanged copy after selection; no second card or send deadline.
 Actions name section 3's host writers. Approval reversal names `ok_post` for video assets or `story_ok` for story
 kinds, with `args: {undo: true}`; Skip reversal names `pass_from_board` with the same undo argument. Save words
 restores the saved words through `edit_post`. Posted uses `unmark_posted` and never deletes published content.
@@ -253,8 +255,8 @@ Want it, Bank, Story (video only) and Skip declare `idea_decide` actions. Bank's
 Story's inverse uses `story_pick(converted_to, None)` from the action receipt: it clears the conversion
 receipt and pick only, preserves the brief, and refuses once the post is on the Board. Conversion or
 Want is acted across days from its durable receipt; Skip and let-go receipts are done. A saved idea stays shown in the Bank, including a previously skipped idea;
-conversion takes precedence. Poll and tip ideas remain facets of their posts, not extra cards; those
-facets and vault options are next, then tasks. `test_ideas.py` checks the shared read and coverage paths.
+conversion takes precedence. Poll and tip ideas remain facets of their posts, not extra cards; the Posts reader now covers those
+facets (seam 9). Vault options are next, then tasks. `test_ideas.py` checks the shared read and coverage paths.
 
 ## 4. API and writer boundary
 
