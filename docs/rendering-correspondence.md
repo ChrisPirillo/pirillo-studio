@@ -1,4 +1,4 @@
-# Master correspondence and native master composition (2h parts 13/14/15/17)
+# Master correspondence and native master composition (2h parts 13/14/15/17/18)
 
 The plain recipe approves a draft before masters. Correspondence is the measurement
 prerequisite for that delivery: an adapter-supplied long, full vertical or short
@@ -56,8 +56,7 @@ flowchart LR
 ```
 
 Part 15 adds native full vertical masters below. Whole-short context is built in [part 16](rendering-cards.md). Part 17 adds native individual short masters below; unsupported master outputs keep their named
-refusal. Shorts-only continues to measure supplied media unchanged. This does not
-claim the plain recipe's complete delivery or final-manifest integration.
+refusal. Shorts-only continues to measure supplied media unchanged. Part 18 below integrates these outputs into the final manifest; the host switch remains separate.
 
 The renderer identity advances to invalidate earlier cached requests. Contracts
 independently decode every frame of a changing-gray source at 60/30 and
@@ -147,4 +146,44 @@ added to cutting. Cache identity advances with this compositor change.
 
 Partial incoming J-cuts, partial patches, silent retimed short correspondence and
 ambiguous repeated draft occurrences retain their named refusals. Supplied shorts
-remain measurement-only. Final-manifest integration is the next delivery piece.
+remain measurement-only. Part 18 integrates the native masters into the final manifest.
+
+
+## Final-manifest integration (part 18)
+
+`rendering.delivery.finalize(video)` completes the `masters` stage's native delivery set.
+It derives long, full vertical and every individual short from the settled shorts spec,
+never from a filename scan or a second edit clock. It holds the existing output writers
+while running the same render, coverage and publication transaction for each output.
+A refusal names the output and original reason; no partial final manifest is published.
+The current draft approval and every request are rechecked after the entire set finishes.
+
+```mermaid
+flowchart LR
+  A[Resolve settled master set] --> B[Hold manifest and output writers]
+  B --> C[Render or remeasure through existing publication path]
+  C --> D[Verify current requests, approval and published hashes]
+  D --> E[Atomically write final manifest]
+  E --> F[Return complete delivery set]
+  A & B & C & D --> G[Refuse by name; retain previous manifest]
+  E --> H[Interrupted: retry same content set]
+  H --> A
+```
+
+The existing readers require `members: [{path, sha256}]` containing only each delivered
+MP4 and SRT, in long, vertical, then settled short order. `release.rows.outputs` consumes
+that shape; spine hashing and QC validate its actual bytes. The spec previously left the
+binding shape open. The smallest addition is `outputs`, with one entry per output:
+`{output, key, record, record_sha256, readings, readings_sha256}`. The hashed render record
+contains the measured request and published media hash; its hashed readings include the
+passed `draft-match` correspondence. Frame maps, voice clocks and measurements stay in
+their existing records, with no duplicated timing or new clock. Evidence files are not
+media members, because the release reader deliberately refuses non-media members.
+
+The manifest uses the existing atomic record writer. Repeating the same set leaves its
+bytes and modification time unchanged. A crash before its replacement leaves the earlier
+manifest (or none); a crash after replacement retries the same complete set. A later media
+replacement makes an older manifest stale by hash until finalization succeeds again.
+No previous render bytes or request identity change in this seam, so no renderer-version
+bump is needed. Unsupported composition and coverage retain their existing named refusals.
+The host switch must call this entry point after supplying the required caption rasters.

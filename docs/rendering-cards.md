@@ -94,6 +94,6 @@ context raster. The renderer version changes so old coverage cannot be reused.
 
 The shorts-only recipe still measures supplied media unchanged and has no settled
 short context input. This seam supplies context for the [native individual-short compositor](rendering-correspondence.md);
-final-manifest integration remains queued.
+final-manifest integration is built in [part 18](rendering-correspondence.md).
 Contracts decode every delivered frame against an independent alpha calculation,
 check content identity/reuse, named refusals and interrupted-publication recovery.

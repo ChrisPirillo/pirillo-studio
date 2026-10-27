@@ -29,7 +29,8 @@ class Context(unittest.TestCase):
                 with self.assertRaisesRegex(SpineError, 'context: contradictory'):
                     plan.validate_shorts(maker, words, cut)
             with self.subTest(opening=opening, boundary='checks'):
-                self.assertTrue(checks.shorts(maker, spec, cut, words))
+                flags = checks.shorts(maker, spec, cut, words)
+                self.assertTrue(any('context: contradictory' in flag['measure']['reason'] for flag in flags), flags)
 
         for opening in ({'context': 'Subject'},
                         {'context': 'Subject', 'raster': {'file': 'context.png', 'sha256': 'authored'}},
