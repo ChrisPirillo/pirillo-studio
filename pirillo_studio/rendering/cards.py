@@ -1,4 +1,4 @@
-"""Output-sized anchored straight-alpha layers; see docs/rendering-cards.md's flowchart."""
+"""Output-sized anchored and whole-short straight-alpha layers; see docs/rendering-cards.md's flowchart."""
 import math
 from fractions import Fraction
 
@@ -7,8 +7,26 @@ from ..spine.files import SpineError, filehash
 from . import clocks, mapping, raster, records
 
 
+def context(req):
+    """Keep the selected short's exact authored line separate from word-anchored cards."""
+    if not req['output'].startswith('short:'):
+        return None
+    standalone = req['selected']['stands_alone']
+    if set(standalone) == {'opens_on_subject'} and standalone['opens_on_subject'] is True:
+        return None
+    if set(standalone) - {'context', 'raster'}:
+        raise SpineError('context: contradictory opening or unsupported timing/layout fields')
+    text = plan.text(standalone.get('context'), 'context text')
+    return {'id': 'short-context:' + req['selected']['id'], 'kind': 'context',
+            'text': text, 'raster': standalone.get('raster'), 'whole_short': True}
+
+
 def layers(req):
-    return [card for card in req['cards_data']['cards'] if card.get('kind') != 'cover']
+    result = [card for card in req['cards_data']['cards'] if card.get('kind') != 'cover']
+    if any('whole_short' in card for card in result):
+        raise SpineError('cards: unsupported timing or layout fields; whole-short context belongs to selected short')
+    whole = context(req)
+    return result + ([whole] if whole is not None else [])
 
 
 def inspect(video, req):
@@ -29,32 +47,36 @@ def inspect(video, req):
         ids.add(ident)
         if card.get('kind') not in ('instruction', 'context'):
             raise SpineError(f'cards: {ident}: unsupported kind')
-        if set(card) - {'id', 'kind', 'text', 'anchor', 'raster'}:
+        allowed = {'id', 'kind', 'text', 'raster'} | ({'whole_short'} if card.get('whole_short') else {'anchor'})
+        if set(card) - allowed:
             raise SpineError(f'cards: {ident}: unsupported timing or layout fields')
         plan.text(card.get('text'), 'cards text')
-        words = plan.selected(req['words_data'], card.get('anchor'))
-        a, b = [Fraction(str(plan.number(t, 'cards anchor'))) * fps
-                for t in (words[0]['start'], words[-1]['end'])]
-        edges = []
-        for row in voice:
-            span = spans[row['span']]
-            # Patch-local and silent retimed clocks cannot locate source-word anchors.
-            if any(k in span for k in ('patch', 'speed', 'retime')):
-                if words[0]['start'] < span['src'][1] and words[-1]['end'] > span['src'][0]:
-                    raise SpineError(f'cards: {ident}: patch/retimed anchor unsupported')
-                continue
-            start, end = row['source_frames']
-            if a >= end or b <= start:
-                continue
-            if not start <= a < b <= end:
-                raise SpineError(f'cards: {ident}: anchor crosses kept piece')
-            offset = row['frames'][0] - start
-            edge = [math.ceil(t) + offset for t in (a, b)]
-            if edge[0] >= edge[1]:
-                raise SpineError(f'cards: {ident}: anchor collapses on output grid')
-            edges.append(edge)
-        if not edges:
-            raise SpineError(f'cards: {ident}: anchor has no kept occurrence')
+        if card.get('whole_short'):
+            edges = [[0, voice[-1]['frames'][1]]]
+        else:
+            words = plan.selected(req['words_data'], card.get('anchor'))
+            a, b = [Fraction(str(plan.number(t, 'cards anchor'))) * fps
+                    for t in (words[0]['start'], words[-1]['end'])]
+            edges = []
+            for row in voice:
+                span = spans[row['span']]
+                # Patch-local and silent retimed clocks cannot locate source-word anchors.
+                if any(k in span for k in ('patch', 'speed', 'retime')):
+                    if words[0]['start'] < span['src'][1] and words[-1]['end'] > span['src'][0]:
+                        raise SpineError(f'cards: {ident}: patch/retimed anchor unsupported')
+                    continue
+                start, end = row['source_frames']
+                if a >= end or b <= start:
+                    continue
+                if not start <= a < b <= end:
+                    raise SpineError(f'cards: {ident}: anchor crosses kept piece')
+                offset = row['frames'][0] - start
+                edge = [math.ceil(t) + offset for t in (a, b)]
+                if edge[0] >= edge[1]:
+                    raise SpineError(f'cards: {ident}: anchor collapses on output grid')
+                edges.append(edge)
+            if not edges:
+                raise SpineError(f'cards: {ident}: anchor has no kept occurrence')
         asset = card.get('raster')
         if (not isinstance(asset, dict) or not isinstance(asset.get('file'), str)
                 or not asset.get('sha256')):
@@ -64,7 +86,8 @@ def inspect(video, req):
             raise SpineError(f'cards: {ident}: stale or unbound raster')
         value = raster.inspect_alpha(video, {**req, 'frame_map': voice}, asset,
                                      req['settings'].get('cards_safe'), edges, 'cards')
-        found.append({'id': ident, 'kind': card['kind'], **value})
+        found.append({'id': ident, 'kind': card['kind'], **value,
+                      **({'whole_short': True, 'text': card['text']} if card.get('whole_short') else {})})
     return found
 
 

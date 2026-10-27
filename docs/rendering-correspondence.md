@@ -56,8 +56,8 @@ flowchart LR
   E --> H[measure_refused: restore accepted artifacts]
 ```
 
-Part 15 adds native full vertical masters below. Native individual short masters and whole-short
-context remain the next delivery pieces; unsupported master outputs keep their named
+Part 15 adds native full vertical masters below. Whole-short context is built in [part 16](rendering-cards.md). Native individual short masters
+remain the next delivery piece; unsupported master outputs keep their named
 refusal. Shorts-only continues to measure supplied media unchanged. This does not
 claim the plain recipe's complete delivery or final-manifest integration.
 
@@ -106,7 +106,7 @@ coordinates. Known non-square sample aspect ratios and display rotation refuse b
 the compositor does not silently stretch or auto-rotate them. Missing and `0:1`
 sample aspect ratios mean unspecified square pixels, as in FFmpeg. Tall covers still
 must match the native output dimensions. Existing unrotated square-pixel input retains
-its crop. Individual native shorts, whole-short context and supplied-short encoding remain
+its crop. Individual native shorts and supplied-short encoding remain
 unsupported; shorts-only still measures its supplied media unchanged.
 
 The vertical contract independently computes the J-cut crop intervals, decodes all 24

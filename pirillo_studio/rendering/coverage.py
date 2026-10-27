@@ -199,7 +199,13 @@ def measure(video, req, path, result):
         if req['output'].startswith('short:'):
             label = 'word-ends'
             result['checks'][label] = words(video, req, path, ok)
+            label = 'context'
             context = req['selected']['stands_alone']
+            whole = next((card for card in card_rasters if card.get('whole_short')), None)
+            if whole is not None:
+                result['checks']['context'] = entry(req, 'context', {'text': whole['text'], 'raster': whole}, ok,
+                    'settled context raster visible on every frame; complete delivered RGB comparison',
+                    req['frame_map'][-1]['frames'][1])
             if context.get('opens_on_subject') is True and not context.get('context'):
                 result['checks']['context'] = entry(req, 'context', {'opens_on_subject': True}, ok,
                                                     'settled opening uses subject; no context layer declared', 1)
