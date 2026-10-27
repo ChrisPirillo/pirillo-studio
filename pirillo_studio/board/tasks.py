@@ -1,4 +1,4 @@
-"""Pure task-source reader, starting with source-owned cards; the host supplies native facts."""
+"""Pure task-source reader, with source-declared actions; the host supplies native facts."""
 import copy
 import hashlib
 import json
@@ -6,7 +6,7 @@ from urllib.parse import quote
 
 from . import model
 
-FIELDS = ("kind", "what", "why", "words", "writer_title", "filed_by", "related", "evidence")
+FIELDS = ("kind", "what", "why", "words", "actions", "filed_by", "related", "evidence")
 
 
 def task(adapter, key, record):
@@ -19,7 +19,7 @@ def task(adapter, key, record):
             data[field]
         if data["kind"] not in ("task", "crew task"):
             raise ValueError("kind must be task or crew task")
-        for field in ("what", "why", "words", "writer_title", "filed_by"):
+        for field in ("what", "why", "words", "filed_by"):
             if not isinstance(data[field], str) or not data[field].strip():
                 raise ValueError(f"{field} must be text")
         if not isinstance(data["related"], list) or any(not isinstance(r, str) or not r.strip() for r in data["related"]):
@@ -40,12 +40,27 @@ def task(adapter, key, record):
         if evidence:
             judge["parts"] = [dict(type=p["type"], label=p["label"], role=p["role"], href=f"{href}/evidence/{n}")
                               for n, p in enumerate(evidence)]
-        actions = []
-        for verb, label, writer, argument in (("done", "Done", "board_v5a.complete_card", "id"),
-                                               ("reply", "Reply", "board_tasks.board_post", "item")):
-            reason = f"{label} reversal writer is an unmet rebuild requirement"
-            actions.append(dict(verb=verb, label=label, writer=writer, args={argument: key, "title": data["writer_title"]},
-                                undo=dict(verb="undo-" + verb, writer=None, until=None, why=reason, unmet=reason)))
+        actions = data["actions"]
+        if not isinstance(actions, list) or not actions:
+            raise ValueError("actions must declare a primary action")
+        verbs = set()
+        for action in actions:
+            if not isinstance(action, dict) or any(not isinstance(action.get(f), str) or not action[f].strip()
+                                                   for f in ("verb", "label", "writer")):
+                raise ValueError("each action needs verb, label and writer")
+            if action["verb"] in verbs:
+                raise ValueError("action verbs must be unique")
+            verbs.add(action["verb"])
+            if not isinstance(action.get("args"), dict):
+                raise ValueError("action args must be an object")
+            undo = action.get("undo")
+            if not isinstance(undo, dict) or "writer" not in undo:
+                raise ValueError("each undo must declare its writer")
+            if undo["writer"] is None:
+                if not isinstance(undo.get("unmet"), str) or not undo["unmet"].strip():
+                    raise ValueError("an undo without a writer needs its unmet requirement")
+            elif not isinstance(undo["writer"], str) or not undo["writer"].strip() or not isinstance(undo.get("args"), dict):
+                raise ValueError("undo needs a writer and args")
         out = dict(kind=data["kind"], what=data["what"], why=data["why"], judge=judge, actions=actions, loop="shown",
                    source=dict(record=key, filed_by=data["filed_by"], related=data["related"]),
                    cant=dict(words="", goes_to=data["filed_by"]))

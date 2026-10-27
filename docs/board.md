@@ -133,13 +133,13 @@ controls. All get the shared can't route in the rebuild. Later/Bring back uses `
 |---|---|---|---|
 | thumbs | assets, find_thumbs/find_shots results / missing thumbnails or photos | Open folder; Done where clearable | File supply is the real prerequisite, dismissing a notice is not supplying it. |
 | review | video.review_note and Review.md / review result | See posts, Open review; Done where clearable | Review document is judge, posts are related sources. |
-| pin | video.missed_pin / missed date | See posts; Done where clearable | Date change remains the owning scheduling writer's action. |
+| pin | video.missed_pin / missed date | See posts; Dismiss notice → `board_data.action` | Date change remains the owning scheduling writer's action. |
 | posting-hold | hold.asks / hold reason | Read task; no release writer attached | Needs a spec change: declare hold provenance and validated release/inverse before exposing a release verb; C TURN_KIND has no route. |
 | youtube-manual | youtube_manual_work / manual handoff | Handoff steps, Read task | One task tied to its post; direct steps part, not a duplicate steps link. |
 | signin | signins and forthcoming assets / connection needed | Signed in → helper writes signins | Writer checks connection later; acknowledgement is not success proof. |
 | token | board_facts.ages / expiring credentials | Read task; Done where clearable | Never expose credentials; expiry reason and renewal instructions only. |
 | card:meta-live-page | configured page and missing credential / connection instructions | v5a Done → complete_card | Needs a spec change: synthetic source has no led.cards record, so current completion refuses. Give it a real source writer, not fabricated completion. |
-| wake | wake_error / wake failure | Read task; Done where clearable | Owner repair or can't reply; completion must distinguish dismissed notice from repair. |
+| wake | wake_error / wake failure | Read task; Dismiss notice → `board_data.action` | Owner repair or can't reply; completion must distinguish dismissed notice from repair. |
 | stray | strays / tab left open | I closed it → helper removes stray and logs | Rebuild retains an inverse receipt; removed ledger row alone is insufficient. |
 | refresh | refreshes, thumbnail brief and folder / replacement thumbnail | Open brief/folder; Done where clearable | File judge with instructions and output relation. |
 | card | live_cards over cards / source's instructions | Open, Done → complete_card → card_cmd; Reply → board_tasks.board_post | One source-owned task; actionable lines about an existing post attach there in C. |
@@ -283,28 +283,43 @@ opposite action. `read` refuses partial coverage; `coverage` names every unplace
 can replace filesystem reads during copied-source coverage; missing active media remains named and unplaced.
 `test_vault.py` checks serialized tasks, revisions, conversion, writer declarations, deadlines and refusals.
 
-### Tasks reader (seam 11, first slice)
+### Tasks reader (seams 11 and 12)
 
 `board/tasks.py` follows the shared reader flowchart above. The first slice is source-owned cards from the
 host's `live_cards` view over `cards`, including crew reports. `records(source)` retains stable source keys and
 raw cards alongside their effective instructions; `describe(key, record)` supplies `kind` (`task` or `crew task`),
-`what`, `why`, `words`, `writer_title`, `filed_by`, `related`, `evidence`, and optional `history`. Each evidence
+`what`, `why`, `words`, `actions`, `filed_by`, `related`, `evidence`, and optional `history`. Each evidence
 part declares its `type`, `label`, `role`, `target` and content `identity`. Instructions and evidence bind the
 served words judge and `/evidence/<n>` parts; all raw and normalized facts bind the task ID. Native card links
 are destination parts, not mutation verbs. The host preserves the native title for the completion writer and
 uses its current instruction filter without silently discarding the filtered source records. Cross-family
 content association is not inferred by this slice; the API must reconcile those related sources.
 
-Done declares `board_v5a.complete_card(id=key, title=writer_title)` (which calls `card_cmd`); Reply declares
-`board_tasks.board_post(item=key, title=writer_title)`. Reply words and dispatch validation belong to the API.
-Neither writer has a genuine inverse: Done deletes the source row and Reply has no retraction writer. Both
-therefore declare `undo.writer: null` and an explicit unmet writer. Removal is not a retained completion
-receipt; durable completion history remains an API/writer requirement. These declarations do not execute writers.
+Actions come from the source adapter, never from the generic task category. Each declares a unique verb,
+label, writer, argument object and undo. An undo names its genuine writer and arguments, or a null writer and
+nonempty unmet requirement. The reader validates these declarations and binds them to the task revision;
+changing actions invalidates old clicks without changing an unchanged content URL. Dispatch remains the API's job.
+
+For cards, the host keeps `writer_title`: Done declares `board_v5a.complete_card(id=key, title=writer_title)`
+(which calls `card_cmd`); Reply declares `board_tasks.board_post(item=key, title=writer_title)`. Reply words
+and dispatch validation belong to the API. Neither writer has a genuine inverse: Done deletes the source row
+and Reply has no retraction writer. Both declare `undo.writer: null` and an explicit unmet writer.
+
+Seam 12 adds missed-pin and wake-error notices, keyed `pin:<stable video key>` and `wake`. Their instruction
+builders are shared with the host's native task producer. The missed date is a served words/source part and
+the video is related; the wake error is the served instruction. Neither notice claims a send deadline.
+With the host's content-action switch enabled, Dismiss notice declares `board_data.action` with its native
+`clear-task` arguments and stamp; Reply remains available. A matching dismissal stamp excludes only that
+revision and names its reason in coverage; a changed notice returns. With that switch disabled, the notice
+still offers Reply and ignores dismissal marks, matching the native reader. The host's blocking setting is
+included when deriving its native stamp. Dismissal neither repairs the scheduler nor reschedules a video.
+No current writer restores a dismissal, so its undo is explicitly unmet. Durable terminal history remains
+an API/writer requirement for cards and dismissed notices. These declarations never execute writers.
 
 `model.read` refuses partial coverage; `model.inventory` names each unplaced source and cause. The host's
 coverage also names suppressed cards and every task source kind not yet read, so a clean slice is never a
 claim of complete task-family coverage. `test_tasks.py` checks serialized output, revisions, writer declarations
-and named refusals. Next: the remaining task sources, then the API and page.
+and named refusals. Next: remaining task sources (the source-kind table above less cards, pin and wake), then the API and page.
 
 ## 4. API and writer boundary
 
