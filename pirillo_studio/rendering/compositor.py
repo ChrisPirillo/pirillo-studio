@@ -9,7 +9,7 @@ from fractions import Fraction
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import clocks, color, decoded, framing, grade, mapping, mix, pixels, pushes, raster, records, source_rate
+from . import cards, clocks, color, decoded, framing, grade, mapping, mix, pixels, pushes, raster, records, source_rate
 
 
 def caption_identity(video):
@@ -35,8 +35,6 @@ def prepare(video, req):
         raise SpineError('compositor: native masters unsupported (seam 2h)')
     if req['settings']['shape'] == 'tall' and req['cards_data']['cards']:
         raise SpineError('compositor: native tall cards unsupported (seam 2h)')
-    if any(c['kind'] != 'cover' for c in req['cards_data']['cards']):
-        raise SpineError('compositor: non-cover card raster coverage unsupported')
     tolerance = req['settings']['measurement']['grid_tolerance_s']
     with _PROBING:
         cached = _RATES.get(req['source_sha256'])
@@ -50,11 +48,11 @@ def prepare(video, req):
     resolved = []
     for row in picture:
         if spans[row['span']].get('hide_picture'):
-            cards = [c for c in req['cards_data']['cards'] if c.get('covers') == row['span']]
-            if len(cards) != 1 or 'file' not in cards[0]:
+            covers = [c for c in req['cards_data']['cards'] if c.get('covers') == row['span']]
+            if len(covers) != 1 or 'file' not in covers[0]:
                 raise SpineError('cards: opaque raster cover asset required')
-            row.update(kind='cover', card=cards[0]['id'], source_frames=[0, 1])
-            name = cards[0]['file']
+            row.update(kind='cover', card=covers[0]['id'], source_frames=[0, 1])
+            name = covers[0]['file']
         else:
             row['kind'], name = 'source', req['source']
         row['asset'] = {'file': name, 'sha256': req['inputs'][name]}
@@ -79,7 +77,8 @@ def prepare(video, req):
                            framing.crop(req, span, row['source_frames'], size))
             resolved.append(row)
     mix.prepare(video, {**req, 'frame_map': voice})
-    return {'source_rate': rate, 'frame_map': voice, 'picture_map': resolved, 'elements': []}
+    return {'source_rate': rate, 'frame_map': voice, 'picture_map': resolved,
+            'elements': cards.prepare(video, {**req, 'frame_map': voice})}
 
 
 def reuse(video, req, accepted):
@@ -171,6 +170,12 @@ def encode(video, req, path):
     bind(video, req, {p: filehash(records.path(video, p)) for p in names(req)})
     if caption['burn'] is not None:
         raster.inspect(video, req, caption)
+    inspected = cards.inspect(video, req)
+    if req['elements'] != cards.elements(req, inspected):
+        raise SpineError('cards: resolved elements differ from raster bounds')
+    layers = [records.path(video, c['raster']['file']) for c in cards.layers(req)]
+    if caption['burn'] is not None:
+        layers.append(records.path(video, req['caption_binding']['raster']['file']))
     args, graph, joined = [], [], []
     settings = req['settings']
     width, height = settings['video']['sizes'][settings['shape']]
@@ -188,7 +193,7 @@ def encode(video, req, path):
         filters += ',' + grade.filters(video, req, row)
         filters += f',crop={w}:{h}:{x}:{y}:exact=1,scale={width}:{height}:flags=bilinear'
         # Fix scaling's format before concat can negotiate a different chroma path.
-        filters += ',format=' + ('rgb24' if caption['burn'] is not None else settings['video']['pix_fmt'])
+        filters += ',format=' + ('rgb24' if layers else settings['video']['pix_fmt'])
         filters += f",setsar={settings['video']['sample_aspect_ratio']},settb=AVTB,setpts=N/({settings['video']['fps']}*TB)"
         graph.append(f'[{i}:v:0]{filters}[v{i}]')
         joined.append(f'[v{i}]')
@@ -197,11 +202,16 @@ def encode(video, req, path):
                  f"setpts=N/({settings['video']['fps']}*TB)[picture]")
     args += ['-i', str(records.path(video, req['mix_binding']['file']))]
     picture = '[picture]'
-    if caption['burn'] is not None:
-        args += ['-i', str(records.path(video, req['caption_binding']['raster']['file']))]
-        graph.append(f'[picture]format=gbrp[base];[base][{len(joined) + 1}:v:0]'
-                     'overlay=format=rgb:shortest=1:repeatlast=0[burned]')
-        picture = '[burned]'
+    clock = f"settb=expr=1/({settings['video']['fps']}),setpts=N"
+    if layers:
+        graph.append(f'[picture]{clock}[grid]')
+        picture = '[grid]'
+    for i, layer in enumerate(layers):
+        args += ['-i', str(layer)]
+        graph.append(f'[{len(joined) + 1 + i}:v:0]{clock}[overlay{i}];'
+                     f'{picture}format=gbrp[base{i}];[base{i}][overlay{i}]'
+                     f'overlay=format=rgb:shortest=1:repeatlast=0[layer{i}]')
+        picture = f'[layer{i}]'
     encoder = settings['encoder']
     video_args = ['-c:v', encoder['engine'], '-crf', str(encoder['crf']), '-preset', encoder['preset'],
                   '-pix_fmt', settings['video']['pix_fmt'], '-r', settings['video']['fps']]

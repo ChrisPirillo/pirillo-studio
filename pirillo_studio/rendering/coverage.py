@@ -4,7 +4,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError, canon, digest, filehash
-from . import color, decoded, mapping, pixels, raster, records, sound, source_rate
+from . import cards, color, decoded, mapping, pixels, raster, records, sound, source_rate
 
 
 def entry(req, name, value, ok, evidence, frames):
@@ -177,11 +177,20 @@ def measure(video, req, path, result):
         mapping.validate(req)
         burned = caption is not None and 'raster' in caption['value']
         options = {'raster': records.path(video, req['caption_binding']['raster']['file'])} if burned else {}
+        label = 'cards'
+        card_rasters = cards.inspect(video, req)
+        if card_rasters:
+            if req['elements'] != cards.elements(req, card_rasters):
+                raise SpineError('cards: resolved elements differ from raster bounds')
+            options['layers'] = [records.path(video, c['raster']['file']) for c in cards.layers(req)]
+        label = 'frame-map'
         compared = pixels.compare(video, req, path, **options)
         result['checks'].update(compared['checks'])
         result['mapped_frames'] = compared['frame_checks']
         ok = compared['checks']['frame-map']['ok']
-        if req['elements'] or any(c.get('kind') != 'cover' for c in req['cards_data']['cards']):
+        if card_rasters:
+            result['checks']['cards']['value']['rasters'] = card_rasters
+        elif req['elements']:
             result['checks']['cards'] = entry(req, 'cards', None, False, 'decoded non-cover layer coverage unavailable', 0)
         if req['settings']['shape'] == 'tall':
             label = 'subject'

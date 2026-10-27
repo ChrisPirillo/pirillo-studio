@@ -271,9 +271,9 @@ Seam 2h part 7: [decoded color conversion](rendering-color.md) built: BT.601 and
 Seam 2h part 8: [approved SDR grades](rendering-grade.md) built: hash-bound finish LUT/parameters and local source-span exposure, source-span transforms in wide drafts, selected dependency identity, decoded RGB and every-frame tags; settings own the finish recipe without owner values.
 Seam 2h part 9: [native tall crops and grades](rendering-grade.md) built: aspect-fitting med/close crops and pushes, source-relative grades, independently checked decoded crop bindings, RGB and per-frame subject/tag proof; plain full-frame tall, missing crop observations, tall cards and masters refuse by name.
 Seam 2h part 10: [native tall caption burns](rendering-captions.md) built: provider-supplied rasters on the tall output grid, after grades/crops, with independent decoded alpha-composite proof, safe/cue edges, identity/reuse and accepted-artifact recovery. This enables tall arc/draft composition, not automatic glyph generation or master delivery; shorts-only still preserves supplied media bytes.
-Seam 2h next: anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence, native tall cards and master composition; HDR tone mapping and exposure solving remain unsupported.
+Seam 2h part 11: [wide anchored card/context rasters](rendering-cards.md) built: current raster hashes, word anchors on the voice clock, decoded alpha edges/safe bounds, plan-order layers below captions, independent RGB proof and accepted-output recovery.
+Seam 2h next: split-clock master correspondence, native tall cards/whole-short context and master composition; HDR tone mapping and exposure solving remain unsupported.
 Missing/unsupported or ambiguous source color, HDR needing tone mapping, missing/unbound/stale/contradictory grade inputs, grades without adapter preparation, plain full-frame tall without a crop source, subjects that cannot fit the tall crop, native tall cards and masters, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
-
 | Function | Reads | Writes and answer |
 |---|---|---|
 | `source_rate.inspect(path, tolerance) / bind(req, row) / filters(req, row)` | Decoded CFR evidence, source seconds and output grid | Bound rate and explicit source indices; exact picture sampling, or named refusal. No voice/media-input writes. |
@@ -497,4 +497,4 @@ After both C1 videos run on the core, remove the switch and old C1 path together
 Backlog issues #1058, #1135, #1132, #357, #1133 and #1136: **read at the switch**, each. Local source/reference
 searches found no explicit attribution for any of them; numeric fixture matches do not establish their subject.
 The Mac lead reads each issue at the switch and reconciles it with a contract before claiming it resolved.
-This seam changes no runtime behavior. Item 14 remains `building` through implementation, live proof and deletion.
+The specification-only seam changed no runtime behavior; built seams are listed above. Item 14 remains `building` through implementation, live proof and deletion.

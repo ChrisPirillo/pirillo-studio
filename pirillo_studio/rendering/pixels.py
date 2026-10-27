@@ -51,7 +51,7 @@ def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=Fa
     return [integer(streams[0][key], key, 1) for key in ('width', 'height')]
 
 
-def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, raster=None, selection=None, transform=None):
+def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, raster=None, layers=(), selection=None, transform=None):
     """Yield one span's absolute RGB differences; only a declared cover may repeat."""
     width, height = [integer(value, 'pixel size', 1) for value in size]
     executable = shutil.which('ffmpeg')
@@ -69,7 +69,7 @@ def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, ras
     rgb = f'scale={width}:{height}:flags=bilinear,format=rgb24,format=gbrp'
     clock = 'settb=expr=1/1,setpts=N'
     # Match the encoder's scaling format before RGB comparison, including chroma resampling.
-    scaled = f'scale={width}:{height}:flags=bilinear,format={pix_fmt},{rgb}' if raster is None else rgb
+    scaled = f'scale={width}:{height}:flags=bilinear,format={pix_fmt},{rgb}' if raster is None and not layers else rgb
     filters = [f'trim=end_frame={source_count}', f'crop={w}:{h}:{x}:{y}:exact=1', scaled]
     if selection is not None:
         filters[0] = selection
@@ -82,12 +82,17 @@ def frames(path, size, *, reference, row, output_seek, source_seek, pix_fmt, ras
     graph = [f'[0:v:0]trim=end_frame={count},{rgb},{clock}[actual]',
              '[1:v:0]' + ','.join(filters + [clock]) + '[reference]',
              '[actual][reference]blend=all_mode=difference:shortest=1:repeatlast=0[diff]']
-    if raster is not None:
-        args += ['-i', str(raster)]
+    overlays = [*layers, *([raster] if raster is not None else [])]
+    if overlays:
+        graph.pop()
+        reference = '[reference]'
         start, end = row['frames']
-        graph[-1:] = [f'[2:v:0]trim=start_frame={start}:end_frame={end},{clock}[caption]',
-                      '[reference][caption]overlay=format=rgb:shortest=1:repeatlast=0,format=gbrp[burned]',
-                      '[actual][burned]blend=all_mode=difference:shortest=1:repeatlast=0[diff]']
+        for i, layer in enumerate(overlays):
+            args += ['-i', str(layer)]
+            graph += [f'[{i + 2}:v:0]trim=start_frame={start}:end_frame={end},{clock}[layer{i}]',
+                      f'{reference}[layer{i}]overlay=format=rgb:shortest=1:repeatlast=0,format=gbrp[burned{i}]']
+            reference = f'[burned{i}]'
+        graph.append(f'[actual]{reference}blend=all_mode=difference:shortest=1:repeatlast=0[diff]')
     args += ['-filter_complex', ';'.join(graph), '-map', '[diff]', '-an', '-fps_mode', 'passthrough',
              '-f', 'rawvideo', '-pix_fmt', 'gbrp', 'pipe:1']
     yield from read_frames(args, width * height * 3, 'frame-map')
@@ -157,15 +162,15 @@ def _asset(video, req, row, verified):
     return path
 
 
-def compare(video, req, output_path, *, raster=None):
+def compare(video, req, output_path, *, raster=None, layers=()):
     """Return checks and per-frame evidence; the caller independently binds rows to the plan."""
     try:
-        return _compare(video, req, output_path, raster=raster)
+        return _compare(video, req, output_path, raster=raster, layers=layers)
     except (KeyError, TypeError, IndexError) as error:
         decoded.refuse('frame-map', 'measurement', f'missing or invalid frame binding: {error}')
 
 
-def _compare(video, req, output_path, *, raster=None):
+def _compare(video, req, output_path, *, raster=None, layers=()):
     setting = req['settings']
     policy = setting['measurement']
     limits = {}
@@ -213,7 +218,7 @@ def _compare(video, req, output_path, *, raster=None):
         source_seek = verified[(name, row['kind'])]['seeks'][source_start]
         with contextlib.closing(frames(output, size, transform=grade.filters(video, req, row), reference=assets[name]['path'], row=row,
                                        output_seek=seeks[start], source_seek=source_seek,
-                                       pix_fmt=stream['pix_fmt'],
+                                       pix_fmt=stream['pix_fmt'], layers=layers,
                                        **({'selection': source_rate.filters(req, row, seeked=True)}
                                           if 'source_indices' in row else {}),
                                        **({'raster': raster} if raster is not None else {}))) as differences:
@@ -235,7 +240,7 @@ def _compare(video, req, output_path, *, raster=None):
             decoded.refuse('frame-map', 'verification.complete_decode', f'asset changed during comparison: {name}')
     checks = {}
     for name in ('frame-map', 'cards'):
-        selected = evidence if name == 'frame-map' else [item for item in evidence if item['kind'] == 'cover']
+        selected = evidence if name == 'frame-map' else [item for item in evidence if item['kind'] == 'cover' or layers]
         ok = all(item['ok'] for item in selected)
         checks[name] = {'ok': ok, 'result': 'pass' if ok else 'fail',
                         'value': {'frames': len(selected), 'failed_frames': [item['frame'] for item in selected if not item['ok']],
