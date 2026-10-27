@@ -111,7 +111,11 @@ The maker's shorts plan, `records/shorts_plan.json`, and the settled one `settle
   - the full vertical (`full: true`, exactly one): every span in story order; no `spans`, `pieces`, `opens_on`,
     `ends_on` or `stands_alone`, because it opens and ends as the long cut does.
   - a short: `spans` are word-ID ranges, each inside one kept span, never seconds; `opens_on` and `ends_on` are its
-    first and last word; `stands_alone` is `context` (a line the render pins) or `opens_on_subject`; `pieces` are
+    first and last word; `stands_alone` is `{context: "nonempty line"}` with optional `raster`, or exactly
+    `{opens_on_subject: true}`. These forms cannot be mixed. Cutting accepts text-only context; rendering requires
+    `raster: {file, sha256}` beside `context`. No cutting step writes that raster yet: it is an externally authored
+    asset supplied at the provider boundary, carried from the maker plan into the settled spec. Missing raster
+    evidence refuses rendering. `pieces` are
     written by `settle`, never the maker: each range split at his pauses, its head and tail trimmed to their pads and
     any piece under the shortest dropped, by the shorts settings (today `shorts.py GAP_CUT, PAD, HEAD_PAD, TAIL_PAD`).
 
@@ -364,6 +368,10 @@ a command's own message.
     and under any other recipe data.
 16. `test_off_is_unchanged`: with the switch off, host outputs and written files are byte-identical on the same
     fixture; on, the C1 editor stages call the core and no host check above that it replaces runs.
+18. `test_contradictions_refused_at_both_cutting_boundaries` (`cutting/test_context.py`): a short whose opening says
+    both (`context` with `opens_on_subject: false`, or `opens_on_subject: true` with an empty `context`) refuses
+    at `validate_shorts` and is flagged by `checks.shorts`; a lone `context` (with or without its raster) or
+    `opens_on_subject: true` passes both.
 
 Tests 1, 3, 6, 7 and 9 cover the ends locked, refused, blocked, waits on the owner and retimed back to plan.
 

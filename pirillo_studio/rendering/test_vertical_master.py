@@ -155,5 +155,3 @@ class VerticalMaster(unittest.TestCase):
         self.assertEqual(result['state'], 'render_failed', result)
         self.assertIn('bed: unavailable stem', result['error'])
         self.assertEqual({name: (c.folder / name).read_bytes() if (c.folder / name).exists() else None for name in paths}, before)
-        with self.assertRaisesRegex(SpineError, 'native masters unsupported'):
-            compositor.prepare(c.v, {**recovered['request'], 'output': 'short:one'})

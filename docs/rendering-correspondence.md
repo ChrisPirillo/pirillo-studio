@@ -1,9 +1,8 @@
-# Master correspondence and native master composition (2h parts 13/14/15)
+# Master correspondence and native master composition (2h parts 13/14/15/17)
 
 The plain recipe approves a draft before masters. Correspondence is the measurement
 prerequisite for that delivery: an adapter-supplied long, full vertical or short
-must preserve the approved voice and picture independently. Native long and full vertical composition use that same proof; native individual short composition
-remains refused; shorts-only still measures its supplied media without encoding it.
+must preserve the approved voice and picture independently. Native long, full vertical and individual short composition use that same proof; shorts-only still measures its supplied media without encoding it.
 
 ```mermaid
 flowchart LR
@@ -56,8 +55,7 @@ flowchart LR
   E --> H[measure_refused: restore accepted artifacts]
 ```
 
-Part 15 adds native full vertical masters below. Whole-short context is built in [part 16](rendering-cards.md). Native individual short masters
-remain the next delivery piece; unsupported master outputs keep their named
+Part 15 adds native full vertical masters below. Whole-short context is built in [part 16](rendering-cards.md). Part 17 adds native individual short masters below; unsupported master outputs keep their named
 refusal. Shorts-only continues to measure supplied media unchanged. This does not
 claim the plain recipe's complete delivery or final-manifest integration.
 
@@ -106,7 +104,7 @@ coordinates. Known non-square sample aspect ratios and display rotation refuse b
 the compositor does not silently stretch or auto-rotate them. Missing and `0:1`
 sample aspect ratios mean unspecified square pixels, as in FFmpeg. Tall covers still
 must match the native output dimensions. Existing unrotated square-pixel input retains
-its crop. Individual native shorts and supplied-short encoding remain
+its crop. Part 17 adds individual native shorts; supplied-short encoding remains
 unsupported; shorts-only still measures its supplied media unchanged.
 
 The vertical contract independently computes the J-cut crop intervals, decodes all 24
@@ -118,3 +116,35 @@ real-media fixtures prove rotated/non-square source and cover refusals. The long
 now also proves that changed draft settings invalidate an earlier owner approval for
 both long and vertical masters. A real `setsar=0` fixture with no stored SAR proves
 source and cover acceptance; the geometry check also accepts explicit `0:1` metadata.
+
+## Native individual short composition (part 17)
+
+A selected short now enters the same native compositor as long and full vertical
+masters. Its settled pieces keep their order, source offsets and trims; rendering
+only snaps them to the output grid. Native tall crops, prepared voice, bed, cues,
+provider caption rasters and whole-short context use the existing shared owners.
+The output and generated artifacts use the selected short's identity. Each piece
+must still have one unambiguous approved-draft occurrence, and picture and sound
+must correspond to those same draft intervals before publication.
+
+```mermaid
+flowchart LR
+  A[Resolve selected pieces, tall crop and context] --> B{Current draft explicitly approved?}
+  A --> C[Refuse unsupported or invalid input by name]
+  B -->|no| D[waiting_owner]
+  B -->|yes| E[rendering: voice, cues, mix, picture and bound layers]
+  E --> F[measuring: every decoded frame and draft intervals]
+  F --> G[delivered: publish short and bound artifacts]
+  E --> H[render_failed: restore accepted artifacts]
+  F --> I[measure_refused: restore accepted artifacts]
+```
+
+The caption provider supplies glyph pixels bound to the current short burn, as for
+full vertical output. Context uses the authored whole-short raster described in
+[part 16](rendering-cards.md); a subject-opening short has no context layer. The
+cutting contract owns which opening declaration is valid. No raster writer is
+added to cutting. Cache identity advances with this compositor change.
+
+Partial incoming J-cuts, partial patches, silent retimed short correspondence and
+ambiguous repeated draft occurrences retain their named refusals. Supplied shorts
+remain measurement-only. Final-manifest integration is the next delivery piece.

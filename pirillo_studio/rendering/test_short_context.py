@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from ..spine.files import SpineError, filehash
-from . import cards, compositor, records, request
+from . import cards, records, request
 from .render import render
 from . import test_cards
 from . import test_coverage
@@ -130,8 +130,6 @@ class ShortContext(unittest.TestCase):
                 self.assertEqual((self.c.folder / accepted['file']).read_bytes(), original)
                 profile['cards_safe'] = [2, 2, 46, 86]
         self.bind(self.standalone)
-        with self.assertRaisesRegex(SpineError, 'native masters unsupported'):
-            compositor.prepare(self.c.v, request.resolve(self.c.v, 'masters', 'short:one'))
 
     def test_missing_delivered_layer_and_crash_recover_accepted_output(self):
         accepted = self.delivered()

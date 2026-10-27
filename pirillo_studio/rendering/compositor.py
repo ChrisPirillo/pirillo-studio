@@ -31,7 +31,8 @@ _PROBING = threading.Lock()  # request resolution precedes output locks
 
 
 def prepare(video, req):
-    if req['stage'] not in ('arc', 'draft') and not (req['stage'] == 'masters' and req['output'] in ('long', 'vertical')):
+    if req['stage'] not in ('arc', 'draft') and not (req['stage'] == 'masters'
+            and (req['output'] in ('long', 'vertical') or req['output'].startswith('short:'))):
         raise SpineError('compositor: native masters unsupported (seam 2h)')
     tolerance = req['settings']['measurement']['grid_tolerance_s']
     with _PROBING:

@@ -57,9 +57,9 @@ or [provider-supplied caption burns](rendering-captions.md) from part 10.
 An explicit med/close shot and nonempty source-frame subject observations supply
 its crop. Wide/full-frame tall requests refuse as `tall crop source required`, so a
 16:9 source is never squashed or letterboxed into tall. [Card layers](rendering-cards.md)
-define supported overlays. Full vertical masters use these crops in [part 15](rendering-correspondence.md).
-Native individual short masters, landmark face/mouth shots, partial patches
-and ambiguous outgoing J-cuts remain named refusals.
+define supported overlays. Full vertical masters use these crops in [part 15](rendering-correspondence.md),
+individual short masters in [part 17](rendering-correspondence.md#native-individual-short-composition-part-17).
+Landmark face/mouth shots, partial patches and ambiguous outgoing J-cuts remain named refusals.
 
 For tall, the base width is `min(source_width, floor(source_height * output_width /
 output_height))`; the requested shot fraction scales that width, rounded to an

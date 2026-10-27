@@ -214,6 +214,17 @@ def validate_plan(plan, rows):
         raise SpineError(f"records/cut_plan.json: {exc}") from None
 
 
+def short_context(standalone):
+    """Return authored context or None for a subject opening; rendering validates its raster."""
+    if not isinstance(standalone, dict):
+        raise SpineError('context: stands_alone must be a record')
+    if set(standalone) == {'opens_on_subject'} and standalone['opens_on_subject'] is True:
+        return None
+    if set(standalone) - {'context', 'raster'}:
+        raise SpineError('context: contradictory opening or unsupported timing/layout fields')
+    return text(standalone.get('context'), 'context text')
+
+
 def validate_shorts(record, rows, plan):
     try:
         text(record["plan"], "shorts plan key")
@@ -235,9 +246,7 @@ def validate_shorts(record, rows, plan):
                     selected(rows, bounds)
                 text(short["opens_on"], sid)
                 text(short["ends_on"], sid)
-                standalone = short["stands_alone"]
-                if not isinstance(standalone, dict):
-                    raise SpineError(f"{sid}: stands_alone must be a record")
+                short_context(short["stands_alone"])
         if full != 1:
             raise SpineError("shorts: exactly one full vertical required")
         canon(record)

@@ -262,10 +262,12 @@ def shorts(maker, spec, plan, words):
             elif short['opens_on'] != ranges[0][0] or short['ends_on'] != ranges[-1][-1]:
                 reason = 'short does not open or end on its declared word'
             else:
-                standalone = short['stands_alone']
                 first = io.selected(words, ranges[0])[0]['text'].strip('.,!?').casefold()
-                if not standalone.get('context', '').strip() and (first in cfg['backrefs'] or standalone.get('opens_on_subject') is not True):
-                    reason = 'short needs subject context for its opening'
+                try:
+                    if io.short_context(short['stands_alone']) is None and first in cfg['backrefs']:
+                        reason = 'short needs subject context for its opening'
+                except SpineError as exc:
+                    reason = str(exc)
                 expected = short_pieces(ranges, words, plan['measurements'])
                 length = sum(b-a for a, b in short['pieces'])
                 if short['pieces'] != expected or not cfg['min_s'] <= length <= cfg['max_s']:

@@ -12,11 +12,9 @@ def context(req):
     if not req['output'].startswith('short:'):
         return None
     standalone = req['selected']['stands_alone']
-    if set(standalone) == {'opens_on_subject'} and standalone['opens_on_subject'] is True:
+    text = plan.short_context(standalone)
+    if text is None:
         return None
-    if set(standalone) - {'context', 'raster'}:
-        raise SpineError('context: contradictory opening or unsupported timing/layout fields')
-    text = plan.text(standalone.get('context'), 'context text')
     return {'id': 'short-context:' + req['selected']['id'], 'kind': 'context',
             'text': text, 'raster': standalone.get('raster'), 'whole_short': True}
 

@@ -118,8 +118,6 @@ class LongMaster(unittest.TestCase):
         self.approved()
         accepted = self.delivered()
         paths = [accepted['file'], *accepted['request']['generated']]
-        with self.assertRaisesRegex(SpineError, 'native masters unsupported'):
-            compositor.prepare(c.v, {**accepted['request'], 'output': 'short:one'})
         c.settings['profiles']['long']['encoder'] = {**c.settings['shared']['encoder'], 'crf': float('nan')}
         with self.assertRaisesRegex(SpineError, 'rendering.settings encoder.crf: expected finite number'):
             render(c.v, 'long')

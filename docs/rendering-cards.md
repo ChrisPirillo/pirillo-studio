@@ -47,9 +47,9 @@ visible bounds to item 18 before cue layout; measurement recomputes them.
 A context card is an anchored layer in either shape, not proof of whole-short context or text
 readability. Supplied glyph pixels and text remain authored inputs.
 
-Native individual short masters remain refused; part 16 adds whole-short context below.
+Part 16 adds whole-short context below, reused by native individual shorts in part 17.
 [Native long/full vertical composition and split-clock correspondence](rendering-correspondence.md) reuse this seam separately.
-Extra whole-short timing/layout fields refuse in the anchored-card contract; this does not enable the individual short master or supplied-short encoder.
+Extra whole-short timing/layout fields refuse in the anchored-card contract; supplied-short encoding remains unsupported.
 Existing grade, crop, caption, voice and rollback guarantees stay in their owning modules.
 
 Part 12 contracts decode tall outputs against an independent per-pixel alpha
@@ -93,7 +93,7 @@ opening declarations refuse by name. The subject-opening alternative needs no
 context raster. The renderer version changes so old coverage cannot be reused.
 
 The shorts-only recipe still measures supplied media unchanged and has no settled
-short context input. This seam is the context prerequisite for the queued native
-individual-short compositor, not that compositor or final-manifest integration.
+short context input. This seam supplies context for the [native individual-short compositor](rendering-correspondence.md);
+final-manifest integration remains queued.
 Contracts decode every delivered frame against an independent alpha calculation,
 check content identity/reuse, named refusals and interrupted-publication recovery.
