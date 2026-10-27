@@ -3,8 +3,8 @@ import copy
 import json
 import unittest
 
-from ..spine.files import SpineError, filehash
-from . import compositor, coverage, framing, mapping, pixels, test_grade, test_raster_binding
+from ..spine.files import SpineError
+from . import compositor, coverage, framing, mapping, pixels, test_grade
 
 
 class GradeAdapters(unittest.TestCase):
@@ -55,21 +55,6 @@ class GradeAdapters(unittest.TestCase):
                     wrong['stage'] = 'masters'
                 with self.assertRaisesRegex(SpineError, 'native tall cards|native masters unsupported'):
                     compositor.prepare(g.case.v, wrong)
-
-    def test_tall_refuses_caption_burn(self):
-        fixture = test_raster_binding.RasterBinding(methodName='runTest')
-        fixture.setUp()
-        self.addCleanup(fixture.doCleanups)
-        c = fixture.case
-        result = c.accepted()
-        fixture.supply()
-        req = copy.deepcopy(result['request'])
-        generated = {p: filehash(c.folder / p) for p in compositor.names(req)}
-        compositor.bind(c.v, req, generated)  # Valid provider assets bind in wide.
-        req['settings']['shape'] = 'tall'
-        with self.assertRaisesRegex(SpineError, 'compositor: native tall caption burns unsupported'):
-            compositor.bind(c.v, req, generated)
-
 
 class TallGrades(unittest.TestCase):
     """e2e: Draft/draft.mp4 proves native tall crop coordinates, grades and every-frame subjects."""

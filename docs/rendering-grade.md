@@ -52,10 +52,11 @@ flowchart LR
 
 ## Native tall crops and grades (2h part 9)
 
-Tall arc/draft outputs use the configured tall aspect (9:16), with sidecar captions.
+Tall arc/draft outputs use the configured tall aspect (9:16), with sidecar captions
+or [provider-supplied caption burns](rendering-captions.md) from part 10.
 An explicit med/close shot and nonempty source-frame subject observations supply
 its crop. Wide/full-frame tall requests refuse as `tall crop source required`, so a
-16:9 source is never squashed or letterboxed into tall. Tall cards and burns remain
+16:9 source is never squashed or letterboxed into tall. Tall cards remain
 named refusals, as do masters, landmark face/mouth shots, partial patches and
 ambiguous outgoing J-cuts.
 

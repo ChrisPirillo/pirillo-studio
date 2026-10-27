@@ -185,11 +185,10 @@ At the switch it absorbs `delivery_spec.json` common/kind rules; `studio.json.de
 Profiles refer to shared settings, not copies of their values. The request records resolved values and their hash
 for reproducibility; this document deliberately defines no replacement numeric policy.
 
-For `shorts-only`, `measure_existing` requires the supplied short, its identity and delivery profile, with no
-cut plan, lock, bed brief, faces or shorts spec fabricated to satisfy the renderer. Preserve its bytes and sound;
-measure/decode it, obtain captions through item 18 and return the short record for the final manifest. The spine's
-`short` stage coordinates those domain calls. It creates no arc, draft, long cut or full vertical. A requested
-platform fit is a separate derived output with its own record; a refused original is never silently re-edited.
+For `shorts-only`, `measure_existing` needs the supplied short, its identity and delivery profile, with no fabricated
+cut plan, lock, bed brief, faces or shorts spec. The spine's `short` stage preserves its bytes/sound, measures/decodes
+it, obtains item 18 captions and returns its record for the final manifest, without arc/draft/long/full vertical.
+A requested platform fit is a separate output/record; a refused original is never silently re-edited.
 
 ## 2. The engine calls one API
 
@@ -270,9 +269,10 @@ Seam 2h part 5: source-rate conversion built; see [source clocks and sampling](r
 Seam 2h part 6: [approved expression retiming](rendering-retime.md) built: exact rational speed, per-output source indices, decoded picture proof and a local silent voice clock; speech retiming and outgoing retimed J-cut holds refuse. Published native records retain the planned duration for caption identity; decoded duration remains in readings.
 Seam 2h part 7: [decoded color conversion](rendering-color.md) built: BT.601 and range conversion to BT.709, hash-bound decoded color, per-frame source and output proof; unknown, HDR, mixed and disagreeing descriptions refuse.
 Seam 2h part 8: [approved SDR grades](rendering-grade.md) built: hash-bound finish LUT/parameters and local source-span exposure, source-span transforms in wide drafts, selected dependency identity, decoded RGB and every-frame tags; settings own the finish recipe without owner values.
-Seam 2h part 9: [native tall crops and grades](rendering-grade.md) built: aspect-fitting med/close crops and pushes, source-relative grades, independently checked decoded crop bindings, RGB and per-frame subject/tag proof; plain full-frame tall, missing crop observations, tall cards/burns and masters refuse by name.
-Seam 2h next: anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence, native tall cards/burns and master composition; HDR tone mapping and exposure solving remain unsupported.
-Missing/unsupported or ambiguous source color, HDR needing tone mapping, missing/unbound/stale/contradictory grade inputs, grades without adapter preparation, plain full-frame tall without a crop source, subjects that cannot fit the tall crop, native tall cards/burns and masters, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
+Seam 2h part 9: [native tall crops and grades](rendering-grade.md) built: aspect-fitting med/close crops and pushes, source-relative grades, independently checked decoded crop bindings, RGB and per-frame subject/tag proof; plain full-frame tall, missing crop observations, tall cards and masters refuse by name.
+Seam 2h part 10: [native tall caption burns](rendering-captions.md) built: provider-supplied rasters on the tall output grid, after grades/crops, with independent decoded alpha-composite proof, safe/cue edges, identity/reuse and accepted-artifact recovery. This enables tall arc/draft composition, not automatic glyph generation or master delivery; shorts-only still preserves supplied media bytes.
+Seam 2h next: anchored non-cover cards/context and their raster edges/safe bounds, split-clock master correspondence, native tall cards and master composition; HDR tone mapping and exposure solving remain unsupported.
+Missing/unsupported or ambiguous source color, HDR needing tone mapping, missing/unbound/stale/contradictory grade inputs, grades without adapter preparation, plain full-frame tall without a crop source, subjects that cannot fit the tall crop, native tall cards and masters, ASS-only burns, unbound/stale rasters, missing alpha/safe bounds, mismatched cue edges, missing bed evidence, text-only covers without raster assets, partial patches and ambiguous outgoing J-cuts still refuse. This is not yet complete plain-recipe delivery.
 
 | Function | Reads | Writes and answer |
 |---|---|---|

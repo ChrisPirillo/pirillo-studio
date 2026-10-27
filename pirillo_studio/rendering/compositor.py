@@ -147,8 +147,6 @@ def bind(video, req, generated):
     req['caption_binding'] = {'record': names(req)[1], 'sha256': generated[names(req)[1]]}
     caption = records.read(video, names(req)[1])
     if caption['burn'] is not None:
-        if req['settings']['shape'] == 'tall':
-            raise SpineError('compositor: native tall caption burns unsupported (seam 2h)')
         supplied = caption.get('raster')
         if not isinstance(supplied, dict):
             raise SpineError('captions: burn requires supplied raster coverage')

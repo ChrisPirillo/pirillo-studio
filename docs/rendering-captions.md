@@ -1,4 +1,25 @@
-# Seams 2e and 2f: caption rasters and accepted artifact recovery
+# Caption rasters and accepted artifact recovery
+
+## Native tall burns (2h part 10)
+
+Native arc/draft renders with a tall profile now consume the same supplied raster binding as wide renders.
+The raster is already on the output's tall pixel grid; it is never cropped or scaled with the source.
+The compositor applies source color conversion, approved grades and tall crop/scale first, then composites
+the straight-alpha caption pixels. The existing raster contract below owns identity, cue edges, alpha,
+safe bounds and every-frame pixel proof. Failed or interrupted burns use the same accepted-artifact recovery.
+
+This is a rendering capability, not a new caption layout or glyph rasterizer. Item 18 chooses its layout
+from output identity: arc/draft generates wide sidecars; a provider supplies the burn and native-size raster
+on that current caption record. Native vertical/short master composition is still refused, as are tall cards.
+The `shorts-only` recipe imports supplied finished media through `measure_existing`, preserving its bytes;
+it does not require or authorize a new native burn. This part does not change that recipe.
+
+Contracts decode a tall graded output and independently compute every RGB channel's straight-alpha blend,
+including partially transparent pixels at the safe rectangle's edges and transparent frames around cues.
+They also check the existing grade oracle, current raster reuse, missing/stale/aliased assets, wrong dimensions,
+missing alpha, non-finite safe bounds, unsafe pixels, cue-edge errors and accepted-artifact recovery.
+
+## Bound rasters and recovery (2e and 2f)
 
 Built: one public item 18 artifact-name helper, clocks derived once from integer frames, sample-based
 voice trimming at fractional frame rates, and recovery of accepted voice/caption/SRT bytes with the video.
@@ -9,7 +30,8 @@ hashes separately: drifted bytes are backed up under their own identity; only in
 Cached re-measurement makes no generated backup copies. Committed restart retires pending backups without rolling back accepted output.
 Caption-record restoration holds the same writer lock as caption generation.
 Caption burns supplied by a renderer adapter are measured against their bound raster, including its alpha
-edges and the profile's safe rectangle. Native wide composition still makes sidecars; native tall burns wait.
+edges and the profile's safe rectangle. Native wide/tall arc/draft composition accepts provider-supplied burns;
+item 18 still owns cue generation and caption layout.
 
 A burning adapter supplies `caption_binding.raster = {file, sha256, burn_sha256}` beside the existing
 caption `record` and `sha256`. `burn_sha256` names that caption record's exact ASS burn. The raster is a
@@ -40,16 +62,12 @@ The production compositor accepts a caption record with `raster: {file, sha256, 
 that record has a burn. A provider adds the burn and raster metadata to the current caption record after
 initial sidecar generation; it preserves the caption key and supplies matching file hashes. Re-rendering
 binds this asset as `caption_binding.raster`, overlays the raster
-and verifies the delivered composite. It does not generate glyph pixels from ASS. Native tall composition,
-including graded spans, burns and crops/cards, and master composition remain refused.
+and verifies the delivered composite. It does not generate glyph pixels from ASS. Native tall crops/grades
+are specified in [part 9](rendering-grade.md); tall cards and master composition remain refused.
 Missing raster data or stale identity refuses by name. Publication and
 reuse revalidate the generated caption record plus its referenced burn/raster bytes before accepting them.
 
-Seam 2h owns pushes, retiming/source-rate and color conversion, grades, anchored non-cover cards/context
-and their raster edges/safe bounds, split-clock master correspondence,
-and remaining native tall/master composition. Missing/differing source color matrices, ASS-only burns and missing
-bed evidence still refuse. Text-only cover cards require a resolved raster asset. Partial patch excerpts/cold
-opens, J-cuts into or after hidden picture, and excerpt J-cuts without the settled predecessor still refuse.
+The current seam inventory and remaining named refusals live in [rendering](rendering.md).
 Default profiles retain every required check; this seam does not claim complete plain-recipe delivery.
 
 Recovery keeps a `retiring` marker in the committed record until its predecessor backups are retired.
