@@ -4,7 +4,7 @@ from fractions import Fraction
 
 from ..cutting import plan
 from ..spine.files import SpineError, canon, digest, filehash
-from . import cards, color, decoded, mapping, pixels, raster, records, sound, source_rate
+from . import cards, color, correspondence, decoded, mapping, pixels, raster, records, sound, source_rate
 
 
 def entry(req, name, value, ok, evidence, frames):
@@ -66,8 +66,6 @@ def draft(video, req, path, pixels_ok):
     record = records.read(video, name)
     if record is None:
         raise SpineError('draft-match: approved draft record missing')
-    if 'picture_map' in req or 'picture_map' in record:
-        raise SpineError('draft-match: split-clock master correspondence unsupported (seam 2g)')
     asset = {'file': record['file'], 'sha256': record['file_sha256']}
     if filehash(records.path(video, asset['file'])) != asset['sha256']:
         raise SpineError('draft-match: viewed draft bytes changed')
@@ -75,6 +73,12 @@ def draft(video, req, path, pixels_ok):
     if (filehash(records.path(video, record['readings'])) != record['readings_sha256']
             or evidence['key'] != record['key'] or evidence['file_sha256'] != asset['sha256']):
         raise SpineError('draft-match: stale decoded draft evidence')
+    try:
+        picture = evidence['checks']['frame-map']
+        if picture['ok'] is not True or picture['value'] is None:
+            raise ValueError('not passed')
+    except (KeyError, TypeError, ValueError) as error:
+        raise SpineError('draft-match: missing or failed draft frame-map reading') from error
     def identity(rows):
         fields = ('span', 'src', 'out', 'frames', 'source_frames', 'kind') + (('crop',) if req['output'] == 'long' else ())
         return [{**{k: r[k] for k in fields},
@@ -83,7 +87,9 @@ def draft(video, req, path, pixels_ok):
     same = record['request']['plan_sha256'] == req['plan_sha256']
     duration = req['frame_map'][-1]['out'][1]
     segments = []
-    if complete:
+    if 'picture_map' in req or 'picture_map' in record:
+        same, segments = correspondence.split(req, record)
+    elif complete:
         same = same and identity(record['frame_map']) == identity(req['frame_map']) and record['elements'] == req['elements']
         segments = [{'src': [0, duration], 'out': [0, duration]}]
     else:
@@ -107,13 +113,6 @@ def draft(video, req, path, pixels_ok):
                                             'color_conversion': color.binding(color.inspect(records.path(video, asset['file'])),
                                                                               req['settings']['video'])}])
         picture = pixels.compare(video, reference, path)['checks']['frame-map']
-    else:
-        try:
-            picture = evidence['checks']['frame-map']
-            if picture['ok'] is not True or picture['value'] is None:
-                raise ValueError('not passed')
-        except (KeyError, TypeError, ValueError) as error:
-            raise SpineError('draft-match: missing or failed draft frame-map reading') from error
     audio = sound.compare_audio(video, bound, path, asset, segments, complete_reference=complete)
     return entry(req, 'draft-match', {'mapping_equal': same, 'picture': picture['value'], 'audio': audio['value']},
                  same and pixels_ok and picture['ok'] and audio['ok'],

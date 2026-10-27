@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from ..captions import cues
 from ..spine.files import SpineError, filehash
-from . import compositor, coverage, mapping, records, sound
+from . import compositor, mapping, records, sound
 from .render import Video, render
 from .test_rendering import Fixture, PowerLoss
 
@@ -104,8 +104,6 @@ class Compositor(Fixture):
         self.assertEqual([(r['frame'], r['source_frame']) for r in decoded[12:16]],
                          [(12, 12), (13, 13), (14, 14), (15, 21)])
         req = result['request']
-        with self.assertRaisesRegex(SpineError, 'split-clock master correspondence unsupported'):
-            coverage.draft(self.v, {**req, 'output': 'long'}, self.folder / result['file'], True)
         compared = sound.compare_audio(self.v, req, self.folder / result['file'],
             {'file': req['source'], 'sha256': req['source_sha256']}, req['frame_map'])
         self.assertTrue(compared['ok'], compared)

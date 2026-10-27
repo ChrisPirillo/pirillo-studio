@@ -73,7 +73,7 @@
    1136
   ],
   "seams": [
-   "1 spec drafted (docs/rendering.md and linked part docs); 2a-2g built: lifecycle, decoded measurements, native wide reviews, caption burns and final mix; 2h parts 1-11 built: sound probe reuse, framing/pushes, source-rate conversion, retiming, color/grades, tall crops/caption burns and wide anchored cards; 2h part 12: native tall cards built, including native-size opaque cover holds (docs/rendering-cards.md); 2h next: split-clock master correspondence, whole-short context and master composition; HDR tone mapping, exposure solving, partial patches and ambiguous outgoing J-cuts remain unsupported; missing or unsupported coverage refuses; 3 the host switched behind one setting; 4 the host's rendering code, tests and settings deleted"
+   "1 spec drafted; 2a-2g and 2h parts 1-12 built (docs/rendering.md and linked part docs); 2h part 13 split-clock master correspondence built (docs/rendering-correspondence.md); 2h next: whole-short context and master composition; unsupported coverage refuses; 3 host switch; 4 legacy deletion"
   ]
  },
  {

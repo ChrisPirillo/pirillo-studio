@@ -47,9 +47,9 @@ visible bounds to item 18 before cue layout; measurement recomputes them.
 A context card is an anchored layer in either shape, not proof of whole-short context or text
 readability. Supplied glyph pixels and text remain authored inputs.
 
-Whole-short context, split-clock master correspondence and native masters remain
-outside this seam and refused. Extra whole-short timing/layout fields refuse in the
-anchored-card contract; this does not enable the masters or supplied-short encoder.
+Whole-short context and native masters remain outside this seam and refused.
+[Split-clock master correspondence](rendering-correspondence.md) is measured separately.
+Extra whole-short timing/layout fields refuse in the anchored-card contract; this does not enable the masters or supplied-short encoder.
 Existing grade, crop, caption, voice and rollback guarantees stay in their owning modules.
 
 Part 12 contracts decode tall outputs against an independent per-pixel alpha
