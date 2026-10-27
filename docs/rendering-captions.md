@@ -10,7 +10,7 @@ safe bounds and every-frame pixel proof. Failed or interrupted burns use the sam
 
 This is a rendering capability, not a new caption layout or glyph rasterizer. Item 18 chooses its layout
 from output identity: arc/draft generates wide sidecars; a provider supplies the burn and native-size raster
-on that current caption record. Native vertical/short master composition is still refused, as are tall cards.
+on that current caption record. See [master composition](rendering-correspondence.md) and [card layers](rendering-cards.md) for their supported scope.
 The `shorts-only` recipe imports supplied finished media through `measure_existing`, preserving its bytes;
 it does not require or authorize a new native burn. This part does not change that recipe.
 
@@ -63,7 +63,7 @@ that record has a burn. A provider adds the burn and raster metadata to the curr
 initial sidecar generation; it preserves the caption key and supplies matching file hashes. Re-rendering
 binds this asset as `caption_binding.raster`, overlays the raster
 and verifies the delivered composite. It does not generate glyph pixels from ASS. Native tall crops/grades
-are specified in [part 9](rendering-grade.md); tall cards and master composition remain refused.
+are specified in [part 9](rendering-grade.md); card and master scope is defined in [cards](rendering-cards.md) and [master composition](rendering-correspondence.md).
 Missing raster data or stale identity refuses by name. Publication and
 reuse revalidate the generated caption record plus its referenced burn/raster bytes before accepting them.
 

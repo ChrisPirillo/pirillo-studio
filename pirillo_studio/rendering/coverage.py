@@ -66,6 +66,8 @@ def draft(video, req, path, pixels_ok):
     record = records.read(video, name)
     if record is None:
         raise SpineError('draft-match: approved draft record missing')
+    if 'key' not in record:
+        raise SpineError('draft-match: approved draft record missing key')
     asset = {'file': record['file'], 'sha256': record['file_sha256']}
     if filehash(records.path(video, asset['file'])) != asset['sha256']:
         raise SpineError('draft-match: viewed draft bytes changed')

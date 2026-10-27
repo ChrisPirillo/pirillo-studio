@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from ..spine.files import SpineError, filehash
-from . import compositor, coverage, records, request
+from . import compositor, correspondence, coverage, mapping, records
 from .render import Video, render
 from . import test_compositor
 from .test_rendering import PowerLoss
@@ -130,10 +130,10 @@ class SplitCorrespondence(unittest.TestCase):
         segments = c.get(result['readings'])['checks']['draft-match']['value']['audio']['segments']
         self.assertEqual([s['src'] for s in segments], [[.1, .3], [.4, .7]])
         self.assertEqual([s['out'] for s in segments], [[0, .2], [.2, .5]])
-        # A different picture identity cannot borrow the voice's successful occurrence.
+        # The locked-plan map check refuses altered source indices before correspondence.
         req = copy.deepcopy(result['request'])
         req['picture_map'][0]['source_indices'][0] += 1
-        with self.assertRaises(SpineError):
+        with self.assertRaisesRegex(SpineError, 'frame-map: source asset or source frames differ from request'):
             coverage.draft(self.master, req, c.folder / result['file'], True)
 
     def test_repeated_cold_open_is_unambiguous_only_for_full_output(self):
@@ -189,6 +189,25 @@ class SplitCorrespondence(unittest.TestCase):
                 self.draft()
             self.accepted('long' if shape == 'wide' else 'vertical')
 
+    def test_valid_maps_with_different_frame_rates_refuse_correspondence(self):
+        draft = self.draft()
+        mapping.validate(draft['request'])
+        # A valid full-output crop can differ from the viewed draft without changing its clocks.
+        req = copy.deepcopy(draft['request'])
+        req['output'] = 'long'
+        req['picture_map'][0]['crop'][0] += 1
+        mapping.validate(req)
+        self.assertFalse(correspondence.split(req, draft)[0])
+        for rate in ('24', '30000/1001'):
+            with self.subTest(rate=rate):
+                req = copy.deepcopy(draft['request'])
+                req['settings']['video']['fps'] = rate
+                req['output'] = 'long'
+                req.update(compositor.prepare(self.c.v, req))
+                mapping.validate(req)
+                with self.assertRaisesRegex(SpineError, 'draft-match: draft and master frame rates differ'):
+                    correspondence.split(req, draft)
+
     def test_identity_boundaries_and_interrupted_publication(self):
         draft = self.draft()
         accepted = self.accepted()
@@ -197,7 +216,16 @@ class SplitCorrespondence(unittest.TestCase):
         evidence = self.c.get(draft['readings'])
         evidence_path = self.c.folder / draft['readings']
         evidence_bytes = evidence_path.read_bytes()
-        for defect in ('missing-key', 'request-key', 'stale-readings', 'failed-reading', 'map', 'nonfinite', 'alias'):
+        refusals = {
+            'missing-key': 'draft-match: approved draft record missing key',
+            'request-key': 'draft-match: draft request identity differs from its record',
+            'stale-readings': 'draft-match: stale decoded draft evidence',
+            'failed-reading': 'draft-match: missing or failed draft frame-map reading',
+            'map': 'frame-map: frames differs from locked source order/edges/hold',
+            'nonfinite': 'non-finite',
+            'alias': 'symlink',
+        }
+        for defect, refusal in refusals.items():
             with self.subTest(defect=defect):
                 changed = copy.deepcopy(draft)
                 if defect == 'missing-key':
@@ -222,7 +250,7 @@ class SplitCorrespondence(unittest.TestCase):
                 # Non-finite JSON is refused at the same read boundary as corrupt records.
                 target = self.c.folder / name
                 target.write_text(json.dumps(changed))
-                with self.assertRaises(SpineError):
+                with self.assertRaisesRegex(SpineError, refusal):
                     self.master.measure(req, self.c.folder / accepted['file'])
                 self.c.put(name, draft)
                 evidence_path.write_bytes(evidence_bytes)
@@ -238,5 +266,3 @@ class SplitCorrespondence(unittest.TestCase):
         encodes = self.c.encodes
         self.accepted()
         self.assertEqual(self.c.encodes, encodes)
-        with self.assertRaisesRegex(SpineError, 'native masters unsupported'):
-            request.resolve(self.c.v, 'masters', 'long')

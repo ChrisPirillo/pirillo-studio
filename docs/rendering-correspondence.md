@@ -1,9 +1,9 @@
-# Split-clock master correspondence (2h part 13)
+# Master correspondence and native long composition (2h parts 13/14)
 
 The plain recipe approves a draft before masters. Correspondence is the measurement
 prerequisite for that delivery: an adapter-supplied long, full vertical or short
-must preserve the approved voice and picture independently. Native master composition
-remains refused; shorts-only still measures its supplied media without encoding it.
+must preserve the approved voice and picture independently. Native long composition uses that same proof; native vertical and short composition
+remain refused; shorts-only still measures its supplied media without encoding it.
 
 ```mermaid
 flowchart LR
@@ -36,7 +36,36 @@ The complete output sound is compared with the same approved draft intervals. Mi
 stale or failed evidence never substitutes for a pass. No correspondence helper writes
 media or records; publication and interrupted-write recovery remain lifecycle-owned.
 
-Whole-short context and native master composition are the remaining 2h delivery pieces.
+## Native long composition (part 14)
+
+The plain recipe's first master output is the long file. Its native compositor now
+runs the same voice, captions, bed, card and picture pipeline used by the approved
+draft. The lifecycle permits encoding only after an explicit current draft approval;
+complete decoded voice/picture correspondence is required before publication.
+Long-specific encoding settings remain content-bound. Generated voice, mix, caption
+record and sidecar use the long output's identity and existing recovery transaction.
+
+```mermaid
+flowchart LR
+  A[Resolve native long request] --> B{Current draft explicitly approved?}
+  B -->|no| C[waiting_owner]
+  B -->|yes| D[rendering: voice, captions, mix, picture]
+  D --> E[measuring: decoded output and draft correspondence]
+  E --> F[delivered: publish long and bound artifacts]
+  D --> G[render_failed: restore accepted artifacts]
+  E --> H[measure_refused: restore accepted artifacts]
+```
+
+This enables only native long masters. Native vertical/short masters and whole-short
+context remain the next delivery pieces; unsupported master outputs keep their named
+refusal. Shorts-only continues to measure supplied media unchanged. This does not
+claim the plain recipe's complete delivery or final-manifest integration.
+
+The renderer identity advances to invalidate earlier cached requests. Contracts
+independently decode every frame of a changing-gray source at 60/30 and
+60000/1001-to-30000/1001 rates, calculate the J-cut's expected source indices and
+compare complete prepared voice samples with independent source slices. They also
+check negative approval choices, sidecar delivery, reuse, named refusals and recovery.
 
 Contracts independently encode the J-cut fixture, decode every delivered frame and
 check the expected source indices. A changing-gray source proves 60-to-30 sampling

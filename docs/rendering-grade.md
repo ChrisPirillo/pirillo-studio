@@ -37,7 +37,7 @@ Synthetic contracts decode every frame independently to RGB and evaluate an affi
 cube and the exposure curve in Python, allowing 5/255 per channel in flat interiors
 for YUV/filter quantization. Every delivered frame's tags are checked separately.
 Pixel correspondence revalidates approval, inputs and row bindings before decoding.
-PQ/HLG tone mapping and the skin/gain solver remain unsupported; native master correspondence/composition remains the existing later seam.
+PQ/HLG tone mapping and the skin/gain solver remain unsupported; [master composition and correspondence](rendering-correspondence.md) define the delivery scope.
 
 ```mermaid
 flowchart LR
@@ -56,9 +56,9 @@ Tall arc/draft outputs use the configured tall aspect (9:16), with sidecar capti
 or [provider-supplied caption burns](rendering-captions.md) from part 10.
 An explicit med/close shot and nonempty source-frame subject observations supply
 its crop. Wide/full-frame tall requests refuse as `tall crop source required`, so a
-16:9 source is never squashed or letterboxed into tall. Tall cards remain
-named refusals, as do masters, landmark face/mouth shots, partial patches and
-ambiguous outgoing J-cuts.
+16:9 source is never squashed or letterboxed into tall. [Card layers](rendering-cards.md)
+define supported overlays. Native tall masters, landmark face/mouth shots, partial patches
+and ambiguous outgoing J-cuts remain named refusals.
 
 For tall, the base width is `min(source_width, floor(source_height * output_width /
 output_height))`; the requested shot fraction scales that width, rounded to an
