@@ -144,7 +144,7 @@ controls. All get the shared can't route in the rebuild. Later/Bring back uses `
 | refresh | refreshes, thumbnail brief and folder / replacement thumbnail | Open brief/folder; Done where clearable | File judge with instructions and output relation. |
 | card | live_cards over cards / source's instructions | Open, Done → complete_card → card_cmd; Reply → board_tasks.board_post | One source-owned task; actionable lines about an existing post attach there in C. |
 | truth | _board_truth_facts, persisted as board_truth.json v5 / contradictory Board fact | Tell source owner → truth_from_board; Reply → board_tasks.board_post | Last-rebuild diagnostic task only when both truth gates are enabled; never an approval or a fresh render check. |
-| kept | retained unapproved storyposts / outstanding review | Read task | Attach progress to its post; C crew task, unified Task. |
+| kept | retained unapproved storyposts / outstanding review | Reply → `board_tasks.board_post` | One crew task per logical post, related to that post; served exact copy per platform. No approval or completion writer; reply inverse unmet. |
 | late | board_data.writer_owes, article receipt / missing work | Read task | Host crew responsibility; source recipient remains accountable. |
 | story:tips-empty | tips_starved / missing next tips | Read task | Needs a spec change: v5a suppresses story sources, but this has no post to own it. Explicit supply task, not a lost approval. |
 | unpackaged plugin changes (v4 only) | plugin_stale / pending package | No action; next run packages | Host-only operational notice; no product task unless owner intervention is filed. |
@@ -338,10 +338,10 @@ also ignores dismissal records and omits dismissal advice when content actions a
 Seam 14 adds the ledger-backed acknowledgement sources `signin` and `stray`. Each eligible
 signed-out record and each recorded stray tab becomes one task, keyed by its native platform or tab identity.
 The host excludes its separately managed platform's sign-in record exactly as its native producer does,
-because that connection runs through a separate workflow. Missing optional tables mean no records; malformed
-tables, invalid active identities, duplicate tab identities, non-finite values and invalid or unaware recorded
-times refuse by source. Active sign-in platforms must be configured for their writer. The host uses its native
-timezone and platform labels, and both readers share the instruction builders. No credentials or browser
+because that connection runs through a separate workflow. Missing optional tables and a null sign-in table mean
+no records; malformed tables, invalid active identities, duplicate tab identities, non-finite values and invalid
+or unaware recorded times refuse by source. An unconfigured sign-in platform stays visible with Reply and an
+explanation; its acknowledgement writer requires configuration. The host uses its native timezone and platform labels, and both readers share the instruction builders. No credentials or browser
 state are read. Both source kinds have zero open records in the copied census, so measured coverage remains
 five tasks; serialized-output contracts exercise open records and their acknowledged states.
 
@@ -357,11 +357,32 @@ these declarations. Connection tasks do not expire when a forthcoming post is du
 its existing scheduling urgency. Core runtime is unchanged because the existing task contract expresses
 this slice. Other source kinds and the prior truth-snapshot refusal behavior are unchanged.
 
+### Retained-copy tasks (seam 15)
+
+The host reads `kept` groups through the existing `board/tasks.py` contract and shared reader flowchart.
+Native `storyposts` rows with retained copy, planned state and no approval group by the logical post identity
+before the platform suffix. One `crew task` relates to that `story:<post>` source, preserving the native crew-check
+instruction and each platform's exact copy as a served words/source part. The new Board includes crew work even
+when the native owner's-turn gate hides it there; it does not turn this work into an owner approval. The native
+producer shares the instruction builder and keeps its existing gate, grouping and inclusion of disabled rows.
+
+Every retained row contributes its full recorded identity to the revision. Missing or mismatched active keys,
+missing copy or title, malformed tables and non-finite JSON refuse with the source named. Missing or null optional
+story tables mean no records. Approval, removal of retention or leaving planned state removes the crew task.
+Reply declares `board_tasks.board_post(item=key, title=title)`; its restoration writer is explicitly unmet.
+There is no invented release, completion, approval or post-edit action. API dispatch, served bytes and reply
+history remain later work. No source files or writers are touched by this reader, including on refusal.
+
+The copied `kept` open count is zero. Frozen-time copied coverage stays five tasks, and unread kinds fall from
+12 to 11. Native-shaped serialized-output fixtures prove grouping, exact evidence, post relation, changed
+revisions, native inclusion, source aliases, and refusals. Core runtime is unchanged. The adapter also accepts
+the native null sign-in table and retains unconfigured sign-in tasks with an explicit unavailable acknowledgement.
+
 `model.read` refuses partial coverage; `model.inventory` names each unplaced source and cause. The host's
 coverage also names suppressed cards and every task source kind not yet read, so a clean slice is never a
 claim of complete task-family coverage. `test_tasks.py` checks serialized output, revisions, writer declarations
 and named refusals. Next: remaining task sources (the source-kind table above less cards, pin, wake, truth,
-signin and stray), then the API and page.
+signin, stray and kept), then the API and page.
 
 ## 4. API and writer boundary
 
