@@ -40,21 +40,15 @@ class GradeAdapters(unittest.TestCase):
         with self.assertRaisesRegex(SpineError, 'tall crop source required'):
             g.resolve()
 
-    def test_tall_refuses_cards_and_masters(self):
+    def test_tall_refuses_masters(self):
         g = self.grade
         g.local()
         req = g.resolve()
         req['settings']['shape'] = 'tall'
-        for change in ('master', 'card'):
-            with self.subTest(change=change):
-                wrong = copy.deepcopy(req)
-                wrong['plan_data']['spans'][0]['shot'] = 'med'
-                if change == 'card':
-                    wrong['cards_data']['cards'] = [{'kind': 'cover'}]
-                else:
-                    wrong['stage'] = 'masters'
-                with self.assertRaisesRegex(SpineError, 'native tall cards|native masters unsupported'):
-                    compositor.prepare(g.case.v, wrong)
+        req['plan_data']['spans'][0]['shot'] = 'med'
+        req['stage'] = 'masters'
+        with self.assertRaisesRegex(SpineError, 'native masters unsupported'):
+            compositor.prepare(g.case.v, req)
 
 class TallGrades(unittest.TestCase):
     """e2e: Draft/draft.mp4 proves native tall crop coordinates, grades and every-frame subjects."""

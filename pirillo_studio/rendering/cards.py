@@ -1,4 +1,4 @@
-"""Wide anchored straight-alpha layers; see docs/rendering-cards.md's flowchart."""
+"""Output-sized anchored straight-alpha layers; see docs/rendering-cards.md's flowchart."""
 import math
 from fractions import Fraction
 
@@ -16,8 +16,8 @@ def inspect(video, req):
     cards = layers(req)
     if not cards:
         return []
-    if req['settings']['shape'] != 'wide':
-        raise SpineError('cards: native tall cards unsupported (seam 2h)')
+    if req['settings']['shape'] not in ('wide', 'tall'):
+        raise SpineError('cards: unsupported output shape ' + req['settings']['shape'])
     voice, _ = clocks.split(req, mapping.pieces(req))
     fps = Fraction(req['settings']['video']['fps'])
     spans = {s['id']: s for s in req['plan_data']['spans']}

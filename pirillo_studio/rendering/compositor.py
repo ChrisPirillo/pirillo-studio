@@ -33,8 +33,6 @@ _PROBING = threading.Lock()  # request resolution precedes output locks
 def prepare(video, req):
     if req['stage'] not in ('arc', 'draft'):
         raise SpineError('compositor: native masters unsupported (seam 2h)')
-    if req['settings']['shape'] == 'tall' and req['cards_data']['cards']:
-        raise SpineError('compositor: native tall cards unsupported (seam 2h)')
     tolerance = req['settings']['measurement']['grid_tolerance_s']
     with _PROBING:
         cached = _RATES.get(req['source_sha256'])
@@ -67,6 +65,9 @@ def prepare(video, req):
         if transform is not None:
             row['grade'] = transform
         size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
+        if (row['kind'] == 'cover' and req['settings']['shape'] == 'tall'
+                and size != req['settings']['video']['sizes']['tall']):
+            raise SpineError('cards: tall cover dimensions must match video.sizes.tall')
         if row['color_conversion']['input'] != row['color_conversion']['output'] and any(n % 2 for n in size):
             raise SpineError('color: conversion requires even source dimensions')
         span = spans[row['span']]

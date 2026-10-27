@@ -52,7 +52,8 @@ def inspect_alpha(video, req, asset, safe, edges, reading):
     setting = req['settings']
     width, height = setting['video']['sizes'][setting['shape']]
     if safe is None:
-        raise SpineError(f'{reading}: profile safe area required')
+        key = 'caption_safe' if reading == 'captions' else 'cards_safe'
+        raise SpineError(f'{reading}: profile {key} safe area required')
     x, y, w, h = mapping.rectangle(safe, reading + ' safe area')
     if x + w > width or y + h > height:
         raise SpineError(f'{reading}: safe area exceeds output bounds')

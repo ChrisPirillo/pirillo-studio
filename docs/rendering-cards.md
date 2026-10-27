@@ -1,7 +1,7 @@
-# Wide anchored card rasters (2h part 11)
+# Native card rasters (2h parts 11 and 12)
 
 The plain recipe resolves overlays before arc and draft review. This seam supplies its
-wide non-cover layers before tall cards and master correspondence/composition.
+wide (part 11) and tall (part 12) layers before master correspondence/composition.
 Item 17 owns the words and anchors; rendering never invents text, duration or layout.
 
 An overlay-plan card has `id`, `kind` (`instruction` or `context`), `text`,
@@ -10,7 +10,14 @@ existing opaque-asset contract. Non-cover rasters are full-output straight-alpha
 videos, one frame per output frame at the profile rate, in output RGB coordinates.
 The supplied hash must match the bound input bytes. A profile with these cards must
 supply `cards_safe: [x, y, width, height]`; every nonzero-alpha pixel must fit.
-No scaling, cropping, inferred safe area or text rasterization is performed.
+No scaling, cropping, inferred safe area or text rasterization is performed on these layers.
+Tall rasters use the native tall output dimensions and the same voice-clock anchors,
+including fractional edges, J-cuts and repeated cold opens. Source crop/push and grade
+run first, then cards in plan order, then captions. A wide raster cannot stand in for
+a tall one. Opaque hidden-picture covers retain their existing asset/frame-hold
+contract in both shapes. Tall covers must match `video.sizes.tall` exactly; mismatched
+dimensions refuse by name. Wide covers retain scaling. Every hidden frame is compared
+with its cover, and only those frames are excluded from subject coverage.
 
 Anchors use the first word start and last word end on the source clock, mapped to
 each kept occurrence on the voice frame map. A frame is active at or after the
@@ -22,7 +29,7 @@ missing alpha, wrong dimensions/rate/count and unsafe or mistimed pixels refuse.
 
 ```mermaid
 flowchart LR
-  A[Resolve anchored cards and current raster hashes] --> B[Decode alpha edges and safe bounds]
+  A[Resolve wide or tall anchored cards and current raster hashes] --> B[Decode alpha edges and safe bounds]
   B --> C[Expose actual bounds to caption layout]
   C --> D[rendering: compose cards in plan order then captions]
   D --> E[measuring: compare every delivered RGB frame]
@@ -37,9 +44,16 @@ under `cards.value.rasters`. The frame comparison includes cards and captions in
 that order. Card acceptance covers the complete output, including transparent gaps,
 so omitted, shifted or lingering pixels fail. Resolved `elements` expose actual
 visible bounds to item 18 before cue layout; measurement recomputes them.
-A context card is an anchored wide layer, not proof of whole-short context or text
+A context card is an anchored layer in either shape, not proof of whole-short context or text
 readability. Supplied glyph pixels and text remain authored inputs.
 
-Native tall cards, whole-short context, split-clock master correspondence and
-native masters remain outside this seam and refused. Existing grade, crop, caption,
-voice and rollback guarantees stay in their owning modules.
+Whole-short context, split-clock master correspondence and native masters remain
+outside this seam and refused. Extra whole-short timing/layout fields refuse in the
+anchored-card contract; this does not enable the masters or supplied-short encoder.
+Existing grade, crop, caption, voice and rollback guarantees stay in their owning modules.
+
+Part 12 contracts decode tall outputs against an independent per-pixel alpha
+calculation, including overlapping layers/captions after grading, push/J-cut and
+cold-open timing, native opaque cover holds, stale/missing identities, symlinks,
+non-finite/missing safe areas and interrupted publication. Missing layers fail
+delivered-frame measurement; unchanged requests reuse their accepted bytes.

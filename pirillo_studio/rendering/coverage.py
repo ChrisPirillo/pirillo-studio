@@ -183,7 +183,7 @@ def measure(video, req, path, result):
             if req['elements'] != cards.elements(req, card_rasters):
                 raise SpineError('cards: resolved elements differ from raster bounds')
             options['layers'] = [records.path(video, c['raster']['file']) for c in cards.layers(req)]
-        label = 'frame-map'
+        label = 'frame-map'  # Decoder/comparison failures belong to the complete picture, not card input.
         compared = pixels.compare(video, req, path, **options)
         result['checks'].update(compared['checks'])
         result['mapped_frames'] = compared['frame_checks']

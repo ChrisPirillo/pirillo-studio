@@ -169,11 +169,10 @@ class Cards(unittest.TestCase):
                     self.assertRegex(refused['error'], diagnostic)
                 self.assertEqual((self.c.folder / accepted['file']).read_bytes(), original)
                 self.c.settings['profiles']['draft']['cards_safe'] = [2, 2, 156, 86]
-        for stage, shape, diagnostic in (('draft', 'tall', 'tall'), ('master', 'wide', 'masters')):
-            unsupported = copy.deepcopy(accepted['request'])
-            unsupported['stage'], unsupported['settings']['shape'] = stage, shape
-            with self.assertRaisesRegex(SpineError, diagnostic):
-                compositor.prepare(self.c.v, unsupported)
+        unsupported = copy.deepcopy(accepted['request'])
+        unsupported['stage'] = 'masters'
+        with self.assertRaisesRegex(SpineError, 'masters'):
+            compositor.prepare(self.c.v, unsupported)
         self.bind([good])
         self.c.v.versions['compositor'] = 'publish-failure'
         with patch.object(records, 'publish', side_effect=OSError('failed publication')):
