@@ -1,5 +1,4 @@
 """Native long delivery measured against independent decoded source frames and samples."""
-import json
 import subprocess
 import unittest
 import wave
@@ -101,18 +100,26 @@ class LongMaster(unittest.TestCase):
                     reused = self.delivered()
                 self.assertEqual(reused['file_sha256'], result['file_sha256'])
                 self.assertEqual(len(c.heard), heard)
-                print(json.dumps({'native_long_fps': fps, 'frames': len(indices),
-                    'independent_rgb_peak_error': peak, 'independent_voice_samples': len(expected) // 2,
-                    'file_sha256': result['file_sha256']}), flush=True)
+
+    def test_changed_draft_settings_refuse_after_approval(self):
+        self.approved()
+        c = self.c
+        for output in ('long', 'vertical'):
+            with self.subTest(output=output):
+                c.settings['profiles']['draft']['encoder'] = {
+                    **c.settings['shared']['encoder'], 'crf': 1}
+                with patch.object(compositor, 'encode', side_effect=AssertionError('stale draft encoded')):
+                    result = render(c.v, output)
+                self.assertEqual(result['state'], 'waiting_owner', result)
+                self.assertIn('current measured draft', result['reason'])
 
     def test_master_boundaries_and_interrupted_publication_preserve_accepted_artifacts(self):
         c = self.c
         self.approved()
         accepted = self.delivered()
         paths = [accepted['file'], *accepted['request']['generated']]
-        for output in ('vertical', 'short:one'):
-            with self.assertRaisesRegex(SpineError, 'native masters unsupported'):
-                compositor.prepare(c.v, {**accepted['request'], 'output': output})
+        with self.assertRaisesRegex(SpineError, 'native masters unsupported'):
+            compositor.prepare(c.v, {**accepted['request'], 'output': 'short:one'})
         c.settings['profiles']['long']['encoder'] = {**c.settings['shared']['encoder'], 'crf': float('nan')}
         with self.assertRaisesRegex(SpineError, 'rendering.settings encoder.crf: expected finite number'):
             render(c.v, 'long')

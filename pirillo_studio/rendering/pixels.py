@@ -19,6 +19,21 @@ def integer(value, name, minimum=0):
     return value
 
 
+def geometry(stream):
+    """Crop coordinates require square pixels and no display rotation."""
+    sar = stream.get('sample_aspect_ratio')
+    # FFmpeg represents an unspecified (square) pixel ratio by absence or 0:1.
+    if sar not in (None, '0:1') and (not isinstance(sar, str) or
+            decoded.fraction(sar.replace(':', '/'), 'geometry', 'video') != 1):
+        decoded.refuse('geometry', 'video', 'geometry: square sample aspect ratio required')
+    rotations = [stream.get('tags', {}).get('rotate', 0)]
+    rotations += [row.get('rotation') for row in stream.get('side_data_list', [])
+                  if row.get('side_data_type') == 'Display Matrix']
+    if any(decoded.number(value, 'geometry', 'video') % 360 != 0 for value in rotations):
+        decoded.refuse('geometry', 'video', 'geometry: display rotation unsupported')
+    return [integer(stream[key], key, 1) for key in ('width', 'height')]
+
+
 def dimensions(path, fps=None, tolerance=None, *, frames_required=None, exact=False, seeks=None, stream=None, conversion=None):
     entries = ['-select_streams', 'v:0', '-show_streams']
     if fps is not None or frames_required is not None:

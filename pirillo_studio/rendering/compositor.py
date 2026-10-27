@@ -31,7 +31,7 @@ _PROBING = threading.Lock()  # request resolution precedes output locks
 
 
 def prepare(video, req):
-    if req['stage'] not in ('arc', 'draft') and not (req['stage'] == 'masters' and req['output'] == 'long'):
+    if req['stage'] not in ('arc', 'draft') and not (req['stage'] == 'masters' and req['output'] in ('long', 'vertical')):
         raise SpineError('compositor: native masters unsupported (seam 2h)')
     tolerance = req['settings']['measurement']['grid_tolerance_s']
     with _PROBING:
@@ -64,7 +64,7 @@ def prepare(video, req):
         transform = grade.binding(req, row)
         if transform is not None:
             row['grade'] = transform
-        size = [pixels.integer(stream[k], k, 1) for k in ('width', 'height')]
+        size = pixels.geometry(stream)
         if (row['kind'] == 'cover' and req['settings']['shape'] == 'tall'
                 and size != req['settings']['video']['sizes']['tall']):
             raise SpineError('cards: tall cover dimensions must match video.sizes.tall')

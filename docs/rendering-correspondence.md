@@ -1,9 +1,9 @@
-# Master correspondence and native long composition (2h parts 13/14)
+# Master correspondence and native master composition (2h parts 13/14/15)
 
 The plain recipe approves a draft before masters. Correspondence is the measurement
 prerequisite for that delivery: an adapter-supplied long, full vertical or short
-must preserve the approved voice and picture independently. Native long composition uses that same proof; native vertical and short composition
-remain refused; shorts-only still measures its supplied media without encoding it.
+must preserve the approved voice and picture independently. Native long and full vertical composition use that same proof; native individual short composition
+remains refused; shorts-only still measures its supplied media without encoding it.
 
 ```mermaid
 flowchart LR
@@ -56,7 +56,7 @@ flowchart LR
   E --> H[measure_refused: restore accepted artifacts]
 ```
 
-This enables only native long masters. Native vertical/short masters and whole-short
+Part 15 adds native full vertical masters below. Native individual short masters and whole-short
 context remain the next delivery pieces; unsupported master outputs keep their named
 refusal. Shorts-only continues to measure supplied media unchanged. This does not
 claim the plain recipe's complete delivery or final-manifest integration.
@@ -72,3 +72,49 @@ check the expected source indices. A changing-gray source proves 60-to-30 sampli
 and wide/tall pushes against independently decoded RGB, including different crop-run
 partitions. They also exercise short offsets, repeated-occurrence refusal, altered
 picture/audio, stale identities, symlinks, non-finite input and interrupted publication.
+
+## Native full vertical composition (part 15)
+
+The plain recipe needs its full vertical master after the long master. It now uses the
+same native pipeline, approval gate, independent split-clock correspondence and recovery.
+The unique `full: true` shorts-spec entry selects the complete locked plan; it never
+substitutes individual short pieces. Tall crop/subject, card and caption checks remain
+required. The renderer identity advances so earlier cached requests cannot be reused.
+
+```mermaid
+flowchart LR
+  A[Resolve full vertical request and source/cover geometry] --> B{Current draft explicitly approved?}
+  B -->|no| C[waiting_owner]
+  B -->|yes| D[rendering: voice, tall cues, mix and native crop]
+  D --> E{Current provider caption raster?}
+  E -->|no| F[render_failed: named raster refusal]
+  E -->|yes| G[measuring: decoded layers, subjects and draft correspondence]
+  G --> H[delivered: publish vertical and bound artifacts]
+  D --> I[render_failed: restore accepted artifacts]
+  G --> J[measure_refused: restore accepted artifacts]
+```
+
+Item 18 generates tall cues and ASS; its provider supplies resolved glyph pixels through
+the existing [caption raster contract](rendering-captions.md). A first attempt without
+that raster refuses after retaining the generated cues. The provider binds a raster to
+the current burn hash, then retries. ASS-only output never passes. No automatic font or
+text rasterizer is introduced. Every delivered frame includes the native crop followed
+by the bound layers, with source/cover and caption identities checked again on reuse.
+
+Source and cover rows now share one geometry check before stored dimensions become crop
+coordinates. Known non-square sample aspect ratios and display rotation refuse by name;
+the compositor does not silently stretch or auto-rotate them. Missing and `0:1`
+sample aspect ratios mean unspecified square pixels, as in FFmpeg. Tall covers still
+must match the native output dimensions. Existing unrotated square-pixel input retains
+its crop. Individual native shorts, whole-short context and supplied-short encoding remain
+unsupported; shorts-only still measures its supplied media unchanged.
+
+The vertical contract independently computes the J-cut crop intervals, decodes all 24
+frames of a spatially varying source through those explicit crops, and computes caption
+alpha blending per pixel. It compares the full prepared voice against independent source
+sample slices and checks negative approvals, stale identity, non-finite settings, symlink
+refusal, reuse, interrupted publication and restoration of accepted artifacts. Separate
+real-media fixtures prove rotated/non-square source and cover refusals. The long contract
+now also proves that changed draft settings invalidate an earlier owner approval for
+both long and vertical masters. A real `setsar=0` fixture with no stored SAR proves
+source and cover acceptance; the geometry check also accepts explicit `0:1` metadata.
