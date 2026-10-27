@@ -143,7 +143,7 @@ controls. All get the shared can't route in the rebuild. Later/Bring back uses `
 | stray | strays / tab left open | I closed it → helper removes stray and logs | Rebuild retains an inverse receipt; removed ledger row alone is insufficient. |
 | refresh | refreshes, thumbnail brief and folder / replacement thumbnail | Open brief/folder; Done where clearable | File judge with instructions and output relation. |
 | card | live_cards over cards / source's instructions | Open, Done → complete_card → card_cmd; Reply → board_tasks.board_post | One source-owned task; actionable lines about an existing post attach there in C. |
-| truth | _board_truth_facts / contradictory Board fact | Tell source owner → truth_from_board | Host operational report; product task only if owner action is required. |
+| truth | _board_truth_facts, persisted as board_truth.json v5 / contradictory Board fact | Tell source owner → truth_from_board; Reply → board_tasks.board_post | Last-rebuild diagnostic task only when both truth gates are enabled; never an approval or a fresh render check. |
 | kept | retained unapproved storyposts / outstanding review | Read task | Attach progress to its post; C crew task, unified Task. |
 | late | board_data.writer_owes, article receipt / missing work | Read task | Host crew responsibility; source recipient remains accountable. |
 | story:tips-empty | tips_starved / missing next tips | Read task | Needs a spec change: v5a suppresses story sources, but this has no post to own it. Explicit supply task, not a lost approval. |
@@ -316,10 +316,29 @@ included when deriving its native stamp. Dismissal neither repairs the scheduler
 No current writer restores a dismissal, so its undo is explicitly unmet. Durable terminal history remains
 an API/writer requirement for cards and dismissed notices. These declarations never execute writers.
 
+Seam 13 replays `truth` findings from the copied `board_truth.json` beside the resolved content ledger.
+Both `board_truth` and `board_truth_tasks` must be true; a disabled gate does not read the snapshot or create
+owner work. An enabled reader requires a `v5` list of nonempty findings and refuses missing, malformed,
+non-finite or duplicate identities by source. The native producer and copied reader share the same finding
+builder and `truth_task_id` function. Other layouts are not this source. Each finding becomes one
+`truth:<native finding id>` task following the same reader flowchart, with last-rebuild provenance in its
+instruction and a served words/source part containing the exact diagnostic and its layout identity.
+The snapshot has no event time; coverage records capture provenance separately and does not claim a fresh
+render check or reconstruct historical state from `now`.
+
+Report declares `truth_from_board(rid=...)`, which rechecks the current server snapshot, refuses a stale id
+or disabled gate, and files a request once. Reply declares `board_tasks.board_post`. Neither has a genuine
+retraction writer, so both declare unmet inverses. No Dismiss, Done or approval is fabricated for a diagnostic.
+Reporting a finding does not repair it, and the native finding remains until the next clean rebuild. The
+API must retain reporting receipts and terminal history. Core runtime behavior is unchanged: seam 12's
+source-declared actions and evidence contract already represents this slice. Host contract tests exercise
+the serialized output, path aliases, source changes, disabled gates and named refusals. The notice adapter
+also ignores dismissal records and omits dismissal advice when content actions are off, as its native reader does.
+
 `model.read` refuses partial coverage; `model.inventory` names each unplaced source and cause. The host's
 coverage also names suppressed cards and every task source kind not yet read, so a clean slice is never a
 claim of complete task-family coverage. `test_tasks.py` checks serialized output, revisions, writer declarations
-and named refusals. Next: remaining task sources (the source-kind table above less cards, pin and wake), then the API and page.
+and named refusals. Next: remaining task sources (the source-kind table above less cards, pin, wake and truth), then the API and page.
 
 ## 4. API and writer boundary
 
