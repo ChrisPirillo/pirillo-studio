@@ -136,11 +136,11 @@ controls. All get the shared can't route in the rebuild. Later/Bring back uses `
 | pin | video.missed_pin / missed date | See posts; Dismiss notice → `board_data.action` | Date change remains the owning scheduling writer's action. |
 | posting-hold | hold.asks / hold reason | Read task; no release writer attached | Needs a spec change: declare hold provenance and validated release/inverse before exposing a release verb; C TURN_KIND has no route. |
 | youtube-manual | youtube_manual_work / manual handoff | Handoff steps, Read task | One task tied to its post; direct steps part, not a duplicate steps link. |
-| signin | signins and forthcoming assets / connection needed | Signed in → helper writes signins | Writer checks connection later; acknowledgement is not success proof. |
+| signin | signins / connection needed | Signed in → `helper.signins` (`/signin`); Reply → `board_tasks.board_post` | Writer checks connection later; acknowledgement is not success proof. Restoration writer unmet. |
 | token | board_facts.ages / expiring credentials | Read task; Done where clearable | Never expose credentials; expiry reason and renewal instructions only. |
 | card:meta-live-page | configured page and missing credential / connection instructions | v5a Done → complete_card | Needs a spec change: synthetic source has no led.cards record, so current completion refuses. Give it a real source writer, not fabricated completion. |
 | wake | wake_error / wake failure | Read task; Dismiss notice → `board_data.action` | Owner repair or can't reply; completion must distinguish dismissed notice from repair. |
-| stray | strays / tab left open | I closed it → helper removes stray and logs | Rebuild retains an inverse receipt; removed ledger row alone is insufficient. |
+| stray | strays / tab left open | I closed it → `helper.stray` (`/stray`); Reply → `board_tasks.board_post` | Acknowledgement removes the notice, never closes a browser tab. Restoration writer unmet; API must retain the removed record. |
 | refresh | refreshes, thumbnail brief and folder / replacement thumbnail | Open brief/folder; Done where clearable | File judge with instructions and output relation. |
 | card | live_cards over cards / source's instructions | Open, Done → complete_card → card_cmd; Reply → board_tasks.board_post | One source-owned task; actionable lines about an existing post attach there in C. |
 | truth | _board_truth_facts, persisted as board_truth.json v5 / contradictory Board fact | Tell source owner → truth_from_board; Reply → board_tasks.board_post | Last-rebuild diagnostic task only when both truth gates are enabled; never an approval or a fresh render check. |
@@ -335,10 +335,33 @@ source-declared actions and evidence contract already represents this slice. Hos
 the serialized output, path aliases, source changes, disabled gates and named refusals. The notice adapter
 also ignores dismissal records and omits dismissal advice when content actions are off, as its native reader does.
 
+Seam 14 adds the ledger-backed acknowledgement sources `signin` and `stray`. Each eligible
+signed-out record and each recorded stray tab becomes one task, keyed by its native platform or tab identity.
+The host excludes its separately managed platform's sign-in record exactly as its native producer does,
+because that connection runs through a separate workflow. Missing optional tables mean no records; malformed
+tables, invalid active identities, duplicate tab identities, non-finite values and invalid or unaware recorded
+times refuse by source. Active sign-in platforms must be configured for their writer. The host uses its native
+timezone and platform labels, and both readers share the instruction builders. No credentials or browser
+state are read. Both source kinds have zero open records in the copied census, so measured coverage remains
+five tasks; serialized-output contracts exercise open records and their acknowledged states.
+
+The instruction is the served words judge; a words/source part preserves the recorded sign-in state or tab
+description and time. All record fields bind the task revision, including a changed note or observation time.
+Signed in declares `helper.signins(platform=...)`, the existing `/signin` handler, which records an
+acknowledgement for the next run to check. I closed it declares `helper.stray(id=...)`, the existing `/stray`
+handler, which removes only that recorded tab notice. Neither reader executes these writers or claims to
+verify a login or close a browser tab. Reply declares `board_tasks.board_post`. None has a restoration writer;
+each inverse is explicitly unmet. Native acknowledgement handlers do not yet check a Board task revision or
+retain inverse receipts: the API must enforce the revision and keep acknowledgement history before exposing
+these declarations. Connection tasks do not expire when a forthcoming post is due; the native page retains
+its existing scheduling urgency. Core runtime is unchanged because the existing task contract expresses
+this slice. Other source kinds and the prior truth-snapshot refusal behavior are unchanged.
+
 `model.read` refuses partial coverage; `model.inventory` names each unplaced source and cause. The host's
 coverage also names suppressed cards and every task source kind not yet read, so a clean slice is never a
 claim of complete task-family coverage. `test_tasks.py` checks serialized output, revisions, writer declarations
-and named refusals. Next: remaining task sources (the source-kind table above less cards, pin, wake and truth), then the API and page.
+and named refusals. Next: remaining task sources (the source-kind table above less cards, pin, wake, truth,
+signin and stray), then the API and page.
 
 ## 4. API and writer boundary
 
