@@ -181,7 +181,7 @@ file hashes or size/mtime read by the host; optional `history` retains source re
 
 The model produces the explanation, facets, actions and exact-content URL
 `/board/content/<quoted source key>/<content hash>`. Words, file identity and platforms determine that hash;
-the full raw facts also bind the task ID. The API in seam 7 serves this route. Local paths never become browser
+the full raw facts also bind the task ID. The later API seam serves this route. Local paths never become browser
 links. Post kinds and image controls follow section 3; approval, hand, stuck and failed remain facets.
 
 A failed or stuck post has no send deadline: its controls stay shown after its scheduled time.
@@ -256,7 +256,7 @@ Story's inverse uses `story_pick(converted_to, None)` from the action receipt: i
 receipt and pick only, preserves the brief, and refuses once the post is on the Board. Conversion or
 Want is acted across days from its durable receipt; Skip and let-go receipts are done. A saved idea stays shown in the Bank, including a previously skipped idea;
 conversion takes precedence. Poll and tip ideas remain facets of their posts, not extra cards; the Posts reader now covers those
-facets (seam 9). Vault options have their own reader (seam 10); tasks are next. `test_ideas.py` checks the shared read and coverage paths.
+facets (seam 9). Vault options have their own reader (seam 10); task-source cards follow in seam 11. `test_ideas.py` checks the shared read and coverage paths.
 
 ### Vault options reader (seam 10)
 
@@ -282,7 +282,29 @@ option action therefore declares `undo.writer: null` and a named unmet restorati
 opposite action. `read` refuses partial coverage; `coverage` names every unplaced option. Captured media identities
 can replace filesystem reads during copied-source coverage; missing active media remains named and unplaced.
 `test_vault.py` checks serialized tasks, revisions, conversion, writer declarations, deadlines and refusals.
-Next: tasks; the API and page follow.
+
+### Tasks reader (seam 11, first slice)
+
+`board/tasks.py` follows the shared reader flowchart above. The first slice is source-owned cards from the
+host's `live_cards` view over `cards`, including crew reports. `records(source)` retains stable source keys and
+raw cards alongside their effective instructions; `describe(key, record)` supplies `kind` (`task` or `crew task`),
+`what`, `why`, `words`, `writer_title`, `filed_by`, `related`, `evidence`, and optional `history`. Each evidence
+part declares its `type`, `label`, `role`, `target` and content `identity`. Instructions and evidence bind the
+served words judge and `/evidence/<n>` parts; all raw and normalized facts bind the task ID. Native card links
+are destination parts, not mutation verbs. The host preserves the native title for the completion writer and
+uses its current instruction filter without silently discarding the filtered source records. Cross-family
+content association is not inferred by this slice; the API must reconcile those related sources.
+
+Done declares `board_v5a.complete_card(id=key, title=writer_title)` (which calls `card_cmd`); Reply declares
+`board_tasks.board_post(item=key, title=writer_title)`. Reply words and dispatch validation belong to the API.
+Neither writer has a genuine inverse: Done deletes the source row and Reply has no retraction writer. Both
+therefore declare `undo.writer: null` and an explicit unmet writer. Removal is not a retained completion
+receipt; durable completion history remains an API/writer requirement. These declarations do not execute writers.
+
+`model.read` refuses partial coverage; `model.inventory` names each unplaced source and cause. The host's
+coverage also names suppressed cards and every task source kind not yet read, so a clean slice is never a
+claim of complete task-family coverage. `test_tasks.py` checks serialized output, revisions, writer declarations
+and named refusals. Next: the remaining task sources, then the API and page.
 
 ## 4. API and writer boundary
 
