@@ -134,7 +134,7 @@ controls. All get the shared can't route in the rebuild. Later/Bring back uses `
 | thumbs | assets, find_thumbs/find_shots results / missing thumbnails or photos | Open folder; Done where clearable | File supply is the real prerequisite, dismissing a notice is not supplying it. |
 | review | video.review_note and Review.md / review result | See posts, Open review; Done where clearable | Review document is judge, posts are related sources. |
 | pin | video.missed_pin / missed date | See posts; Dismiss notice → `board_data.action` | Date change remains the owning scheduling writer's action. |
-| posting-hold | hold.asks / hold reason | Read task; no release writer attached | Needs a spec change: declare hold provenance and validated release/inverse before exposing a release verb; C TURN_KIND has no route. |
+| posting-hold | hold.asks / hold reason and effective policy | Reply → `board_tasks.board_post` | One task per held scope, including unreadable policy. Served policy provenance; no release control until validated release/inverse dispatch exists. C TURN_KIND has no route. |
 | youtube-manual | youtube_manual_work / manual handoff | Handoff steps, Read task | One task tied to its post; direct steps part, not a duplicate steps link. |
 | signin | signins / connection needed | Signed in → `helper.signins` (`/signin`); Reply → `board_tasks.board_post` | Writer checks connection later; acknowledgement is not success proof. Restoration writer unmet. |
 | token | board_facts.ages / expiring credentials | Read task; Done where clearable | Never expose credentials; expiry reason and renewal instructions only. |
@@ -378,11 +378,14 @@ The copied `kept` open count is zero. Frozen-time copied coverage stays five tas
 revisions, native inclusion, source aliases, and refusals. Core runtime is unchanged. The adapter also accepts
 the native null sign-in table and retains unconfigured sign-in tasks with an explicit unavailable acknowledgement.
 
+Seam 16 adds posting-hold tasks. The host reads `hold.asks` through the existing task contract and reader flowchart. Each held scope serves its native reason and full effective policy as revision-bound words/source evidence. An absent setting uses its native default; explicit malformed policy, missing scopes and invalid row scopes stay visible with native diagnostics. Malformed source tables and non-finite evidence refuse by source; null optional story tables remain empty. Reply declares `board_tasks.board_post` with an unmet inverse. No release or dismiss control is offered: policy changes and undo belong to settings, pending validated API dispatch and retained receipts.
+The copied open count is zero; frozen-time coverage remains five tasks, with ten unread kinds. Native-shaped output fixtures prove held and malformed policy, shared scope deduplication, provenance changes, off-state disappearance, aliases and read-only refusals. Core runtime is unchanged. The kept predicate is shared; unavailable sign-in instructions are removed; full retained-row evidence identity is guarded.
+
 `model.read` refuses partial coverage; `model.inventory` names each unplaced source and cause. The host's
 coverage also names suppressed cards and every task source kind not yet read, so a clean slice is never a
 claim of complete task-family coverage. `test_tasks.py` checks serialized output, revisions, writer declarations
 and named refusals. Next: remaining task sources (the source-kind table above less cards, pin, wake, truth,
-signin, stray and kept), then the API and page.
+signin, stray, kept and posting-hold), then the API and page.
 
 ## 4. API and writer boundary
 
